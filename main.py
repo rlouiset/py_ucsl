@@ -36,6 +36,8 @@ class HYDRA(BaseML):
         self.intercepts = {label:{cluster_i:None for cluster_i in range(n_clusters_per_label[label])} for label in self.labels}
 
         self.S_lists = {label:[] for label in self.labels}
+        self.coef_lists = {label:{cluster_i:[] for cluster_i in range(n_clusters_per_label[label])} for label in self.labels}
+        self.intercept_lists = {label:{cluster_i:[] for cluster_i in range(n_clusters_per_label[label])} for label in self.labels}
 
         if self.consensus == 'direction' :
             self.cluster_estimators = {label:{'directions':None, 'K-means':None} for label in self.labels}
@@ -157,21 +159,17 @@ class HYDRA(BaseML):
             S, cluster_index = self.init_S(X, y_polytope, index_positives, index_negatives, n_clusters, idx_outside_polytope, initialization_type=self.initialization_type)
             self.S_lists[idx_outside_polytope].append(S)
 
+            for cluster_i in range(n_clusters):
+                cluster_i_weight = np.ascontiguousarray(S[:, cluster_i])
+                SVM_coefficient, SVM_intercept = self.launch_svc(X, y_polytope, cluster_i_weight, kernel=self.kernel)
+                self.coefficients[idx_outside_polytope][cluster_i] = SVM_coefficient
+                self.intercepts[idx_outside_polytope][cluster_i] = SVM_intercept
+                self.coef_lists[idx_outside_polytope][cluster_i].append(SVM_coefficient)
+                self.intercept_lists[idx_outside_polytope][cluster_i].append(SVM_intercept)
+
             min_loss, idx_min_loss = +np.inf, 0
             best_coefficients, best_cluster_index = [], []
             for iter in range(self.n_iterations):
-                for cluster_i in range(n_clusters):
-                    cluster_i_weight = np.ascontiguousarray(S[:, cluster_i])
-                    if np.count_nonzero(cluster_i_weight[index_positives]) == 0:
-                        print(
-                            "Cluster dropped, meaning that all Positive Labels has been assigned to one single hyperplane in iteration: %d" % (
-                                        iter - 1))
-                        print(
-                            "Be careful, this could cause problem because of the ill-posed solution. Especially when k==2")
-                    SVM_coefficient, SVM_intercept = self.launch_svc(X, y_polytope, cluster_i_weight, kernel=self.kernel)
-                    self.coefficients[idx_outside_polytope][cluster_i] = SVM_coefficient
-                    self.intercepts[idx_outside_polytope][cluster_i] = SVM_intercept
-
                 ## decide the convergence of the polytope based on the toleration
                 S_hold = S.copy()
                 S, cluster_index = self.update_S(X, y, S, index_positives, cluster_index, idx_outside_polytope)
@@ -185,6 +183,20 @@ class HYDRA(BaseML):
                 for cluster_i in range(n_clusters):
                     label_barycenters[cluster_i] = np.mean(X[index_positives] * S[index_positives, cluster_i][:, None],0)
                 self.barycenters[idx_outside_polytope] = label_barycenters
+
+                for cluster_i in range(n_clusters):
+                    cluster_i_weight = np.ascontiguousarray(S[:, cluster_i])
+                    if np.count_nonzero(cluster_i_weight[index_positives]) == 0:
+                        print(
+                            "Cluster dropped, meaning that all Positive Labels has been assigned to one single hyperplane in iteration: %d" % (
+                                        iter - 1))
+                        print(
+                            "Be careful, this could cause problem because of the ill-posed solution. Especially when k==2")
+                    SVM_coefficient, SVM_intercept = self.launch_svc(X, y_polytope, cluster_i_weight, kernel=self.kernel)
+                    self.coefficients[idx_outside_polytope][cluster_i] = SVM_coefficient
+                    self.intercepts[idx_outside_polytope][cluster_i] = SVM_intercept
+                    self.coef_lists[idx_outside_polytope][cluster_i].append(SVM_coefficient)
+                    self.intercept_lists[idx_outside_polytope][cluster_i].append(SVM_intercept)
 
                 ## check the loss comparted to the tolorence for stopping criteria
                 loss = min( np.linalg.norm(np.subtract(S, S_hold), ord='fro'),  np.linalg.norm(np.subtract(S, np.abs(1-S_hold)), ord='fro'))
