@@ -283,7 +283,7 @@ class HYDRA(BaseML):
             X_support = X_subset[SVC_method.support_]
 
             Kmeans_method = KMeans(n_clusters=n_clusters)
-            Kmeans_method.fit(X_support, y_train=None)
+            Kmeans_method.fit(X_support)
             weight_positive_samples = Kmeans_method.predict_proba(X_positives)
 
         S[index_positives] = weight_positive_samples  ## only replace the sample weight for positive samples
