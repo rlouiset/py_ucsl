@@ -35,6 +35,8 @@ class HYDRA(BaseML):
         self.coefficients = {label:{cluster_i:None for cluster_i in range(n_clusters_per_label[label])} for label in self.labels}
         self.intercepts = {label:{cluster_i:None for cluster_i in range(n_clusters_per_label[label])} for label in self.labels}
 
+        self.S_lists = {label:[] for label in self.labels}
+
         if self.consensus == 'direction' :
             self.cluster_estimators = {label:{'directions':None, 'K-means':None} for label in self.labels}
 
@@ -153,6 +155,7 @@ class HYDRA(BaseML):
 
             ## depending on the weight initialization strategy, random hyperplanes were initialized with maximum diversity to constitute the convex polytope
             S, cluster_index = self.init_S(X, y_polytope, index_positives, index_negatives, n_clusters, idx_outside_polytope, initialization_type=self.initialization_type)
+            self.S_lists[idx_outside_polytope].append(S)
 
             min_loss, idx_min_loss = +np.inf, 0
             best_coefficients, best_cluster_index = [], []
@@ -175,6 +178,7 @@ class HYDRA(BaseML):
                 S[index_negatives, :] = 1/n_clusters
                 S[index_positives, :] = 0
                 S[index_positives, cluster_index[index_positives]] = 1
+                self.S_lists[idx_outside_polytope].append(S)
 
                 ## update barycenters
                 label_barycenters = np.zeros((S.shape[1], X.shape[1]))
