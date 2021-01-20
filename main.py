@@ -97,10 +97,8 @@ class HYDRA(BaseML):
             for label in self.labels:
                 ## fullfill the SVM score matrix
                 for cluster_i in range(self.n_clusters_per_label[label]):
-                    SVM_coefficient, SVM_intercept = self.coefficients[label][cluster_i], self.intercepts[label][
-                        cluster_i]
-                    SVM_scores_dict[label][:, cluster_i] = (
-                                np.matmul(SVM_coefficient, X.transpose()) + SVM_intercept).transpose().squeeze()
+                    SVM_coefficient, SVM_intercept = self.coefficients[label][cluster_i], self.intercepts[label][cluster_i]
+                    SVM_scores_dict[label][:, cluster_i] = 1+(np.matmul(SVM_coefficient, X.transpose()) + SVM_intercept).transpose().squeeze()
 
                 ## fullfill each cluster score
                 for i in range(len(X)):
@@ -108,13 +106,12 @@ class HYDRA(BaseML):
                         cluster_predictions[label][i, 0] = sigmoid(np.mean(SVM_scores_dict[label][i, :]))  # P(y=label)
                     else:
                         cluster_distance_vect = SVM_scores_dict[label][i, :]
-                        cluster_predictions[label][i, 0] = sigmoid(
-                            np.sum(cluster_distance_vect[cluster_distance_vect > 0]))
+                        cluster_predictions[label][i, 0] = sigmoid(np.sum(cluster_distance_vect[cluster_distance_vect > 0]))
+
                     for cluster_i in range(self.n_clusters_per_label[label]):
-                        SVM_scores_dict[label][i, cluster_i] = sigmoid(SVM_scores_dict[label][i, cluster_i])
+                        SVM_scores_dict[label][i, cluster_i] = max(SVM_scores_dict[label][i, cluster_i], 0)            # sigmoid(SVM_scores_dict[label][i, cluster_i])
                     for cluster_i in range(self.n_clusters_per_label[label]):
-                        cluster_predictions[label][i, cluster_i + 1] = SVM_scores_dict[label][i, cluster_i] / np.sum(
-                            SVM_scores_dict[label][i, :])                                         # P(cluster=i|y=label)
+                        cluster_predictions[label][i, cluster_i + 1] = SVM_scores_dict[label][i, cluster_i] / np.sum(SVM_scores_dict[label][i, :])                                         # P(cluster=i|y=label)
             # norm_column = np.sum(np.concatenate([(cluster_predictions[label][:,0])[:,None] for label in self.labels], axis=1), 1)
             # for label in self.labels:
             #    cluster_predictions[label][:,0] /= norm_column
@@ -214,7 +211,8 @@ class HYDRA(BaseML):
             svm_scores = np.zeros(S.shape)
             for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope]) :
                  ## Apply the data again the trained model to get the final SVM scores
-                 svm_scores[:, cluster_i] = max(0, 1+(np.matmul(self.coefficients[idx_outside_polytope][cluster_i], X.transpose()) + self.intercepts[idx_outside_polytope][cluster_i]).transpose().squeeze())
+                 svm_scores[:, cluster_i] = 1+(np.matmul(self.coefficients[idx_outside_polytope][cluster_i], X.transpose()) + self.intercepts[idx_outside_polytope][cluster_i]).transpose().squeeze()
+            svm_scores[svm_scores<0] = 0
             Q = py_softmax(svm_scores[index], 1)
 
         elif self.clustering_strategy == 'original_':
