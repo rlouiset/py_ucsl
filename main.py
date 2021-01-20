@@ -95,6 +95,7 @@ class HYDRA(BaseML):
 
     def predict_distances(self, X):
         cluster_predictions = {label: np.zeros((len(X), self.n_clusters_per_label[label] + 1)) for label in self.labels}
+
         if self.clustering_strategy in ['original'] :
             SVM_scores_dict = {label: np.zeros((len(X), self.n_clusters_per_label[label])) for label in self.labels}
 
@@ -119,6 +120,7 @@ class HYDRA(BaseML):
             # norm_column = np.sum(np.concatenate([(cluster_predictions[label][:,0])[:,None] for label in self.labels], axis=1), 1)
             # for label in self.labels:
             #    cluster_predictions[label][:,0] /= norm_column
+
         elif self.clustering_strategy in ['boundary_barycenter'] :
             barycenters_scores_dict = {label : np.zeros((len(X), self.n_clusters_per_label[label])) for label in self.labels}
             for label in self.labels:
@@ -185,7 +187,7 @@ class HYDRA(BaseML):
 
                 ## check the loss comparted to the tolorence for stopping criteria
                 loss = np.linalg.norm(np.subtract(S, S_hold), ord='fro')
-                #print(loss)
+                print(loss)
                 if loss < self.tolerance:
                     break
 
@@ -219,17 +221,15 @@ class HYDRA(BaseML):
             S[index] = 1
             cluster_index[index] = 0
             return S, cluster_index
+
         Q = S[index]
         if self.clustering_strategy == 'original':
             svm_scores = np.zeros(S.shape)
             for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope]) :
                  ## Apply the data again the trained model to get the final SVM scores
-                 svm_scores[:, cluster_i] = (np.matmul(self.coefficients[idx_outside_polytope][cluster_i], X.transpose()) + self.intercepts[idx_outside_polytope][cluster_i]).transpose().squeeze()
-                 print(np.mean(svm_scores[index, cluster_i]))
+                 svm_scores[:, cluster_i] = 1+(np.matmul(self.coefficients[idx_outside_polytope][cluster_i], X.transpose()) + self.intercepts[idx_outside_polytope][cluster_i]).transpose().squeeze()
             svm_scores[svm_scores<0] = 0
-
             Q = svm_scores[index] / (np.sum(svm_scores[index], 1)[:, None]+0.0000001)
-
 
         elif self.clustering_strategy == 'boundary_barycenter':
             ##
