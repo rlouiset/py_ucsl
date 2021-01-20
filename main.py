@@ -134,7 +134,9 @@ class HYDRA(BaseML):
 
     def predict_cluster_assignement(self, X):
         cluster_predictions = self.predict_distances(X)
-        return cluster_predictions[:,1:]
+        for key in cluster_predictions.keys() :
+            cluster_predictions[key] = cluster_predictions[key][:,1:]
+        return cluster_predictions
 
     def run(self, X, y, idx_outside_polytope):
         n_clusters = self.n_clusters_per_label[idx_outside_polytope]
