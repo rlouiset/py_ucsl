@@ -222,8 +222,10 @@ class HYDRA(BaseML):
             svm_scores = np.zeros(S.shape)
             for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope]) :
                  ## Apply the data again the trained model to get the final SVM scores
-                 svm_scores[:, cluster_i] = -(np.matmul(self.coefficients[idx_outside_polytope][cluster_i], X.transpose()) + self.intercepts[idx_outside_polytope][cluster_i]).transpose().squeeze()
+                 svm_scores[:, cluster_i] = 1+(np.matmul(self.coefficients[idx_outside_polytope][cluster_i], X.transpose()) + self.intercepts[idx_outside_polytope][cluster_i]).transpose().squeeze()
+            print(np.mean(svm_scores[index], 1))
             svm_scores[svm_scores<0] = 0
+
             Q = svm_scores[index] / (np.sum(svm_scores[index], 1)[:, None]+0.0000001)
 
 
