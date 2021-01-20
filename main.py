@@ -4,6 +4,8 @@ from utils import *
 from sklearn.decomposition import PCA
 from sklearn.metrics import accuracy_score
 from sklearn.svm import SVC
+from sklearn.cluster import KMeans
+
 class HYDRA(BaseML):
     """ Computes and stores the average and current value.
     """
@@ -273,7 +275,7 @@ class HYDRA(BaseML):
             SVC_method.fit(X_subset, y_subset)
             X_support = X_subset[SVC_method.support_]
 
-            Kmeans_method = KMeans_clustering(n_clusters=n_clusters)
+            Kmeans_method = KMeans(n_clusters=n_clusters)
             Kmeans_method.fit(X_support, y_train=None)
             weight_positive_samples = Kmeans_method.predict_proba(X_positives)
 

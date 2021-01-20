@@ -1,5 +1,6 @@
 import numpy as np
 import scipy
+from sklearn.cluster import KMeans
 
 def one_hot_encode(y):
     ''' utils function in order to turn a label vector into a one hot encoded matrix '''
