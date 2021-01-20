@@ -3,8 +3,7 @@ from base import BaseML
 from utils import *
 from sklearn.decomposition import PCA
 from sklearn.metrics import accuracy_score
-from sklearn import SVC
-
+from sklearn.svm import SVC
 class HYDRA(BaseML):
     """ Computes and stores the average and current value.
     """
