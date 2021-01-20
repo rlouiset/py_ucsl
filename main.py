@@ -214,6 +214,13 @@ class HYDRA(BaseML):
             svm_scores = np.zeros(S.shape)
             for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope]) :
                  ## Apply the data again the trained model to get the final SVM scores
+                 svm_scores[:, cluster_i] = max(0, 1+(np.matmul(self.coefficients[idx_outside_polytope][cluster_i], X.transpose()) + self.intercepts[idx_outside_polytope][cluster_i]).transpose().squeeze())
+            Q = py_softmax(svm_scores[index], 1)
+
+        elif self.clustering_strategy == 'original_':
+            svm_scores = np.zeros(S.shape)
+            for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope]) :
+                 ## Apply the data again the trained model to get the final SVM scores
                  svm_scores[:, cluster_i] = -(np.matmul(self.coefficients[idx_outside_polytope][cluster_i], X.transpose()) + self.intercepts[idx_outside_polytope][cluster_i]).transpose().squeeze()
             ## apply sinkorn-knopp algorithm : cpu_sk()
             svm_scores[svm_scores<0] *= - 0.01 / np.min(svm_scores)
