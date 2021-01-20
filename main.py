@@ -164,6 +164,7 @@ class HYDRA(BaseML):
                 SVM_coefficient, SVM_intercept = self.launch_svc(X, y_polytope, cluster_i_weight, kernel=self.kernel)
                 self.coefficients[idx_outside_polytope][cluster_i] = SVM_coefficient
                 self.intercepts[idx_outside_polytope][cluster_i] = SVM_intercept
+
                 self.coef_lists[idx_outside_polytope][cluster_i].append(SVM_coefficient)
                 self.intercept_lists[idx_outside_polytope][cluster_i].append(SVM_intercept)
 
@@ -182,6 +183,12 @@ class HYDRA(BaseML):
                     label_barycenters[cluster_i] = np.mean(X[index_positives] * S[index_positives, cluster_i][:, None],0)
                 self.barycenters[idx_outside_polytope] = label_barycenters
 
+                ## check the loss comparted to the tolorence for stopping criteria
+                loss = np.linalg.norm(np.subtract(S, S_hold), ord='fro')
+                #print(loss)
+                if loss < self.tolerance:
+                    break
+
                 for cluster_i in range(n_clusters):
                     cluster_i_weight = np.ascontiguousarray(S[:, cluster_i])
                     if np.count_nonzero(cluster_i_weight[index_positives]) == 0:
@@ -197,11 +204,6 @@ class HYDRA(BaseML):
                     self.coef_lists[idx_outside_polytope][cluster_i].append(SVM_coefficient)
                     self.intercept_lists[idx_outside_polytope][cluster_i].append(SVM_intercept)
 
-                ## check the loss comparted to the tolorence for stopping criteria
-                loss = np.linalg.norm(np.subtract(S, S_hold), ord='fro')
-                print(loss)
-                if loss < self.tolerance:
-                    break
             print('')
 
             ## update the cluster index for the consensus clustering
@@ -222,7 +224,7 @@ class HYDRA(BaseML):
             svm_scores = np.zeros(S.shape)
             for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope]) :
                  ## Apply the data again the trained model to get the final SVM scores
-                 svm_scores[:, cluster_i] = 1+(np.matmul(self.coefficients[idx_outside_polytope][cluster_i], X.transpose()) + self.intercepts[idx_outside_polytope][cluster_i]).transpose().squeeze()
+                 svm_scores[:, cluster_i] = (np.matmul(self.coefficients[idx_outside_polytope][cluster_i], X.transpose()) + self.intercepts[idx_outside_polytope][cluster_i]).transpose().squeeze()
                  print(np.mean(svm_scores[index, cluster_i]))
             svm_scores[svm_scores<0] = 0
 
