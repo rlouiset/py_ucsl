@@ -167,8 +167,6 @@ class HYDRA(BaseML):
                 self.coef_lists[idx_outside_polytope][cluster_i].append(SVM_coefficient)
                 self.intercept_lists[idx_outside_polytope][cluster_i].append(SVM_intercept)
 
-            min_loss, idx_min_loss = +np.inf, 0
-            best_coefficients, best_cluster_index = [], []
             for iter in range(self.n_iterations):
                 ## decide the convergence of the polytope based on the toleration
                 S_hold = S.copy()
@@ -200,16 +198,10 @@ class HYDRA(BaseML):
                     self.intercept_lists[idx_outside_polytope][cluster_i].append(SVM_intercept)
 
                 ## check the loss comparted to the tolorence for stopping criteria
-                loss = min( np.linalg.norm(np.subtract(S, S_hold), ord='fro'),  np.linalg.norm(np.subtract(S, np.abs(1-S_hold)), ord='fro'))
+                loss = np.linalg.norm(np.subtract(S, S_hold), ord='fro')
                 print(loss)
                 if loss < self.tolerance:
                     break
-                elif loss < min_loss :
-                    best_coefficients=self.coefficients[idx_outside_polytope]
-                    best_cluster_index=cluster_index
-                if iter == self.n_iterations-1 :
-                    self.coefficients[idx_outside_polytope] = best_coefficients
-                    cluster_index=best_cluster_index
             print('')
 
             ## update the cluster index for the consensus clustering
