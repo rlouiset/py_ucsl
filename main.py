@@ -35,7 +35,7 @@ class HYDRA(BaseML):
         self.coefficients = {label:{cluster_i:None for cluster_i in range(n_clusters_per_label[label])} for label in self.labels}
         self.intercepts = {label:{cluster_i:None for cluster_i in range(n_clusters_per_label[label])} for label in self.labels}
 
-        self.S_lists = {label:None for label in self.labels}
+        self.S_lists = []
         self.coef_lists = {label:{cluster_i:[] for cluster_i in range(n_clusters_per_label[label])} for label in self.labels}
         self.intercept_lists = {label:{cluster_i:[] for cluster_i in range(n_clusters_per_label[label])} for label in self.labels}
 
@@ -155,12 +155,11 @@ class HYDRA(BaseML):
         index_positives = np.where(y_polytope == 1)[0]  # index for Positive Labels
         index_negatives = np.where(y_polytope == -1)[0]  # index for Negative Labels
 
-        S_list = []
 
         for consensus_i in range(n_consensus):
             ## depending on the weight initialization strategy, random hyperplanes were initialized with maximum diversity to constitute the convex polytope
             S, cluster_index = self.init_S(X, y_polytope, index_positives, index_negatives, n_clusters, idx_outside_polytope, initialization_type=self.initialization_type)
-            S_list.append(S)
+            self.S_lists.append(S)
 
             for cluster_i in range(n_clusters):
                 cluster_i_weight = np.ascontiguousarray(S[:, cluster_i])
@@ -175,7 +174,7 @@ class HYDRA(BaseML):
                 ## decide the convergence of the polytope based on the toleration
                 S_hold = S.copy()
                 S, cluster_index = self.update_S(X, y, S, index_positives, cluster_index, idx_outside_polytope)
-                S_list.append(S)
+                self.S_lists.append(S)
                 S[index_negatives, :] = 1/n_clusters
                 S[index_positives, :] = 0
                 S[index_positives, cluster_index[index_positives]] = 1
@@ -214,8 +213,6 @@ class HYDRA(BaseML):
             ## update the cluster index for the consensus clustering
             consensus_assignment[:, consensus_i] = cluster_index + 1
             consensus_direction.extend([self.coefficients[idx_outside_polytope][cluster_i][0] for cluster_i in range(len(self.coefficients[idx_outside_polytope]))])
-
-        self.S_lists[idx_outside_polytope] = S_list
 
         if n_consensus > 1 :
             self.apply_consensus(X, y_polytope, consensus_assignment, consensus_direction, n_clusters, index_positives, index_negatives, idx_outside_polytope)
