@@ -251,6 +251,10 @@ class HYDRA(BaseML):
             mean_w_norm = mean_w / np.linalg.norm(mean_w) ** 2
 
             for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope]) :
+                print(cluster_barycenters[cluster_i].shape)
+                print(mean_w[0].shape)
+                print(mean_b.shape)
+                print(mean_w_norm.shape)
                 boundary_barycenter_i = cluster_barycenters[cluster_i] + (cluster_barycenters[cluster_i]@mean_w[0]+mean_b)*mean_w_norm
                 boundary_baricenters_scores[:,cluster_i] = np.linalg.norm((X-boundary_barycenter_i), axis=1)
             # compute closest assigned hyperpan normal drection
