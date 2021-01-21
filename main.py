@@ -236,6 +236,15 @@ class HYDRA(BaseML):
             svm_scores[svm_scores<0] = 0
             Q = svm_scores[index] / (np.sum(svm_scores[index], 1)[:, None]+0.0000001)
 
+        if self.clustering_strategy == 'custom':
+            svm_scores = np.zeros(S.shape)
+            for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope]) :
+                 ## Apply the data again the trained model to get the final SVM scores
+                 svm_scores[:, cluster_i] = (np.matmul(self.coefficients[idx_outside_polytope][cluster_i], X.transpose()) + self.intercepts[idx_outside_polytope][cluster_i]).transpose().squeeze()
+            svm_scores[index] = np.abs(svm_scores[index])
+            Q = svm_scores[index] / (np.sum(svm_scores[index], 1)[:, None]+0.0000001)
+            Q = 1 - Q
+
         elif self.clustering_strategy == 'boundary_barycenter':
             ##
             cluster_barycenters =  self.barycenters[idx_outside_polytope]
@@ -290,7 +299,7 @@ class HYDRA(BaseML):
             random_index_choice = np.random.randint(len(X), size=len(X)//2)
             X_subset, y_subset = X[random_index_choice, :], y_polytope[random_index_choice]
 
-            SVC_method = SVC(kernel='rbf')
+            SVC_method = SVC(kernel='linear')
             SVC_method.fit(X_subset, y_subset)
             X_support = X_subset[SVC_method.support_]
 
