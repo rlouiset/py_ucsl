@@ -175,10 +175,12 @@ class HYDRA(BaseML):
                 ## decide the convergence of the polytope based on the toleration
                 S_hold = S.copy()
                 S, cluster_index = self.update_S(X, y, S, index_positives, cluster_index, idx_outside_polytope)
+                S_list.append(S)
                 S[index_negatives, :] = 1/n_clusters
                 S[index_positives, :] = 0
                 S[index_positives, cluster_index[index_positives]] = 1
-                S_list.append(S)
+
+
 
                 ## update barycenters
                 label_barycenters = np.zeros((S.shape[1], X.shape[1]))
