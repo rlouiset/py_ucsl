@@ -36,8 +36,8 @@ class HYDRA(BaseML):
         self.intercepts = {label:{cluster_i:None for cluster_i in range(n_clusters_per_label[label])} for label in self.labels}
 
         self.S_lists = {label:dict() for label in self.labels}
-        self.coef_lists = {label:{cluster_i:[] for cluster_i in range(n_clusters_per_label[label])} for label in self.labels}
-        self.intercept_lists = {label:{cluster_i:[] for cluster_i in range(n_clusters_per_label[label])} for label in self.labels}
+        self.coef_lists = {label:{cluster_i:dict() for cluster_i in range(n_clusters_per_label[label])} for label in self.labels}
+        self.intercept_lists = {label:{cluster_i:dict() for cluster_i in range(n_clusters_per_label[label])} for label in self.labels}
 
         if self.consensus == 'direction' :
             self.cluster_estimators = {label:{'directions':None, 'K-means':None} for label in self.labels}
@@ -167,8 +167,8 @@ class HYDRA(BaseML):
                 self.coefficients[idx_outside_polytope][cluster_i] = SVM_coefficient
                 self.intercepts[idx_outside_polytope][cluster_i] = SVM_intercept
 
-                self.coef_lists[idx_outside_polytope][cluster_i].append(SVM_coefficient)
-                self.intercept_lists[idx_outside_polytope][cluster_i].append(SVM_intercept)
+                self.coef_lists[idx_outside_polytope][cluster_i][0] = SVM_coefficient.copy()
+                self.intercept_lists[idx_outside_polytope][cluster_i][0] = SVM_intercept.copy()
 
             for iter in range(self.n_iterations):
                 ## decide the convergence of the polytope based on the toleration
@@ -201,12 +201,12 @@ class HYDRA(BaseML):
                                         iter - 1))
                         print(
                             "Be careful, this could cause problem because of the ill-posed solution. Especially when k==2")
-                    SVM_coefficient, SVM_intercept = self.launch_svc(X, y_polytope, cluster_i_weight, kernel=self.kernel)
+                    SVM_coefficient, SVM_intercept = self.launch_svc(X, y_polytope, cluster_i_weight+0.00001, kernel=self.kernel)
                     self.coefficients[idx_outside_polytope][cluster_i] = SVM_coefficient
                     self.intercepts[idx_outside_polytope][cluster_i] = SVM_intercept
 
-                    self.coef_lists[idx_outside_polytope][cluster_i].append(SVM_coefficient)
-                    self.intercept_lists[idx_outside_polytope][cluster_i].append(SVM_intercept)
+                    self.coef_lists[idx_outside_polytope][cluster_i][iter+1] = SVM_coefficient.copy()
+                    self.intercept_lists[idx_outside_polytope][cluster_i][iter+1] = SVM_intercept.copy()
 
             print('')
 
