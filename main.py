@@ -179,7 +179,7 @@ class HYDRA(BaseML):
                 S[index_positives, :] = 0
                 S[index_positives, cluster_index[index_positives]] = 1
 
-                S_list.append(S)
+                S_list.append(1-S)
 
                 ## update barycenters
                 label_barycenters = np.zeros((S.shape[1], X.shape[1]))
