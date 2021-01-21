@@ -230,8 +230,9 @@ class HYDRA(BaseML):
             for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope]) :
                  ## Apply the data again the trained model to get the final SVM scores
                  svm_scores[:, cluster_i] = 1+(np.matmul(self.coefficients[idx_outside_polytope][cluster_i], X.transpose()) + self.intercepts[idx_outside_polytope][cluster_i]).transpose().squeeze()
-            svm_scores[svm_scores<0] = 0
-            Q = svm_scores[index] / (np.sum(svm_scores[index], 1)[:, None]+0.0000001)
+            # svm_scores[svm_scores<0] = 0
+            Q = py_softmax(svm_scores[index], 1)
+            #Q = svm_scores[index] / (np.sum(svm_scores[index], 1)[:, None]+0.0000001)
 
         if self.clustering_strategy == 'custom':
             svm_scores = np.zeros(S.shape)
@@ -246,12 +247,11 @@ class HYDRA(BaseML):
             ##
             cluster_barycenters =  self.barycenters[idx_outside_polytope]
             boundary_baricenters_scores = np.zeros((S.shape))
-            mean_w = np.mean([self.coefficients[idx_outside_polytope][cluster_i] for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])], 0)
-            mean_b = np.mean([self.intercepts[idx_outside_polytope][cluster_i] for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])], 0)
-            mean_w_norm = mean_w / np.linalg.norm(mean_w) ** 2
-
             for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope]) :
-                boundary_barycenter_i = cluster_barycenters[cluster_i] + (cluster_barycenters[cluster_i]@mean_w[0]+mean_b)*mean_w_norm
+                w_cluster_i = self.coefficients[idx_outside_polytope][cluster_i]
+                b_cluster_i = self.intercepts[idx_outside_polytope][cluster_i]
+                w_cluster_i_norm = w_cluster_i / np.linalg.norm(w_cluster_i)**2
+                boundary_barycenter_i = cluster_barycenters[cluster_i] + (cluster_barycenters[cluster_i]@w_cluster_i[0]+b_cluster_i)*w_cluster_i_norm
                 boundary_baricenters_scores[:,cluster_i] = np.linalg.norm((X-boundary_barycenter_i), axis=1)
             # compute closest assigned hyperpan normal drection
             Q = py_softmax(-boundary_baricenters_scores[index], 1)
