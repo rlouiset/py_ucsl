@@ -178,8 +178,7 @@ class HYDRA(BaseML):
                 S[index_negatives, :] = 1/n_clusters
                 S[index_positives, :] = 0
                 S[index_positives, cluster_index[index_positives]] = 1
-
-                S_list.append(1-S)
+                S_list.append(S)
 
                 ## update barycenters
                 label_barycenters = np.zeros((S.shape[1], X.shape[1]))
@@ -188,8 +187,7 @@ class HYDRA(BaseML):
                 self.barycenters[idx_outside_polytope] = label_barycenters
 
                 ## check the loss comparted to the tolorence for stopping criteria
-                #loss = np.linalg.norm(np.subtract(S, S_hold), ord='fro')
-                loss = np.sum(np.abs(S-S_hold))
+                loss = np.linalg.norm(np.subtract(S, S_hold), ord='fro')
                 print(loss)
                 if loss < self.tolerance:
                     break
