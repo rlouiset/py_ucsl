@@ -299,18 +299,22 @@ class HYDRA(BaseML):
             num_subject = y_polytope.shape[0]
 
             SVM_coefficient, SVM_intercept = self.launch_svc(X, y_polytope, sample_weight=None, kernel='linear')
-            X_dist = (np.matmul(SVM_coefficient, X.transpose()) + SVM_intercept).transpose().squeeze()
+            SVM_coefficient_norm = SVM_coefficient / np.linalg.norm(SVM_coefficient) ** 2
 
             W = np.zeros((num_subject, X.shape[1]))
             for j in range(num_subject):
                 ipt = np.random.randint(len(index_positives))
                 icn = np.random.randint(len(index_negatives))
 
-                X_dist_ipt = np.abs(X_dist[index_positives]-X_dist[index_positives[ipt]])
-                X_dist_icn = np.abs(X_dist[index_negatives]-X_dist[index_negatives[icn]])
+                X_ortho_dist_ipt = np.linalg.norm(X - (X @ SVM_coefficient.T) * SVM_coefficient_norm + (
+                        X[index_positives[ipt]] @ SVM_coefficient[0]) * SVM_coefficient_norm - X[index_positives[ipt]],
+                                              axis=1)
+                X_ortho_dist_icn = np.linalg.norm(X - (X @ SVM_coefficient.T) * SVM_coefficient_norm + (
+                        X[index_negatives[icn]] @ SVM_coefficient[0]) * SVM_coefficient_norm - X[index_negatives[icn]],
+                                              axis=1)
 
-                ipt_batch_idxs = X_dist_ipt.argsort()[batch_size:][::-1]
-                icn_batch_idxs = X_dist_icn.argsort()[batch_size:][::-1]
+                ipt_batch_idxs = X_ortho_dist_ipt[index_positives].argsort()[batch_size:][::-1]
+                icn_batch_idxs = X_ortho_dist_icn[index_negatives].argsort()[batch_size:][::-1]
 
                 W[j, :] = np.mean(X[index_positives[ipt_batch_idxs], :], 0) - np.mean(X[index_negatives[icn_batch_idxs], :], 0)
 
