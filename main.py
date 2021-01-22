@@ -295,7 +295,7 @@ class HYDRA(BaseML):
             weight_positive_samples = proportional_assign(l, d)
 
         elif initialization_type == "DPP_batch":  ##
-            batch_size = 32
+            batch_size = 16
             num_subject = y_polytope.shape[0]
 
             SVM_coefficient, SVM_intercept = self.launch_svc(X, y_polytope, sample_weight=None, kernel='linear')
@@ -306,14 +306,11 @@ class HYDRA(BaseML):
                 ipt = np.random.randint(len(index_positives))
                 icn = np.random.randint(len(index_negatives))
 
-                X_dist_ipt = np.abs(X_dist-X_dist[index_positives[ipt]])
-                X_dist_icn = np.abs(X_dist-X_dist[index_negatives[icn]])
+                X_dist_ipt = np.abs(X_dist[index_positives]-X_dist[index_positives[ipt]])
+                X_dist_icn = np.abs(X_dist[index_negatives]-X_dist[index_negatives[icn]])
 
                 ipt_batch_idxs = X_dist_ipt.argsort()[batch_size:][::-1]
                 icn_batch_idxs = X_dist_icn.argsort()[batch_size:][::-1]
-
-                print(X_dist_ipt[ipt_batch_idxs])
-                print(X_dist_icn[icn_batch_idxs])
 
                 W[j, :] = np.mean(X[index_positives[ipt_batch_idxs], :], 0) - np.mean(X[index_negatives[icn_batch_idxs], :], 0)
 
