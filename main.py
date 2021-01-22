@@ -295,7 +295,7 @@ class HYDRA(BaseML):
             weight_positive_samples = proportional_assign(l, d)
 
         elif initialization_type == "DPP_batch":  ##
-            batch_size = 16
+            batch_size = 32
             num_subject = y_polytope.shape[0]
 
             SVM_coefficient, SVM_intercept = self.launch_svc(X, y_polytope, sample_weight=None, kernel='linear')
