@@ -294,16 +294,28 @@ class HYDRA(BaseML):
             d = prob - 1
             weight_positive_samples = proportional_assign(l, d)
 
-
-        if initialization_type == "DPP_batch":  ##
-            batch_size = 16
+        elif initialization_type == "DPP_batch":  ##
+            batch_size = 32
             num_subject = y_polytope.shape[0]
+
+            SVM_coefficient, SVM_intercept = self.launch_svc(X, y_polytope, sample_weight=None, kernel='linear')
+            X_dist = (np.matmul(SVM_coefficient, X.transpose()) + SVM_intercept).transpose().squeeze()
+
             W = np.zeros((num_subject, X.shape[1]))
             for j in range(num_subject):
-                ipt = np.random.randint(len(index_positives), size=batch_size)
-                icn = np.random.randint(len(index_negatives), size=batch_size)
-                print(ipt.shape)
-                W[j, :] = np.mean(X[index_positives[ipt], :],0) - np.mean(X[index_negatives[icn], :],0)
+                ipt = np.random.randint(len(index_positives))
+                icn = np.random.randint(len(index_negatives))
+
+                X_dist_ipt = np.abs(X_dist-X_dist[index_positives[ipt]])
+                X_dist_icn = np.abs(X_dist-X_dist[index_negatives[icn]])
+
+                ipt_batch_idxs = X_dist_ipt.argsort()[batch_size:][::-1]
+                icn_batch_idxs = X_dist_icn.argsort()[batch_size:][::-1]
+
+                print(X_dist_ipt[ipt_batch_idxs])
+                print(X_dist_icn[icn_batch_idxs])
+
+                W[j, :] = np.mean(X[index_positives[ipt_batch_idxs], :], 0) - np.mean(X[index_negatives[icn_batch_idxs], :], 0)
 
             KW = np.matmul(W, W.transpose())
             KW = np.divide(KW, np.sqrt(np.multiply(np.diag(KW)[:, np.newaxis], np.diag(KW)[:, np.newaxis].transpose())))
