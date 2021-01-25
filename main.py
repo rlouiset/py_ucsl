@@ -289,7 +289,7 @@ class HYDRA(BaseML):
             Q = py_softmax(-boundary_baricenters_scores[index], 1)
 
         S[index, :] = Q
-        cluster_index[index] = np.argmax(Q[index], axis=1)
+        cluster_index[index] = np.argmax(Q, axis=1)
         return S, cluster_index
 
 
