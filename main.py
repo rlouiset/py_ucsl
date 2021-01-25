@@ -270,8 +270,8 @@ class HYDRA(BaseML):
             #mean_direction = mean_direction - (np.dot(mean_direction, SVM_coefficient_norm[0]) * SVM_coefficient_norm[0])
             mean_intercept = 0
 
-            X_proj = sigmoid(np.matmul(mean_direction[None,:], X.transpose()) + mean_intercept).transpose().squeeze()
-            X_proj = X_proj[:, None]
+            X_proj = (np.matmul(mean_direction[None,:], X.transpose()) + mean_intercept).transpose().squeeze()
+            X_proj = sigmoid(X_proj[:, None]/np.max(X_proj))
 
             Q = np.concatenate((1-X_proj, X_proj), axis=1) #[index]
             #Q = cpu_sk(Q, lambda_=0.1)
