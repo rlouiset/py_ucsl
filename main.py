@@ -254,6 +254,19 @@ class HYDRA(BaseML):
             k_means_method = KMeans(n_clusters=self.n_clusters_per_label[idx_outside_polytope])
             Q = one_hot_encode(k_means_method.fit_predict(X_proj[index]))
 
+
+        elif self.clustering_strategy in ['mean_hp']:
+            mean_direction = np.mean([self.coefficients[idx_outside_polytope][cluster_i][0] for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])], 0)
+            mean_intercept = np.mean([self.coefficients[idx_outside_polytope][cluster_i][0] for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])], 0)
+
+            X_proj = (np.matmul(mean_direction, X.transpose()) + mean_intercept).transpose().squeeze()
+            print(X_proj[:10])
+
+            X_proj[X_proj<0] = 0
+            X_proj[X_proj>0] = 1
+
+            Q = one_hot_encode(X_proj[index])
+
         elif self.clustering_strategy == 'boundary_barycenter':
             ##
             cluster_barycenters =  self.barycenters[idx_outside_polytope]
