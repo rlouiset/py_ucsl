@@ -240,8 +240,10 @@ class HYDRA(BaseML):
 
         elif self.clustering_strategy in ['direction']:
             directions = np.array([self.coefficients[idx_outside_polytope][cluster_i][0] for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])])
+            print(directions.shape)
             directions, _ = np.linalg.qr(directions)
-            print(directions)
+            print(directions.shape)
+            print('')
 
             #for i, direction in enumerate(directions) :
             #    directions[i] = direction - np.dot(direction, self.SVM_coefficient_norm[0]) * self.SVM_coefficient_norm[0]
