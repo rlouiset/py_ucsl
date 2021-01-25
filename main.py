@@ -183,7 +183,7 @@ class HYDRA(BaseML):
                 S_hold = S.copy()
                 S, cluster_index = self.update_S(X, y, S, index_positives, cluster_index, idx_outside_polytope)
                 self.S_lists[idx_outside_polytope][1+iter]=S.copy()
-                S[index_negatives, :] = 1/n_clusters
+                #S[index_negatives, :] = 1/n_clusters
                 #S[index_positives, :] = 0
                 #S[index_positives, cluster_index[index_positives]] = 1
 
@@ -228,7 +228,7 @@ class HYDRA(BaseML):
             cluster_index[index] = 0
             return S, cluster_index
 
-        Q = S[index]
+        Q = S #[index]
         if self.clustering_strategy == 'original':
             svm_scores = np.zeros(S.shape)
             for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope]) :
@@ -260,18 +260,18 @@ class HYDRA(BaseML):
             SVM_coefficient_norm = SVM_coefficient / np.linalg.norm(SVM_coefficient) ** 2
 
             directions = np.array([self.coefficients[idx_outside_polytope][cluster_i][0] for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])])
-            intercepts = np.array([self.coefficients[idx_outside_polytope][cluster_i][0] for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])])
+            #intercepts = np.array([self.coefficients[idx_outside_polytope][cluster_i][0] for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])])
 
             directions = directions / (np.linalg.norm(directions, axis=1)**2)[:, None]
 
-            mean_direction = -(directions[0] - directions[1])/2
+            mean_direction = (directions[0] - directions[1])/2
             #mean_direction = mean_direction - (np.dot(mean_direction, SVM_coefficient_norm[0]) * SVM_coefficient_norm[0])
             mean_intercept = 0
 
             X_proj = sigmoid(np.matmul(mean_direction[None,:], X.transpose()) + mean_intercept).transpose().squeeze()
             X_proj = X_proj[:, None]
 
-            Q = np.concatenate((1-X_proj, X_proj), axis=1)[index]
+            Q = np.concatenate((1-X_proj, X_proj), axis=1) #[index]
             #Q = cpu_sk(Q, lambda_=0.1)
             #Q = np.rint(Q)
 
@@ -288,8 +288,9 @@ class HYDRA(BaseML):
             # compute closest assigned hyperpan normal drection
             Q = py_softmax(-boundary_baricenters_scores[index], 1)
 
-        S[index, :] = Q
-        cluster_index[index] = np.argmax(Q, axis=1)
+        #S[index, :] = Q
+        S = Q
+        cluster_index[index] = np.argmax(Q[index], axis=1)
         return S, cluster_index
 
 
