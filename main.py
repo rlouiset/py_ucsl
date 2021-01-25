@@ -235,7 +235,7 @@ class HYDRA(BaseML):
                  ## Apply the data again the trained model to get the final SVM scores
                  svm_scores[:, cluster_i] = 1+(np.matmul(self.coefficients[idx_outside_polytope][cluster_i], X.transpose()) + self.intercepts[idx_outside_polytope][cluster_i]).transpose().squeeze()
             # svm_scores[svm_scores<0] = 0
-            Q = py_softmax(svm_scores[index], 1)
+            Q = py_softmax(svm_scores, 1)
             #Q = svm_scores[index] / (np.sum(svm_scores[index], 1)[:, None]+0.0000001)
 
         elif self.clustering_strategy in ['direction']:
