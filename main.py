@@ -312,11 +312,11 @@ class HYDRA(BaseML):
                 ipt = np.random.randint(len(index_positives))
                 icn = np.random.randint(len(index_negatives))
 
-                X_ortho_dist_ipt = np.linalg.norm(X - (X @ SVM_coefficient.T) * SVM_coefficient_norm + (
-                        X[index_positives[ipt]] @ SVM_coefficient[0]) * SVM_coefficient_norm - X[index_positives[ipt]],
+                X_ortho_dist_ipt = np.linalg.norm(X - (X @ SVM_coefficient.T) * self.SVM_coefficient_norm + (
+                        X[index_positives[ipt]] @ SVM_coefficient[0]) * self.SVM_coefficient_norm - X[index_positives[ipt]],
                                               axis=1)
-                X_ortho_dist_icn = np.linalg.norm(X - (X @ SVM_coefficient.T) * SVM_coefficient_norm + (
-                        X[index_negatives[icn]] @ SVM_coefficient[0]) * SVM_coefficient_norm - X[index_negatives[icn]],
+                X_ortho_dist_icn = np.linalg.norm(X - (X @ SVM_coefficient.T) * self.SVM_coefficient_norm + (
+                        X[index_negatives[icn]] @ SVM_coefficient[0]) * self.SVM_coefficient_norm - X[index_negatives[icn]],
                                               axis=1)
 
                 ipt_batch_idxs = X_ortho_dist_ipt[index_positives].argsort()[batch_size:][::-1]
