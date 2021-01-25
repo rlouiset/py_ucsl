@@ -184,8 +184,8 @@ class HYDRA(BaseML):
                 S, cluster_index = self.update_S(X, y, S, index_positives, cluster_index, idx_outside_polytope)
                 self.S_lists[idx_outside_polytope][1+iter]=S.copy()
                 S[index_negatives, :] = 1/n_clusters
-                S[index_positives, :] = 0
-                S[index_positives, cluster_index[index_positives]] = 1
+                #S[index_positives, :] = 0
+                #S[index_positives, cluster_index[index_positives]] = 1
 
 
                 ## update barycenters
@@ -268,13 +268,12 @@ class HYDRA(BaseML):
             #mean_direction = mean_direction - (np.dot(mean_direction, SVM_coefficient_norm[0]) * SVM_coefficient_norm[0])
             mean_intercept = 0
 
-            #print(mean_direction.shape)
             X_proj = sigmoid(np.matmul(mean_direction[None,:], X.transpose()) + mean_intercept).transpose().squeeze()
             X_proj = X_proj[:, None]
 
             Q = np.concatenate((1-X_proj, X_proj), axis=1)[index]
             #Q = cpu_sk(Q, lambda_=0.1)
-            Q = np.rint(Q)
+            #Q = np.rint(Q)
 
         elif self.clustering_strategy == 'boundary_barycenter':
             ##
