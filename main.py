@@ -256,12 +256,16 @@ class HYDRA(BaseML):
 
 
         elif self.clustering_strategy in ['mean_hp']:
+            SVM_coefficient, SVM_intercept = self.launch_svc(X, y, sample_weight=None, kernel='linear')
+            SVM_coefficient_norm = SVM_coefficient / np.linalg.norm(SVM_coefficient) ** 2
+
             directions = np.array([self.coefficients[idx_outside_polytope][cluster_i][0] for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])])
             intercepts = np.array([self.coefficients[idx_outside_polytope][cluster_i][0] for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])])
 
             directions = directions / (np.linalg.norm(directions, axis=1)**2)[:, None]
 
-            mean_direction = directions[0] - directions[1]
+            mean_direction = (directions[0] - directions[1])/2
+            mean_direction = mean_direction - (np.dot(mean_direction, SVM_coefficient_norm[0]) * SVM_coefficient_norm[0])
             mean_intercept = 0
 
             #print(mean_direction.shape)
@@ -270,7 +274,8 @@ class HYDRA(BaseML):
             X_proj[X_proj<0] = 0
             X_proj[X_proj>0] = 1
 
-            Q = one_hot_encode(X_proj[index].astype(np.int))
+            Q += one_hot_encode(X_proj[index].astype(np.int))
+            Q /= 2
 
         elif self.clustering_strategy == 'boundary_barycenter':
             ##
