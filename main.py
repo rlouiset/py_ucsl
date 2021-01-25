@@ -243,17 +243,14 @@ class HYDRA(BaseML):
             SVM_coefficient_norm = SVM_coefficient / np.linalg.norm(SVM_coefficient) ** 2
 
             directions = np.array([self.coefficients[idx_outside_polytope][cluster_i][0] for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])])
-            print(X.shape)
-            print((X@SVM_coefficient.T).shape)
-            print(SVM_coefficient.shape)
-            print(SVM_intercept.shape)
-            X_ = X + (X@SVM_coefficient.T + SVM_intercept) * SVM_coefficient_norm
 
-            #for i, direction in enumerate(directions) :
-            #    directions[i] = direction - np.dot(direction, self.SVM_coefficient_norm[0]) * self.SVM_coefficient_norm[0]
-            #
+            for i, direction in enumerate(directions) :
+                directions[i] = direction - np.dot(direction, SVM_coefficient_norm[0]) * SVM_coefficient_norm[0]
 
-            X_proj = X_ @ directions.T
+            directions = PCA(n_components=1).fit_transform(directions.T).T
+            print(directions)
+
+            X_proj = X @ directions.T
             k_means_method = KMeans(n_clusters=self.n_clusters_per_label[idx_outside_polytope])
             Q = one_hot_encode(k_means_method.fit_predict(X_proj[index]))
 
