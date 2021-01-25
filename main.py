@@ -263,8 +263,8 @@ class HYDRA(BaseML):
             mean_intercept = 0
 
             print(mean_direction.shape)
-            print(mean_intercept.shape)
             X_proj = (np.matmul(mean_direction[None,:], X.transpose()) + mean_intercept).transpose().squeeze()
+            print(X_proj.shape)
             print(X_proj[:10])
 
             X_proj[X_proj<0] = 0
