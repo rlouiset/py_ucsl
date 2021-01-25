@@ -240,6 +240,7 @@ class HYDRA(BaseML):
 
         elif self.clustering_strategy in ['direction']:
             directions = np.array([self.coefficients[idx_outside_polytope][cluster_i][0] for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])])
+            directions = PCA().fit_transform(directions.T).T
             X_proj = X @ directions.T
             k_means_method = KMeans(n_clusters=self.n_clusters_per_label[idx_outside_polytope])
             Q = one_hot_encode(k_means_method.fit_predict(X_proj[index]))
