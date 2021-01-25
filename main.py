@@ -184,7 +184,7 @@ class HYDRA(BaseML):
                 S, cluster_index = self.update_S(X, y, S, index_positives, cluster_index, idx_outside_polytope)
                 self.S_lists[idx_outside_polytope][1+iter]=S.copy()
 
-                if self.clustering_strategy == 'original':
+                if self.clustering_strategy == 'mean_hp_normal':
                     S[index_negatives, :] = 1/n_clusters
                 S[index_positives, :] = 0
                 S[index_positives, cluster_index[index_positives]] = 1
@@ -257,9 +257,9 @@ class HYDRA(BaseML):
             Q = one_hot_encode(k_means_method.fit_predict(X_proj[index]))
 
 
-        elif self.clustering_strategy in ['mean_hp']:
-            SVM_coefficient, SVM_intercept = self.launch_svc(X, y, sample_weight=None, kernel='linear')
-            SVM_coefficient_norm = SVM_coefficient / np.linalg.norm(SVM_coefficient) ** 2
+        elif self.clustering_strategy in ['mean_hp', 'mean_hp_normal']:
+            #SVM_coefficient, SVM_intercept = self.launch_svc(X, y, sample_weight=None, kernel='linear')
+            #SVM_coefficient_norm = SVM_coefficient / np.linalg.norm(SVM_coefficient) ** 2
 
             directions = np.array([self.coefficients[idx_outside_polytope][cluster_i][0] for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])])
             #intercepts = np.array([self.coefficients[idx_outside_polytope][cluster_i][0] for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])])
