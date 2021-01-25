@@ -264,8 +264,8 @@ class HYDRA(BaseML):
 
             directions = directions / (np.linalg.norm(directions, axis=1)**2)[:, None]
 
-            mean_direction = (directions[0] - directions[1])/2
-            #mean_direction = mean_direction - (np.dot(mean_direction, SVM_coefficient_norm[0]) * SVM_coefficient_norm[0])
+            mean_direction = -(directions[0] - directions[1])/2
+            mean_direction = mean_direction - (np.dot(mean_direction, SVM_coefficient_norm[0]) * SVM_coefficient_norm[0])
             mean_intercept = 0
 
             #print(mean_direction.shape)
