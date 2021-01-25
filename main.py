@@ -243,6 +243,9 @@ class HYDRA(BaseML):
             SVM_coefficient_norm = SVM_coefficient / np.linalg.norm(SVM_coefficient) ** 2
 
             directions = np.array([self.coefficients[idx_outside_polytope][cluster_i][0] for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])])
+            print(X.shape)
+            print(SVM_coefficient.shape)
+            print(SVM_intercept.shape)
             X_ = X + (X@SVM_coefficient + SVM_intercept) * SVM_coefficient_norm
 
             #for i, direction in enumerate(directions) :
