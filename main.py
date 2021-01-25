@@ -243,7 +243,7 @@ class HYDRA(BaseML):
             directions = directions / (np.linalg.norm(directions, axis=1)**2)[:, None]
 
             for i, direction in enumerate(directions) :
-                directions[i] = direction - np.dot(direction, self.SVM_coefficient_norm) * self.SVM_coefficient_norm
+                directions[i] = direction - np.dot(direction, self.SVM_coefficient_norm[0]) * self.SVM_coefficient_norm[0]
             directions = directions / (np.linalg.norm(directions, axis=1) ** 2)[:, None]
 
             X_proj = X @ directions.T
