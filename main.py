@@ -273,7 +273,7 @@ class HYDRA(BaseML):
             X_proj = X_proj[:, None]
 
             Q = np.concatenate((1-X_proj, X_proj), axis=1)[index]
-            Q = cpu_sk(Q, lambda_=0.1)
+            #Q = cpu_sk(Q, lambda_=0.1)
             Q = np.rint(Q)
 
         elif self.clustering_strategy == 'boundary_barycenter':
