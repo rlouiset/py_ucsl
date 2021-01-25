@@ -262,15 +262,13 @@ class HYDRA(BaseML):
             mean_direction = directions[0] - directions[1]
             mean_intercept = 0
 
-            print(mean_direction.shape)
+            #print(mean_direction.shape)
             X_proj = (np.matmul(mean_direction[None,:], X.transpose()) + mean_intercept).transpose().squeeze()
-            print(X_proj.shape)
-            print(X_proj[:10])
 
             X_proj[X_proj<0] = 0
             X_proj[X_proj>0] = 1
 
-            Q = one_hot_encode(X_proj[index]).astype(np.int)
+            Q = one_hot_encode(X_proj[index].astype(np.int))
 
         elif self.clustering_strategy == 'boundary_barycenter':
             ##
