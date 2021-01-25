@@ -259,7 +259,9 @@ class HYDRA(BaseML):
             mean_direction = np.mean([self.coefficients[idx_outside_polytope][cluster_i][0] for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])], 0)
             mean_intercept = np.mean([self.coefficients[idx_outside_polytope][cluster_i][0] for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])], 0)
 
-            X_proj = (np.matmul(mean_direction, X.transpose()) + mean_intercept).transpose().squeeze()
+            print(mean_direction.shape)
+            print(mean_intercept.shape)
+            X_proj = (np.matmul(mean_direction[None,:], X.transpose()) + mean_intercept).transpose().squeeze()
             print(X_proj[:10])
 
             X_proj[X_proj<0] = 0
