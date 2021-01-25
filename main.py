@@ -240,7 +240,12 @@ class HYDRA(BaseML):
 
         elif self.clustering_strategy in ['direction']:
             directions = np.array([self.coefficients[idx_outside_polytope][cluster_i][0] for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])])
-            directions = PCA().fit_transform(directions.T).T
+            directions = directions / (np.linalg.norm(directions, 1)**2)[:, None]
+
+            for i, direction in enumerate(directions) :
+                directions[i] = direction - np.dot(direction, self.SVM_coefficient_norm) * self.SVM_coefficient_norm
+            directions = directions / (np.linalg.norm(directions, 1) ** 2)[:, None]
+
             X_proj = X @ directions.T
             k_means_method = KMeans(n_clusters=self.n_clusters_per_label[idx_outside_polytope])
             Q = one_hot_encode(k_means_method.fit_predict(X_proj[index]))
@@ -300,7 +305,7 @@ class HYDRA(BaseML):
             num_subject = y_polytope.shape[0]
 
             SVM_coefficient, SVM_intercept = self.launch_svc(X, y_polytope, sample_weight=None, kernel='linear')
-            SVM_coefficient_norm = SVM_coefficient / np.linalg.norm(SVM_coefficient) ** 2
+            self.SVM_coefficient_norm = SVM_coefficient / np.linalg.norm(SVM_coefficient) ** 2
 
             W = np.zeros((num_subject, X.shape[1]))
             for j in range(num_subject):
