@@ -184,8 +184,8 @@ class HYDRA(BaseML):
                 S, cluster_index = self.update_S(X, y, S, index_positives, cluster_index, idx_outside_polytope)
                 self.S_lists[idx_outside_polytope][1+iter]=S.copy()
                 #S[index_negatives, :] = 1/n_clusters
-                #S[index_positives, :] = 0
-                #S[index_positives, cluster_index[index_positives]] = 1
+                S[index_positives, :] = 0
+                S[index_positives, cluster_index[index_positives]] = 1
 
 
                 ## update barycenters
