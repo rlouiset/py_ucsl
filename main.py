@@ -188,7 +188,6 @@ class HYDRA(BaseML):
                 S[index_positives, cluster_index[index_positives]] = 1
 
 
-
                 ## update barycenters
                 label_barycenters = np.zeros((S.shape[1], X.shape[1]))
                 for cluster_i in range(n_clusters):
@@ -273,7 +272,7 @@ class HYDRA(BaseML):
             X_proj = sigmoid(np.matmul(mean_direction[None,:], X.transpose()) + mean_intercept).transpose().squeeze()
             X_proj = X_proj[:, None]
 
-            Q = np.concatenate((1-X_proj, X_proj), axis=1)
+            Q = 0.25*Q + 0.75*np.concatenate((1-X_proj, X_proj), axis=1)
             Q = cpu_sk(Q[index])
             Q = np.rint(Q)
 
