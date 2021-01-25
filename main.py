@@ -183,7 +183,6 @@ class HYDRA(BaseML):
                 S_hold = S.copy()
                 S, cluster_index = self.update_S(X, y, S, index_positives, cluster_index, idx_outside_polytope)
                 self.S_lists[idx_outside_polytope][1+iter]=S.copy()
-                print(S[index_negatives, :])
                 #S[index_negatives, :] = 1/n_clusters
                 S[index_positives, :] = 0
                 S[index_positives, cluster_index[index_positives]] = 1
@@ -266,7 +265,7 @@ class HYDRA(BaseML):
             directions = directions / (np.linalg.norm(directions, axis=1)**2)[:, None]
 
             mean_direction = (directions[0] - directions[1])/2
-            #mean_direction = mean_direction - (np.dot(mean_direction, SVM_coefficient_norm[0]) * SVM_coefficient_norm[0])
+            mean_direction = mean_direction - (np.dot(mean_direction, SVM_coefficient_norm[0]) * SVM_coefficient_norm[0])
             mean_intercept = 0
 
             X_proj = (np.matmul(mean_direction[None,:], X.transpose()) + mean_intercept).transpose().squeeze()
