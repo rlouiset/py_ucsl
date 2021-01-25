@@ -271,7 +271,7 @@ class HYDRA(BaseML):
             X_proj = (np.matmul(mean_direction[None,:], X.transpose()) + mean_intercept).transpose().squeeze()
             X_proj = sigmoid(X_proj[:, None]*5/np.max(X_proj))
 
-            Q = np.concatenate((X_proj, 1-X_proj), axis=1)
+            Q = np.concatenate((1-X_proj, X_proj), axis=1)
             #Q = cpu_sk(Q, lambda_=0.1)
             #Q = np.rint(Q)
 
