@@ -274,8 +274,8 @@ class HYDRA(BaseML):
             X_proj[X_proj<0] = 0
             X_proj[X_proj>0] = 1
 
-            Q += one_hot_encode(X_proj[index].astype(np.int))
-            Q /= 2
+            Q = one_hot_encode(X_proj[index].astype(np.int))
+            #Q /= 2
 
         elif self.clustering_strategy == 'boundary_barycenter':
             ##
