@@ -1,6 +1,7 @@
 import numpy as np
 from base import BaseML
 from utils import *
+from sinkornknopp import *
 from sklearn.decomposition import PCA, FastICA
 from sklearn.metrics import accuracy_score
 from sklearn.svm import SVC
@@ -269,12 +270,9 @@ class HYDRA(BaseML):
             mean_intercept = 0
 
             #print(mean_direction.shape)
-            X_proj = (np.matmul(mean_direction[None,:], X.transpose()) + mean_intercept).transpose().squeeze()
+            X_proj = sigmoid(np.matmul(mean_direction[None,:], X.transpose()) + mean_intercept).transpose().squeeze()
 
-            X_proj[X_proj<0] = 0
-            X_proj[X_proj>0] = 1
-
-            Q = one_hot_encode(X_proj[index].astype(np.int))
+            Q = cpu_sk(one_hot_encode(X_proj[index].astype(np.int)))
             #Q /= 2
 
         elif self.clustering_strategy == 'boundary_barycenter':
