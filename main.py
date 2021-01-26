@@ -40,6 +40,8 @@ class HYDRA(BaseML):
         self.coef_lists = {label:{cluster_i:dict() for cluster_i in range(n_clusters_per_label[label])} for label in self.labels}
         self.intercept_lists = {label:{cluster_i:dict() for cluster_i in range(n_clusters_per_label[label])} for label in self.labels}
 
+        self.mean_direction = {label:None for label in self.labels}
+
         if self.consensus == 'direction' :
             self.cluster_estimators = {label:{'directions':None, 'K-means':None} for label in self.labels}
 
@@ -200,8 +202,7 @@ class HYDRA(BaseML):
                 S, cluster_index = self.update_S(X, y, S, index_positives, cluster_index, idx_outside_polytope)
                 self.S_lists[idx_outside_polytope][1+iter]=S.copy()
 
-                if self.clustering_strategy == 'mean_hp_normal':
-                    S[index_negatives, :] = 1/n_clusters
+                #S[index_negatives, :] = 1/n_clusters
                 S[index_positives, :] = 0
                 S[index_positives, cluster_index[index_positives]] = 1
 
@@ -234,7 +235,7 @@ class HYDRA(BaseML):
 
             ## update the cluster index for the consensus clustering
             consensus_assignment[:, consensus_i] = cluster_index + 1
-            consensus_direction.extend([self.coefficients[idx_outside_polytope][cluster_i][0] for cluster_i in range(len(self.coefficients[idx_outside_polytope]))])
+            consensus_direction.extend([self.mean_direction[idx_outside_polytope][0]])
 
         if n_consensus > 1 :
             self.apply_consensus(X, y_polytope, consensus_assignment, consensus_direction, n_clusters, index_positives, index_negatives, idx_outside_polytope)
@@ -292,6 +293,7 @@ class HYDRA(BaseML):
             Q = np.concatenate((1-X_proj, X_proj), axis=1)
             #Q = cpu_sk(Q, lambda_=0.1)
             #Q = np.rint(Q)
+            self.mean_direction[idx_outside_polytope] = mean_direction
 
         elif self.clustering_strategy == 'boundary_barycenter':
             ##
@@ -303,6 +305,7 @@ class HYDRA(BaseML):
                 w_cluster_i_norm = w_cluster_i / np.linalg.norm(w_cluster_i)**2
                 boundary_barycenter_i = cluster_barycenters[cluster_i] + (cluster_barycenters[cluster_i]@w_cluster_i[0]+b_cluster_i)*w_cluster_i_norm
                 boundary_baricenters_scores[:,cluster_i] = np.linalg.norm((X-boundary_barycenter_i), axis=1)
+
             # compute closest assigned hyperpan normal drection
             Q = py_softmax(-boundary_baricenters_scores[index], 1)
 
