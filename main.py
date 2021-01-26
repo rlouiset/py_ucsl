@@ -249,7 +249,7 @@ class HYDRA(BaseML):
 
             ## update the cluster index for the consensus clustering
             consensus_assignment[:, consensus_i] = cluster_index[index_positives] + 1
-            consensus_direction.extend([self.mean_direction[idx_outside_polytope]])
+            consensus_direction.extend([self.coefficients[idx_outside_polytope][cluster_i][0] for cluster_i in range(len(self.coefficients[idx_outside_polytope]))])
 
         if n_consensus > 1 :
             self.apply_consensus(X, y_polytope, consensus_assignment, consensus_direction, n_clusters, index_positives, index_negatives, idx_outside_polytope)
@@ -445,7 +445,7 @@ class HYDRA(BaseML):
         elif self.consensus == 'direction':
             consensus_direction = np.array(consensus_direction).T
             ## apply PCA on consensus direction
-            PCA_ = FastICA(n_components=2)
+            PCA_ = PCA(n_components=2)
             self.cluster_estimators[idx_outside_polytope]['directions'] = PCA_.fit_transform(consensus_direction)
 
             print(self.cluster_estimators[idx_outside_polytope]['directions'])
