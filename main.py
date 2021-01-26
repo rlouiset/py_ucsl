@@ -42,6 +42,7 @@ class HYDRA(BaseML):
         self.intercept_lists = {label:{cluster_i:dict() for cluster_i in range(n_clusters_per_label[label])} for label in self.labels}
 
         self.mean_direction = {label:None for label in self.labels}
+        self.SVC_clsf = {label:None for label in self.labels}
 
         if self.consensus == 'direction' :
             self.cluster_estimators = {label:{'directions':None, 'K-means':None} for label in self.labels}
@@ -153,6 +154,10 @@ class HYDRA(BaseML):
                 cluster_predictions[label][:, 1] = (1-X_proj)[:,0]
                 cluster_predictions[label][:, 2] = X_proj[:,0]
 
+        elif self.consensus == 'SVM':
+            cluster_predictions = {label: None for label in self.labels}
+            for label in self.labels:
+                cluster_predictions[label] = self.SVC_clsf[label].predict_proba(X)
         '''
         if self.consensus in ['direction'] :
             cluster_predictions = {label: np.zeros((len(X), self.n_clusters_per_label[label] + 1)) for label in self.labels}
@@ -189,7 +194,6 @@ class HYDRA(BaseML):
 
         index_positives = np.where(y_polytope == 1)[0]  # index for Positive Labels
         index_negatives = np.where(y_polytope == -1)[0]  # index for Negative Labels
-
 
         for consensus_i in range(n_consensus):
             ## depending on the weight initialization strategy, random hyperplanes were initialized with maximum diversity to constitute the convex polytope
@@ -243,7 +247,6 @@ class HYDRA(BaseML):
                     self.intercept_lists[idx_outside_polytope][cluster_i][iter+1] = SVM_intercept.copy()
 
             ## update the cluster index for the consensus clustering
-            print(cluster_index[:10])
             consensus_assignment[:, consensus_i] = cluster_index[index_positives] + 1
             consensus_direction.extend([self.mean_direction[idx_outside_polytope]])
 
@@ -437,8 +440,6 @@ class HYDRA(BaseML):
             ## change the weight of positivess to be 1, negatives to be 1/_clusters
             # then set the positives' weight to be 1 for the assigned hyperplane
             S[index_positives, :] *= 0
-            print(consensus_scores.shape)
-            print(X.shape)
             S[index_positives, consensus_scores] = 1
 
         elif self.consensus == 'direction':
@@ -459,6 +460,21 @@ class HYDRA(BaseML):
             S[index_positives, :] *= 0
             S[index_positives, np.argmax(consensus_scores,1)[index_positives]] = 1
 
+        elif self.consensus == 'SVM':
+            cluster_scores = np.zeros((len(y_polytope), n_clusters))
+            for i, sample in enumerate(consensus_assignment.astype(int)) :
+                cluster_scores[i,0] = np.sum(sample==0) / self.n_consensus
+                cluster_scores[i,1] = np.sum(sample==1) / self.n_consensus
+
+            cluster_pred = np.rint(cluster_scores)[:,1]
+            cluster_uncertainty = np.max(cluster_scores, 1)
+
+            self.SVC_clsf[idx_outside_polytope] = SVC(kernel="linear", C=self.C, probability=True)
+            ## fit the different SVM/hyperplanes
+            self.SVC_clsf[idx_outside_polytope].fit(X[index_positives], cluster_pred, sample_weight=cluster_uncertainty)
+
+            S[index_positives, :] = one_hot_encode(self.SVC_clsf[idx_outside_polytope].predict(X[index_positives]))
+            S[index_negatives, :] = one_hot_encode(self.SVC_clsf[idx_outside_polytope].predict_proba(X[index_negatives]))
 
         # create the final polytope by applying all weighted subjects
         for cluster_i in range(n_clusters):

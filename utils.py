@@ -154,7 +154,6 @@ def elem_sym_poly(lambda_value, k):
     return E
 
 def consensus_clustering(clustering_results, k):
-    print(clustering_results.shape)
     num_pt = clustering_results.shape[0]
     cooccurence_matrix = np.zeros((num_pt, num_pt))
 
