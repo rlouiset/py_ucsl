@@ -154,7 +154,7 @@ class HYDRA(BaseML):
                 cluster_predictions[label][:, 1] = (1-X_proj)[:,0]
                 cluster_predictions[label][:, 2] = X_proj[:,0]
 
-        elif self.consensus == 'SVM':
+        if self.consensus == 'SVM':
             cluster_predictions = {label: None for label in self.labels}
             for label in self.labels:
                 cluster_predictions[label] = self.SVC_clsf[label].predict_proba(X)
@@ -461,7 +461,7 @@ class HYDRA(BaseML):
             S[index_positives, np.argmax(consensus_scores,1)[index_positives]] = 1
 
         elif self.consensus == 'SVM':
-            cluster_scores = np.zeros((len(y_polytope), n_clusters))
+            cluster_scores = np.zeros((np.sum(y_polytope==1), n_clusters))
             for i, sample in enumerate(consensus_assignment.astype(int)) :
                 cluster_scores[i,0] = np.sum(sample==0) / self.n_consensus
                 cluster_scores[i,1] = np.sum(sample==1) / self.n_consensus
