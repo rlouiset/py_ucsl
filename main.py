@@ -184,7 +184,7 @@ class HYDRA(BaseML):
         y_polytope[y_polytope!=idx_outside_polytope] = -1    ## if label is inside of the polytope, the distance is negative and the label is not divided into
         y_polytope[y_polytope==idx_outside_polytope] = 1     ## if label is outside of the polytope, the distance is positive and the label is clustered
 
-        consensus_assignment = np.zeros((len(y_polytope), n_consensus))
+        consensus_assignment = np.zeros((len(y_polytope==1), n_consensus))
         consensus_direction = []
 
         index_positives = np.where(y_polytope == 1)[0]  # index for Positive Labels
