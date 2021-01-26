@@ -172,7 +172,7 @@ class HYDRA(BaseML):
             for label in self.labels:
                 k_means_label = self.cluster_estimators[label]['K-means']
                 directions_label = self.cluster_estimators[label]['directions']
-                cluster_predictions[label][:, 1:] = one_hot_encode(k_means_label.predict_proba(X@directions_label))
+                cluster_predictions[label][:, 1:] = one_hot_encode(k_means_label.predict(X@directions_label).astype(np.int))
         return cluster_predictions
 
 
