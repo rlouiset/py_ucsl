@@ -441,9 +441,9 @@ class HYDRA(BaseML):
         elif self.consensus == 'direction':
             consensus_direction = np.array(consensus_direction).T
             ## apply PCA on consensus direction
-            PCA_ = FastICA(n_components=n_clusters)
-            self.cluster_estimators[idx_outside_polytope]['directions'] = PCA_.fit_transform(consensus_direction)
-            self.cluster_estimators[idx_outside_polytope]['directions'] /= (np.linalg.norm(self.cluster_estimators[idx_outside_polytope]['directions'], axis=1)**2)[:, None]
+            #PCA_ = FastICA(n_components=n_clusters)
+            self.cluster_estimators[idx_outside_polytope]['directions'] = np.mean(consensus_direction, 0)
+            #self.cluster_estimators[idx_outside_polytope]['directions'] /= (np.linalg.norm(self.cluster_estimators[idx_outside_polytope]['directions'], axis=1)**2)[:, None]
 
             self.cluster_estimators[idx_outside_polytope]['K-means'] = GaussianMixture(n_components=n_clusters).fit(X[index_positives]@self.cluster_estimators[idx_outside_polytope]['directions'])
             consensus_scores = self.cluster_estimators[idx_outside_polytope]['K-means'].predict_proba(X@self.cluster_estimators[idx_outside_polytope]['directions'])
