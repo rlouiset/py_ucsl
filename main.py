@@ -185,6 +185,7 @@ class HYDRA(BaseML):
         y_polytope[y_polytope==idx_outside_polytope] = 1     ## if label is outside of the polytope, the distance is positive and the label is clustered
 
         consensus_assignment = np.zeros((len(y_polytope==1), n_consensus))
+        print(consensus_assignment.shape)
         consensus_direction = []
 
         index_positives = np.where(y_polytope == 1)[0]  # index for Positive Labels
@@ -243,6 +244,8 @@ class HYDRA(BaseML):
                     self.intercept_lists[idx_outside_polytope][cluster_i][iter+1] = SVM_intercept.copy()
 
             ## update the cluster index for the consensus clustering
+            print(cluster_index.shape)
+            print(cluster_index[:10])
             consensus_assignment[:, consensus_i] = cluster_index[index_positives] + 1
             consensus_direction.extend([self.mean_direction[idx_outside_polytope]])
 
