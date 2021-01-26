@@ -160,6 +160,12 @@ class HYDRA(BaseML):
                 directions_label = self.cluster_estimators[label]['directions']
                 cluster_predictions[label][:, 1:] = one_hot_encode(k_means_label.predict(X@directions_label))
         '''
+        if self.consensus in ['mean_direction'] :
+            cluster_predictions = {label: np.zeros((len(X), self.n_clusters_per_label[label] + 1)) for label in self.labels}
+            for label in self.labels:
+                k_means_label = self.cluster_estimators[label]['K-means']
+                directions_label = self.cluster_estimators[label]['directions']
+                cluster_predictions[label][:, 1:] = one_hot_encode(k_means_label.predict(X@directions_label))
         return cluster_predictions
 
 
@@ -437,11 +443,12 @@ class HYDRA(BaseML):
             PCA_ = PCA(n_components=n_clusters)
             print(consensus_direction.shape)
             self.cluster_estimators[idx_outside_polytope]['directions'] = PCA_.fit_transform(consensus_direction)
-            self.cluster_estimators[idx_outside_polytope]['K-means'] = KMeans(n_clusters).fit(X@self.cluster_estimators[idx_outside_polytope]['directions'])
+            self.cluster_estimators[idx_outside_polytope]['K-means'] = KMeans(n_clusters).fit(X[index_positives]@self.cluster_estimators[idx_outside_polytope]['directions'])
             consensus_scores = self.cluster_estimators[idx_outside_polytope]['K-means'].predict(X@self.cluster_estimators[idx_outside_polytope]['directions'])
 
             ## after deciding the final convex polytope, we refit the training data once to save the best model
-            S = np.ones((len(y_polytope), n_clusters)) / n_clusters
+            # S = np.ones((len(y_polytope), n_clusters)) / n_clusters
+            S = np.concatenate((1-consensus_scores, consensus_scores), 1)
             ## change the weight of positivess to be 1, negatives to be 1/_clusters
             # then set the positives' weight to be 1 for the assigned hyperplane
             S[index_positives, :] *= 0
