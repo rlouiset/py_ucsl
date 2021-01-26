@@ -411,7 +411,7 @@ class HYDRA(BaseML):
             Kmeans_method.fit(X_support)
             weight_positive_samples = one_hot_encode(Kmeans_method.predict(X_positives))
 
-        S[index_positives] = weight_samples  ## only replace the sample weight for positive samples
+        S = weight_samples  ## only replace the sample weight for positive samples
         cluster_index = np.argmax(S, axis=1)
 
         ## init barycenters
