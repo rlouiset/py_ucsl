@@ -155,7 +155,7 @@ class HYDRA(BaseML):
                 cluster_predictions[label][:, 2] = X_proj[:,0]
 
         if self.consensus == 'SVM':
-            cluster_predictions = {label: None for label in self.labels}
+            cluster_predictions = {label: np.zeros((len(X), self.n_clusters_per_label[label] + 1)) for label in self.labels}
             for label in self.labels:
                 cluster_predictions[label][:,1:] = self.SVC_clsf[label].predict_proba(X)
 
