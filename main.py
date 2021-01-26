@@ -447,7 +447,7 @@ class HYDRA(BaseML):
             self.cluster_estimators[idx_outside_polytope]['directions'] /= (np.linalg.norm(self.cluster_estimators[idx_outside_polytope]['directions'], axis=1)**2)[:, None]
 
             self.cluster_estimators[idx_outside_polytope]['K-means'] = GaussianMixture(n_components=n_clusters).fit(X[index_positives]@self.cluster_estimators[idx_outside_polytope]['directions'])
-            consensus_scores = self.cluster_estimators[idx_outside_polytope]['K-means'].predict(X@self.cluster_estimators[idx_outside_polytope]['directions'])
+            consensus_scores = self.cluster_estimators[idx_outside_polytope]['K-means'].predict_proba(X@self.cluster_estimators[idx_outside_polytope]['directions'])
 
             print(consensus_scores)
 
@@ -457,7 +457,7 @@ class HYDRA(BaseML):
             ## change the weight of positivess to be 1, negatives to be 1/_clusters
             # then set the positives' weight to be 1 for the assigned hyperplane
             S[index_positives, :] *= 0
-            S[index_positives, consensus_scores[index_positives]] = 1
+            S[index_positives, np.rint(consensus_scores)[index_positives]] = 1
 
         # create the final polytope by applying all weighted subjects
         for cluster_i in range(n_clusters):
