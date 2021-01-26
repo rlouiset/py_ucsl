@@ -216,7 +216,8 @@ class HYDRA(BaseML):
                 S, cluster_index = self.update_S(X, y, S, index_positives, cluster_index, idx_outside_polytope)
                 self.S_lists[idx_outside_polytope][1+iter]=S.copy()
 
-                #S[index_negatives, :] = 1/n_clusters
+                if self.clustering_strategy == 'original':
+                    S[index_negatives, :] = 1/n_clusters
                 S[index_positives, :] = 0
                 S[index_positives, cluster_index[index_positives]] = 1
 
@@ -319,7 +320,7 @@ class HYDRA(BaseML):
                 boundary_baricenters_scores[:,cluster_i] = np.linalg.norm((X-boundary_barycenter_i), axis=1)
 
             # compute closest assigned hyperplan normal drection
-            Q = py_softmax(-boundary_baricenters_scores[index], 1)
+            Q = py_softmax(-boundary_baricenters_scores, 1)
 
         S = Q.copy()
         cluster_index[index] = np.argmax(Q[index], axis=1)
@@ -447,7 +448,6 @@ class HYDRA(BaseML):
             ## apply PCA on consensus direction
             PCA_ = PCA(n_components=n_clusters)
             self.cluster_estimators[idx_outside_polytope]['directions'] = PCA_.fit_transform(consensus_direction)
-            print(self.cluster_estimators[idx_outside_polytope]['directions'])
             self.cluster_estimators[idx_outside_polytope]['K-means'] = KMeans(n_clusters).fit(X[index_positives]@self.cluster_estimators[idx_outside_polytope]['directions'])
             consensus_scores = self.cluster_estimators[idx_outside_polytope]['K-means'].predict(X@self.cluster_estimators[idx_outside_polytope]['directions'])
 
@@ -459,17 +459,12 @@ class HYDRA(BaseML):
             S[index_positives, consensus_scores[index_positives]] = 1
 
         elif self.consensus == 'SVM':
-            cluster_scores = np.zeros((np.sum(y_polytope==1), n_clusters))
-            for i, sample in enumerate(consensus_assignment.astype(int)) :
-                cluster_scores[i,0] = np.sum(sample==0) / self.n_consensus
-                cluster_scores[i,1] = np.sum(sample==1) / self.n_consensus
-
-            cluster_pred = np.rint(cluster_scores)[:,1]
-            cluster_uncertainty = np.max(cluster_scores, 1)
+            ## do censensus clustering
+            consensus_scores, _ = consensus_clustering(consensus_assignment.astype(int), n_clusters)
 
             self.SVC_clsf[idx_outside_polytope] = SVC(kernel="linear", C=self.C, probability=True)
             ## fit the different SVM/hyperplanes
-            self.SVC_clsf[idx_outside_polytope].fit(X[index_positives], cluster_pred, sample_weight=cluster_uncertainty)
+            self.SVC_clsf[idx_outside_polytope].fit(X[index_positives], consensus_scores)
 
             S[index_positives, :] = one_hot_encode(self.SVC_clsf[idx_outside_polytope].predict(X[index_positives]).astype(np.int))
             S[index_negatives, :] = self.SVC_clsf[idx_outside_polytope].predict_proba(X[index_negatives])
