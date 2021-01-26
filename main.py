@@ -134,6 +134,22 @@ class HYDRA(BaseML):
                 for cluster_i in range(self.n_clusters_per_label[label]):
                     cluster_predictions[label][:, cluster_i+1] = barycenters_scores_dict[label][:, cluster_i] / np.sum(barycenters_scores_dict[label], 1)     # P(cluster=i|y=label)
 
+        elif self.clustering_strategy in ['mean_hp']:
+            cluster_predictions = {label: np.zeros((len(X), self.n_clusters_per_label[label] + 1)) for label in self.labels}
+            mean_hp_scores = {label: np.zeros((len(X), self.n_clusters_per_label[label])) for label in self.labels}
+            for label in self.labels:
+                directions = np.array([self.coefficients[label][cluster_i][0] for cluster_i in range(self.n_clusters_per_label[label])])
+                directions = directions / (np.linalg.norm(directions, axis=1)**2)[:, None]
+
+                mean_direction = (directions[0] - directions[1])/2
+                mean_intercept = 0
+
+                X_proj = (np.matmul(mean_direction[None,:], X.transpose()) + mean_intercept).transpose().squeeze()
+                X_proj = sigmoid(X_proj[:, None]*5/np.max(X_proj))
+
+                cluster_predictions[label][:, 1] = (1-X_proj)[:,0]
+                cluster_predictions[label][:, 2] = X_proj[:,0]
+
         if self.consensus in ['direction'] :
             cluster_predictions = {label: np.zeros((len(X), self.n_clusters_per_label[label] + 1)) for label in self.labels}
             for label in self.labels:
