@@ -243,7 +243,7 @@ class HYDRA(BaseML):
                     self.intercept_lists[idx_outside_polytope][cluster_i][iter+1] = SVM_intercept.copy()
 
             ## update the cluster index for the consensus clustering
-            consensus_assignment[:, consensus_i] = cluster_index + 1
+            consensus_assignment[:, consensus_i] = cluster_index[index_positives] + 1
             consensus_direction.extend([self.mean_direction[idx_outside_polytope]])
 
         if n_consensus > 1 :
@@ -430,12 +430,14 @@ class HYDRA(BaseML):
         S = np.ones((len(y_polytope), n_clusters)) / n_clusters
         if self.consensus == 'original' :
             ## do censensus clustering
-            consensus_scores = consensus_clustering(consensus_assignment.astype(int), n_clusters)
+            consensus_scores, _ = consensus_clustering(consensus_assignment.astype(int), n_clusters)
             ## after deciding the final convex polytope, we refit the training data once to save the best model
             S = np.ones((len(y_polytope), n_clusters)) / n_clusters
             ## change the weight of positivess to be 1, negatives to be 1/_clusters
             # then set the positives' weight to be 1 for the assigned hyperplane
             S[index_positives, :] *= 0
+            print(consensus_scores.shape)
+            print(X.shape)
             S[index_positives, consensus_scores[index_positives]] = 1
 
         elif self.consensus == 'direction':

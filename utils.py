@@ -154,6 +154,7 @@ def elem_sym_poly(lambda_value, k):
     return E
 
 def consensus_clustering(clustering_results, k):
+    print(clustering_results.shape)
     num_pt = clustering_results.shape[0]
     cooccurence_matrix = np.zeros((num_pt, num_pt))
 
@@ -182,4 +183,4 @@ def consensus_clustering(clustering_results, k):
     kmeans = KMeans(n_clusters=k, n_init=20).fit(evector.real[:, 0: k])
     final_predict = kmeans.labels_
 
-    return final_predict
+    return final_predict, kmeans
