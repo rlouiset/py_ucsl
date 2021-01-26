@@ -235,7 +235,8 @@ class HYDRA(BaseML):
 
             ## update the cluster index for the consensus clustering
             consensus_assignment[:, consensus_i] = cluster_index + 1
-            consensus_direction.extend([self.mean_direction[idx_outside_polytope][0]])
+            print(self.mean_direction[idx_outside_polytope].shape)
+            consensus_direction.extend([self.mean_direction[idx_outside_polytope]])
 
         if n_consensus > 1 :
             self.apply_consensus(X, y_polytope, consensus_assignment, consensus_direction, n_clusters, index_positives, index_negatives, idx_outside_polytope)
