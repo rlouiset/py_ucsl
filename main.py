@@ -448,6 +448,7 @@ class HYDRA(BaseML):
             ## apply PCA on consensus direction
             PCA_ = FastICA(n_components=2)
             self.cluster_estimators[idx_outside_polytope]['directions'] = PCA_.fit_transform(consensus_direction)
+            self.cluster_estimators[idx_outside_polytope]['directions'] = self.cluster_estimators[idx_outside_polytope]['directions'] / np.linalg.norm(self.cluster_estimators[idx_outside_polytope]['directions'],0)[:, None]
 
             print(self.cluster_estimators[idx_outside_polytope]['directions'])
 
