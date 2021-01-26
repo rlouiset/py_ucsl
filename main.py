@@ -439,7 +439,7 @@ class HYDRA(BaseML):
             S[index_positives, :] *= 0
             print(consensus_scores.shape)
             print(X.shape)
-            S[index_positives, consensus_scores[index_positives]] = 1
+            S[index_positives, consensus_scores] = 1
 
         elif self.consensus == 'direction':
             consensus_direction = np.array(consensus_direction).T
