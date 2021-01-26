@@ -152,12 +152,14 @@ class HYDRA(BaseML):
                 cluster_predictions[label][:, 1] = (1-X_proj)[:,0]
                 cluster_predictions[label][:, 2] = X_proj[:,0]
 
+        '''
         if self.consensus in ['direction'] :
             cluster_predictions = {label: np.zeros((len(X), self.n_clusters_per_label[label] + 1)) for label in self.labels}
             for label in self.labels:
                 k_means_label = self.cluster_estimators[label]['K-means']
                 directions_label = self.cluster_estimators[label]['directions']
                 cluster_predictions[label][:, 1:] = one_hot_encode(k_means_label.predict(X@directions_label))
+        '''
         return cluster_predictions
 
 
@@ -240,7 +242,6 @@ class HYDRA(BaseML):
 
         if n_consensus > 1 :
             self.apply_consensus(X, y_polytope, consensus_assignment, consensus_direction, n_clusters, index_positives, index_negatives, idx_outside_polytope)
-
 
     def update_S(self, X, y, S, index, cluster_index, idx_outside_polytope) :
         if self.n_clusters_per_label[idx_outside_polytope] == 1 :
