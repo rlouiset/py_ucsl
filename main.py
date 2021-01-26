@@ -318,7 +318,7 @@ class HYDRA(BaseML):
                 boundary_barycenter_i = cluster_barycenters[cluster_i] + (cluster_barycenters[cluster_i]@w_cluster_i[0]+b_cluster_i)*w_cluster_i_norm
                 boundary_baricenters_scores[:,cluster_i] = np.linalg.norm((X-boundary_barycenter_i), axis=1)
 
-            # compute closest assigned hyperpan normal drection
+            # compute closest assigned hyperplan normal drection
             Q = py_softmax(-boundary_baricenters_scores[index], 1)
 
         S = Q.copy()
@@ -446,11 +446,11 @@ class HYDRA(BaseML):
             consensus_direction = np.array(consensus_direction).T
             ## apply PCA on consensus direction
             #PCA_ = FastICA(n_components=n_clusters)
-            self.cluster_estimators[idx_outside_polytope]['directions'] = np.mean(consensus_direction, 1)[:, None]
+            #self.cluster_estimators[idx_outside_polytope]['directions'] = np.mean(consensus_direction, 1)[:, None]
             #self.cluster_estimators[idx_outside_polytope]['directions'] /= (np.linalg.norm(self.cluster_estimators[idx_outside_polytope]['directions'], axis=1)**2)[:, None]
 
-            self.cluster_estimators[idx_outside_polytope]['K-means'] = GaussianMixture(n_components=n_clusters).fit(X[index_positives]@self.cluster_estimators[idx_outside_polytope]['directions'])
-            consensus_scores = self.cluster_estimators[idx_outside_polytope]['K-means'].predict_proba(X@self.cluster_estimators[idx_outside_polytope]['directions'])
+            self.cluster_estimators[idx_outside_polytope]['K-means'] = GaussianMixture(n_components=n_clusters).fit(X[index_positives]@consensus_direction)
+            consensus_scores = self.cluster_estimators[idx_outside_polytope]['K-means'].predict_proba(X@consensus_direction)
 
             ## after deciding the final convex polytope, we refit the training data once to save the best model
             # S = np.ones((len(y_polytope), n_clusters)) / n_clusters
