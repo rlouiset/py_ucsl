@@ -444,25 +444,18 @@ class HYDRA(BaseML):
 
         elif self.consensus == 'direction':
             consensus_direction = np.array(consensus_direction).T
-            print(consensus_direction.shape)
             ## apply PCA on consensus direction
-            PCA_ = FastICA(n_components=3)
-            directions = PCA_.fit_transform(consensus_direction).T
-            directions = directions/(np.linalg.norm(directions,axis=1)**2)[:,None]
-            self.cluster_estimators[idx_outside_polytope]['directions'] = directions
-
-            print(self.cluster_estimators[idx_outside_polytope]['directions'])
-
-            self.cluster_estimators[idx_outside_polytope]['K-means'] = GaussianMixture(n_components=n_clusters).fit(X[index_positives]@self.cluster_estimators[idx_outside_polytope]['directions'])
-            consensus_scores = self.cluster_estimators[idx_outside_polytope]['K-means'].predict_proba(X@self.cluster_estimators[idx_outside_polytope]['directions'])
+            PCA_ = PCA(n_components=n_clusters)
+            self.cluster_estimators[idx_outside_polytope]['directions'] = PCA_.fit_transform(consensus_direction)
+            self.cluster_estimators[idx_outside_polytope]['K-means'] = KMeans(n_clusters).fit(X[index_positives]@self.cluster_estimators[idx_outside_polytope]['directions'])
+            consensus_scores = self.cluster_estimators[idx_outside_polytope]['K-means'].predict(X@self.cluster_estimators[idx_outside_polytope]['directions'])
 
             ## after deciding the final convex polytope, we refit the training data once to save the best model
-            # S = np.ones((len(y_polytope), n_clusters)) / n_clusters
-            S = consensus_scores.copy()
+            S = np.ones((len(y_polytope), n_clusters)) / n_clusters
             ## change the weight of positivess to be 1, negatives to be 1/_clusters
             # then set the positives' weight to be 1 for the assigned hyperplane
             S[index_positives, :] *= 0
-            S[index_positives, np.argmax(consensus_scores,1)[index_positives]] = 1
+            S[index_positives, consensus_scores[index_positives]] = 1
 
         elif self.consensus == 'SVM':
             cluster_scores = np.zeros((np.sum(y_polytope==1), n_clusters))
