@@ -473,8 +473,8 @@ class HYDRA(BaseML):
             ## fit the different SVM/hyperplanes
             self.SVC_clsf[idx_outside_polytope].fit(X[index_positives], cluster_pred, sample_weight=cluster_uncertainty)
 
-            S[index_positives, :] = one_hot_encode(self.SVC_clsf[idx_outside_polytope].predict(X[index_positives]))
-            S[index_negatives, :] = one_hot_encode(self.SVC_clsf[idx_outside_polytope].predict_proba(X[index_negatives]))
+            S[index_positives, :] = one_hot_encode(self.SVC_clsf[idx_outside_polytope].predict(X[index_positives]).astype(np.int))
+            S[index_negatives, :] = self.SVC_clsf[idx_outside_polytope].predict_proba(X[index_negatives])
 
         # create the final polytope by applying all weighted subjects
         for cluster_i in range(n_clusters):
