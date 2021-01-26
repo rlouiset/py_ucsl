@@ -453,11 +453,11 @@ class HYDRA(BaseML):
 
             ## after deciding the final convex polytope, we refit the training data once to save the best model
             # S = np.ones((len(y_polytope), n_clusters)) / n_clusters
-            S = np.concatenate(((1-consensus_scores)[:,None], consensus_scores[:,None]), 1)
+            S = consensus_scores
             ## change the weight of positivess to be 1, negatives to be 1/_clusters
             # then set the positives' weight to be 1 for the assigned hyperplane
             S[index_positives, :] *= 0
-            S[index_positives, np.rint(consensus_scores).astype(np.int)[index_positives]] = 1
+            S[index_positives, np.rint(consensus_scores[:,1]).astype(np.int)[index_positives]] = 1
 
         # create the final polytope by applying all weighted subjects
         for cluster_i in range(n_clusters):
