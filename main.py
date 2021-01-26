@@ -172,7 +172,7 @@ class HYDRA(BaseML):
             for label in self.labels:
                 k_means_label = self.cluster_estimators[label]['K-means']
                 directions_label = self.cluster_estimators[label]['directions']
-                cluster_predictions[label][:, 1:] = one_hot_encode(k_means_label.predict(X@directions_label))
+                cluster_predictions[label][:, 1:] = one_hot_encode(k_means_label.predict_proba(X@directions_label))
         return cluster_predictions
 
 
@@ -444,6 +444,7 @@ class HYDRA(BaseML):
 
         elif self.consensus == 'direction':
             consensus_direction = np.array(consensus_direction).T
+            self.cluster_estimators[idx_outside_polytope]['directions'] = consensus_direction
             ## apply PCA on consensus direction
             #PCA_ = FastICA(n_components=n_clusters)
             #self.cluster_estimators[idx_outside_polytope]['directions'] = np.mean(consensus_direction, 1)[:, None]
