@@ -348,16 +348,16 @@ class HYDRA(BaseML):
             KW = np.divide(KW, np.sqrt(np.multiply(np.diag(KW)[:, np.newaxis], np.diag(KW)[:, np.newaxis].transpose())))
             evalue, evector = np.linalg.eig(KW)
             Widx = sample_dpp(np.real(evalue), np.real(evector), n_clusters)
-            prob = np.zeros((len(index_positives), n_clusters))  # only consider the PTs
+            prob = np.zeros((len(X), n_clusters))  # only consider the PTs
 
             for i in range(n_clusters):
                 prob[:, i] = np.matmul(
-                    np.multiply(X[index_positives, :], np.divide(1, np.linalg.norm(X[index_positives, :], axis=1))[:, np.newaxis]),
+                    np.multiply(X, np.divide(1, np.linalg.norm(X, axis=1))[:, np.newaxis]),
                     W[Widx[i], :].transpose())
 
             l = np.minimum(prob - 1, 0)
             d = prob - 1
-            weight_positive_samples = proportional_assign(l, d)
+            weight_samples = proportional_assign(l, d)
 
         elif initialization_type == "DPP_batch":  ##
             batch_size = 32
@@ -411,7 +411,7 @@ class HYDRA(BaseML):
             Kmeans_method.fit(X_support)
             weight_positive_samples = one_hot_encode(Kmeans_method.predict(X_positives))
 
-        S[index_positives] = weight_positive_samples  ## only replace the sample weight for positive samples
+        S[index_positives] = weight_samples  ## only replace the sample weight for positive samples
         cluster_index = np.argmax(S, axis=1)
 
         ## init barycenters
