@@ -459,6 +459,8 @@ class HYDRA(BaseML):
             S[index_positives, :] *= 0
             S[index_positives, np.rint(consensus_scores[:,1]).astype(np.int)[index_positives]] = 1
 
+            print(S)
+
         # create the final polytope by applying all weighted subjects
         for cluster_i in range(n_clusters):
             cluster_weight = np.ascontiguousarray(S[:, cluster_i])
