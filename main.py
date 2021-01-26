@@ -449,18 +449,14 @@ class HYDRA(BaseML):
             self.cluster_estimators[idx_outside_polytope]['K-means'] = GaussianMixture(n_components=n_clusters).fit(X[index_positives]@self.cluster_estimators[idx_outside_polytope]['directions'])
             consensus_scores = self.cluster_estimators[idx_outside_polytope]['K-means'].predict_proba(X@self.cluster_estimators[idx_outside_polytope]['directions'])
 
-            print(consensus_scores.shape)
-
             ## after deciding the final convex polytope, we refit the training data once to save the best model
             # S = np.ones((len(y_polytope), n_clusters)) / n_clusters
             S = consensus_scores.copy()
             ## change the weight of positivess to be 1, negatives to be 1/_clusters
             # then set the positives' weight to be 1 for the assigned hyperplane
             S[index_positives, :] *= 0
-            print(np.argmax(consensus_scores,1))
             S[index_positives, np.argmax(consensus_scores,1)[index_positives]] = 1
 
-            print(S.shape)
 
         # create the final polytope by applying all weighted subjects
         for cluster_i in range(n_clusters):
