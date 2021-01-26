@@ -158,6 +158,8 @@ class HYDRA(BaseML):
             cluster_predictions = {label: None for label in self.labels}
             for label in self.labels:
                 cluster_predictions[label] = self.SVC_clsf[label].predict_proba(X)
+                print(cluster_predictions[label].shape)
+
         '''
         if self.consensus in ['direction'] :
             cluster_predictions = {label: np.zeros((len(X), self.n_clusters_per_label[label] + 1)) for label in self.labels}
@@ -279,7 +281,6 @@ class HYDRA(BaseML):
                 directions[i] = direction - np.dot(direction, SVM_coefficient_norm[0]) * SVM_coefficient_norm[0]
 
             directions = PCA(n_components=1).fit_transform(directions.T).T
-            print(directions)
 
             X_proj = X @ directions.T
             k_means_method = KMeans(n_clusters=self.n_clusters_per_label[idx_outside_polytope])
