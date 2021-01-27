@@ -323,8 +323,7 @@ class HYDRA(BaseML):
             intercepts = np.array([self.intercepts[idx_outside_polytope][cluster_i][0] for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])])
 
             directions = directions / (np.linalg.norm(directions, axis=1)**2)[:, None]
-            print(intercepts.shape)
-            intercepts = intercepts[:,0] / (np.linalg.norm(directions, axis=1)**2)
+            intercepts = intercepts / (np.linalg.norm(directions, axis=1)**2)
 
             mean_direction = (directions[0] - directions[1])/2
             mean_intercept = (intercepts[0] - intercepts[1])/2
