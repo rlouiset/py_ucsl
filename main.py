@@ -442,8 +442,7 @@ class HYDRA(BaseML):
             ## change the weight of positivess to be 1, negatives to be 1/_clusters
             # then set the positives' weight to be 1 for the assigned hyperplane
             S[index_positives, :] *= 0
-            print(consensus_scores)
-            S[index_positives, np.argmax(consensus_scores, 1)] = 1
+            S[index_positives, consensus_scores] = 1
 
         elif self.consensus == 'direction':
             consensus_direction = np.array(consensus_direction).T

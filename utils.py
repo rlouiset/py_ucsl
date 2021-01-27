@@ -182,4 +182,4 @@ def consensus_clustering(clustering_results, k):
     kmeans = KMeans(n_clusters=k, n_init=20).fit(evector.real[:, 0: k])
     final_predict = kmeans.labels_
 
-    return final_predict, kmeans
+    return final_predict
