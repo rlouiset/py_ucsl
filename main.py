@@ -490,6 +490,33 @@ class HYDRA(BaseML):
             S[index_positives, :] *= 0
             S[index_positives, consensus_scores] = 1
 
+            for cluster_i in range(n_clusters):
+                cluster_weight = np.ascontiguousarray(S[:, cluster_i])
+                SVM_coefficient, SVM_intercept, _ = self.launch_svc(X, y_polytope, cluster_weight + 0.000001, self.kernel)
+                self.coefficients[idx_outside_polytope][cluster_i] = SVM_coefficient
+                self.intercepts[idx_outside_polytope][cluster_i] = SVM_intercept
+
+        elif self.consensus == 'original_dual':
+            ## do censensus clustering
+            consensus_scores = consensus_clustering(consensus_assignment.astype(int), n_clusters)
+            ## after deciding the final convex polytope, we refit the training data once to save the best model
+            S = np.ones((len(y_polytope), n_clusters)) / n_clusters
+            ## change the weight of positivess to be 1, negatives to be 1/_clusters
+            # then set the positives' weight to be 1 for the assigned hyperplane
+            S[index_positives, :] *= 0
+            S[index_positives, consensus_scores] = 1
+
+            SVM_dual_coefficient = self.optimize_HYDRA_dual(X, y_polytope, S)
+            print(SVM_dual_coefficient.shape)
+
+            for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope]):
+                self.coefficients[idx_outside_polytope][cluster_i] = SVM_dual_coefficient[:, cluster_i] @ np.einsum(
+                    'i,ij->ij', y_polytope, X)
+                print(self.coefficients[idx_outside_polytope][cluster_i].shape)
+                self.intercepts[idx_outside_polytope][cluster_i] = y_polytope[0] - \
+                                                                   self.coefficients[idx_outside_polytope][cluster_i] @ \
+                                                                   X[0]
+
         elif self.consensus == 'direction':
             consensus_direction = np.array(consensus_direction).T
             ## apply PCA on consensus direction
@@ -534,21 +561,4 @@ class HYDRA(BaseML):
             S[index_positives, :] = one_hot_encode(
                 self.SVC_clsf[idx_outside_polytope].predict(X[index_positives]).astype(np.int))
             S[index_negatives, :] = self.SVC_clsf[idx_outside_polytope].predict_proba(X[index_negatives])
-
-        # create the final polytope by applying all weighted subjects
-        '''
-        for cluster_i in range(n_clusters):
-            cluster_weight = np.ascontiguousarray(S[:, cluster_i])
-            SVM_coefficient, SVM_intercept = self.launch_svc(X, y_polytope, cluster_weight+0.000001, self.kernel)
-            self.coefficients[idx_outside_polytope][cluster_i] = SVM_coefficient
-            self.intercepts[idx_outside_polytope][cluster_i] = SVM_intercept
-        '''
-
-        SVM_dual_coefficient = self.optimize_HYDRA_dual(X, y_polytope, S)
-        print(SVM_dual_coefficient.shape)
-
-        for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope]) :
-            self.coefficients[idx_outside_polytope][cluster_i] = SVM_dual_coefficient[:,cluster_i] @ np.einsum('i,ij->ij', y_polytope, X)
-            print(self.coefficients[idx_outside_polytope][cluster_i].shape)
-            self.intercepts[idx_outside_polytope][cluster_i] = y_polytope[0] - self.coefficients[idx_outside_polytope][cluster_i] @ X[0]
 
