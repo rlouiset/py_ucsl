@@ -258,6 +258,7 @@ class HYDRA(BaseML):
 
                 ## check the loss comparted to the tolorence for stopping criteria
                 loss = np.linalg.norm(np.subtract(S, S_hold), ord='fro')
+                print(loss)
                 if loss < self.tolerance:
                     break
 
@@ -278,6 +279,7 @@ class HYDRA(BaseML):
                     self.coef_lists[idx_outside_polytope][cluster_i][iter+1] = SVM_coefficient.copy()
                     self.intercept_lists[idx_outside_polytope][cluster_i][iter+1] = SVM_intercept.copy()
 
+            print('')
             ## update the cluster index for the consensus clustering
             consensus_assignment[:, consensus_i] = cluster_index[index_positives] + 1
             consensus_direction.extend([self.coefficients[idx_outside_polytope][cluster_i][0] for cluster_i in range(len(self.coefficients[idx_outside_polytope]))])
