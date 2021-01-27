@@ -466,7 +466,7 @@ class HYDRA(BaseML):
             ## apply PCA on consensus direction
             PCA_ = PCA(n_components=n_clusters)
             self.cluster_estimators[idx_outside_polytope]['directions'] = PCA_.fit_transform(consensus_direction)
-            self.cluster_estimators[idx_outside_polytope]['K-means'] = GaussianMixture(n_estimators=n_clusters).fit(
+            self.cluster_estimators[idx_outside_polytope]['K-means'] = GaussianMixture(n_components=n_clusters).fit(
                 X[index_positives] @ self.cluster_estimators[idx_outside_polytope]['directions'])
 
             ## change the weight of positivess to be 1, negatives to be 1/_clusters
