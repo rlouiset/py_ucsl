@@ -46,7 +46,7 @@ class HYDRA(BaseML):
         self.mean_direction = {label:None for label in self.labels}
         self.SVC_clsf = {label:None for label in self.labels}
         self.SVs = {label:{cluster_i:None for cluster_i in range(n_clusters_per_label[label])} for label in self.labels}
-        self.mean_direction=None
+        self.mean_direction={label:None for label in self.labels}
 
         if self.consensus in ['direction', 'gmm_direction'] :
             self.cluster_estimators = {label:{'directions':None, 'K-means':None} for label in self.labels}
