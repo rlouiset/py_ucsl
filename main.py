@@ -525,7 +525,8 @@ class HYDRA(BaseML):
         elif self.consensus == 'mean_hp':
             ## do censensus clustering
             consensus_scores = consensus_clustering(consensus_assignment.astype(int), n_clusters)
-            y_clustering_positives = consensus_scores[index_positives]
+
+            y_clustering_positives = consensus_scores
             X_positives = X[index_positives] - np.mean(X[index_positives], 1)[:,1]
 
             mean_directions = []
