@@ -14,7 +14,7 @@ class HYDRA(BaseML):
     """ Computes and stores the average and current value.
     """
     def __init__(self, C=1, n_consensus=5, n_iterations=5, n_clusters_per_label=None, training_label_mapping=None, initialization_type="DPP", kernel="linear",
-                 tolerance=0.0001, clustering_strategy='original', consensus='original', name="HYDRA"):
+                 tolerance=0.01, clustering_strategy='original', consensus='original', name="HYDRA"):
         super().__init__(name)
         if n_clusters_per_label is None:
             n_clusters_per_label = {0: 2, 1: 2}
