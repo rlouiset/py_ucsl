@@ -551,8 +551,8 @@ class HYDRA(BaseML):
                 else :
                     mean_directions.append(-mean_direction_i)
 
-            self.mean_direction_consensus[idx_outside_polytope] = np.mean(np.array(mean_directions), 0)
-            X_proj = X@self.mean_direction
+            self.mean_direction[idx_outside_polytope] = np.mean(np.array(mean_directions), 0)
+            X_proj = X@self.mean_direction[idx_outside_polytope]
             X_proj = sigmoid(X_proj * 5 / np.max(X_proj))
 
             S = np.concatenate(((1-X_proj)[:,None], X_proj[:,None]), axis=1)
