@@ -328,13 +328,15 @@ class HYDRA(BaseML):
 
             support_vector_distances_0 = np.matmul(mean_direction[None,:], self.SVs[idx_outside_polytope][0].transpose())
             support_vector_distances_0 = support_vector_distances_0 / np.abs(support_vector_distances_0)
+            print(support_vector_distances_0.shape)
 
-            support_vector_distances_1 = np.matmul(mean_direction[None,:], self.SVs[idx_outside_polytope][0].transpose())
+            support_vector_distances_1 = np.matmul(mean_direction[None,:], self.SVs[idx_outside_polytope][1].transpose())
             support_vector_distances_1 = support_vector_distances_1 / np.abs(support_vector_distances_1)
             print(support_vector_distances_1.shape)
 
             support_vector_distances = np.concatenate((support_vector_distances_0, support_vector_distances_1), axis=1)[0]
 
+            print(np.sum(support_vector_distances))
             mean_intercept = - np.sum(support_vector_distances) / (2*len(support_vector_distances))
             print(mean_intercept)
 
