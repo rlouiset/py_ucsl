@@ -329,14 +329,17 @@ class HYDRA(BaseML):
             Q = one_hot_encode(k_means_method.fit_predict(X_proj[index]))
 
 
-        elif self.clustering_strategy in ['mean_hp', 'mean_hp_normal']:
+        elif self.clustering_strategy in ['mean_hp', 'mean_hp_norm']:
             directions = np.array([self.coefficients[idx_outside_polytope][cluster_i][0] for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])])
 
             directions = directions / (np.linalg.norm(directions, axis=1)**2)[:, None]
             mean_direction = (directions[0] - directions[1])/2
             mean_intercept=0
 
-            X_norm = X - np.mean(X[index], 0)[None,:]
+            if self.clustering_strategy == 'mean_hp_norm' :
+                X_norm = X.copy() - np.mean(X[index], 0)[None,:]
+            else :
+                X_norm = X.copy()
             X_proj = (np.matmul(mean_direction[None,:], X_norm.transpose()) + mean_intercept).transpose().squeeze()
             X_proj = sigmoid(X_proj[:, None]*5/np.max(X_proj))
 
