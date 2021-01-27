@@ -431,11 +431,12 @@ class HYDRA(BaseML):
 
         return SVM_coefficient, SVM_intercept
 
-    def apply_consensus(self, X, y_polytope, consensus_assignment, consensus_direction, n_clusters, index_positives, index_negatives, idx_outside_polytope):
+    def apply_consensus(self, X, y_polytope, consensus_assignment, consensus_direction, n_clusters, index_positives,
+                        index_negatives, idx_outside_polytope):
         S = np.ones((len(y_polytope), n_clusters)) / n_clusters
-        if self.consensus == 'original' :
+        if self.consensus == 'original':
             ## do censensus clustering
-            consensus_scores, _ = consensus_clustering(consensus_assignment.astype(int), n_clusters)
+            consensus_scores = consensus_clustering(consensus_assignment.astype(int), n_clusters)
             ## after deciding the final convex polytope, we refit the training data once to save the best model
             S = np.ones((len(y_polytope), n_clusters)) / n_clusters
             ## change the weight of positivess to be 1, negatives to be 1/_clusters
@@ -448,8 +449,10 @@ class HYDRA(BaseML):
             ## apply PCA on consensus direction
             PCA_ = PCA(n_components=n_clusters)
             self.cluster_estimators[idx_outside_polytope]['directions'] = PCA_.fit_transform(consensus_direction)
-            self.cluster_estimators[idx_outside_polytope]['K-means'] = KMeans(n_clusters).fit(X[index_positives]@self.cluster_estimators[idx_outside_polytope]['directions'])
-            consensus_scores = self.cluster_estimators[idx_outside_polytope]['K-means'].predict(X@self.cluster_estimators[idx_outside_polytope]['directions'])
+            self.cluster_estimators[idx_outside_polytope]['K-means'] = KMeans(n_clusters).fit(
+                X[index_positives] @ self.cluster_estimators[idx_outside_polytope]['directions'])
+            consensus_scores = self.cluster_estimators[idx_outside_polytope]['K-means'].predict(
+                X @ self.cluster_estimators[idx_outside_polytope]['directions'])
 
             ## after deciding the final convex polytope, we refit the training data once to save the best model
             S = np.ones((len(y_polytope), n_clusters)) / n_clusters
@@ -458,15 +461,35 @@ class HYDRA(BaseML):
             S[index_positives, :] *= 0
             S[index_positives, consensus_scores[index_positives]] = 1
 
+        elif self.consensus == 'gmm_direction':
+            consensus_direction = np.array(consensus_direction).T
+            ## apply PCA on consensus direction
+            PCA_ = PCA(n_components=n_clusters)
+            self.cluster_estimators[idx_outside_polytope]['directions'] = PCA_.fit_transform(consensus_direction)
+            self.cluster_estimators[idx_outside_polytope]['K-means'] = GaussianMixture(n_estimators=n_clusters).fit(
+                X[index_positives] @ self.cluster_estimators[idx_outside_polytope]['directions'])
+
+            ## change the weight of positivess to be 1, negatives to be 1/_clusters
+            # then set the positives' weight to be 1 for the assigned hyperplane
+            S[index_positives, :] = self.cluster_estimators[idx_outside_polytope]['K-means'].predict(
+                X[index_positives] @ self.cluster_estimators[idx_outside_polytope]['directions'])
+            S[index_negatives, :] = self.cluster_estimators[idx_outside_polytope]['K-means'].predict(
+                X[index_negatives] @ self.cluster_estimators[idx_outside_polytope]['directions'])
+
         elif self.consensus == 'SVM':
-            ## do censensus clustering
-            consensus_scores, _ = consensus_clustering(consensus_assignment.astype(int), n_clusters)
+            cluster_scores = np.zeros((np.sum(y_polytope == 1), n_clusters))
+            for i, sample in enumerate(consensus_assignment.astype(int)):
+                cluster_scores[i, 0] = np.sum(sample == 0) / self.n_consensus
+                cluster_scores[i, 1] = np.sum(sample == 1) / self.n_consensus
+
+            cluster_pred = np.argmax(cluster_scores, 1)
 
             self.SVC_clsf[idx_outside_polytope] = SVC(kernel="linear", C=self.C, probability=True)
             ## fit the different SVM/hyperplanes
-            self.SVC_clsf[idx_outside_polytope].fit(X[index_positives], consensus_scores)
+            self.SVC_clsf[idx_outside_polytope].fit(X[index_positives], cluster_pred)
 
-            S[index_positives, :] = one_hot_encode(self.SVC_clsf[idx_outside_polytope].predict(X[index_positives]).astype(np.int))
+            S[index_positives, :] = one_hot_encode(
+                self.SVC_clsf[idx_outside_polytope].predict(X[index_positives]).astype(np.int))
             S[index_negatives, :] = self.SVC_clsf[idx_outside_polytope].predict_proba(X[index_negatives])
 
         # create the final polytope by applying all weighted subjects
