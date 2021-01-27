@@ -43,7 +43,6 @@ class HYDRA(BaseML):
         self.coef_lists = {label:{cluster_i:dict() for cluster_i in range(n_clusters_per_label[label])} for label in self.labels}
         self.intercept_lists = {label:{cluster_i:dict() for cluster_i in range(n_clusters_per_label[label])} for label in self.labels}
 
-        self.mean_direction = {label:None for label in self.labels}
         self.SVC_clsf = {label:None for label in self.labels}
         self.SVs = {label:{cluster_i:None for cluster_i in range(n_clusters_per_label[label])} for label in self.labels}
         self.mean_direction={label:None for label in self.labels}
@@ -350,7 +349,6 @@ class HYDRA(BaseML):
             else :
                 Q = np.concatenate((X_proj, 1-X_proj), axis=1)
 
-            self.mean_direction[idx_outside_polytope] = mean_direction
 
         elif self.clustering_strategy == 'boundary_barycenter':
             ##
@@ -553,7 +551,7 @@ class HYDRA(BaseML):
                 else :
                     mean_directions.append(-mean_direction_i)
 
-            self.mean_direction = np.mean(np.array(mean_directions), 0)
+            self.mean_direction_consensus[idx_outside_polytope] = np.mean(np.array(mean_directions), 0)
             X_proj = X@self.mean_direction
             X_proj = sigmoid(X_proj * 5 / np.max(X_proj))
 
