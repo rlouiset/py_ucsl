@@ -193,8 +193,8 @@ class HYDRA(BaseML):
             obj += cp.quad_form(lambda_column, K_parameter)
 
         ## constraints
-        print((y_repeat*lambda_dual_matrix).shape)
-        const = [y_repeat*lambda_dual_matrix >= np.zeros((n_samples, n_clusters)),
+        print(cp.multiply(y_repeat, lambda_dual_matrix).shape)
+        const = [cp.multiply(y_repeat, lambda_dual_matrix) >= np.zeros((n_samples, n_clusters)),
                   lambda_dual_matrix >= np.zeros(lambda_dual_matrix.shape),
                   self.C*S_parameter >= lambda_dual_matrix ]
 
