@@ -527,7 +527,7 @@ class HYDRA(BaseML):
             consensus_scores = consensus_clustering(consensus_assignment.astype(int), n_clusters)
 
             y_clustering_positives = consensus_scores
-            X_positives = X[index_positives] - np.mean(X[index_positives], 1)[:,1]
+            X_positives = X[index_positives] - np.mean(X[index_positives], 1)[:,None]
 
             mean_directions = []
 
