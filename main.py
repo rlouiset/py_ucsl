@@ -320,14 +320,12 @@ class HYDRA(BaseML):
             #SVM_coefficient_norm = SVM_coefficient / np.linalg.norm(SVM_coefficient) ** 2
 
             directions = np.array([self.coefficients[idx_outside_polytope][cluster_i][0] for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])])
-            intercepts = np.array([self.intercepts[idx_outside_polytope][cluster_i][0] for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])])
-
-            mean_intercept = (intercepts[0] - intercepts[1])/2
+            #intercepts = np.array([self.intercepts[idx_outside_polytope][cluster_i][0] for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])])
 
             directions = directions / (np.linalg.norm(directions, axis=1)**2)[:, None]
             mean_direction = (directions[0] - directions[1])/2
+            mean_intercept=0
 
-            print(mean_intercept)
             '''
             print(np.mean(self.SVs[idx_outside_polytope][0], 0))
             print(np.mean(self.SVs[idx_outside_polytope][1], 0))
@@ -347,7 +345,8 @@ class HYDRA(BaseML):
             print(mean_intercept)
             '''
 
-            X_proj = (np.matmul(mean_direction[None,:], X.transpose()) + mean_intercept).transpose().squeeze()
+            X_norm = X - np.mean(X, 0)[None,:]
+            X_proj = (np.matmul(mean_direction[None,:], X_norm.transpose()) + mean_intercept).transpose().squeeze()
             X_proj = sigmoid(X_proj[:, None]*5/np.max(X_proj))
 
             Q = np.concatenate((1-X_proj, X_proj), axis=1)
