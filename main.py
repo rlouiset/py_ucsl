@@ -176,11 +176,12 @@ class HYDRA(BaseML):
         # n_features = X.shape[1]
         n_clusters = S.shape[1]
         diag_y = np.eye(n_samples, n_samples) * y_polytope[:, None]
+        y_repeat = np.repeat(y_polytope[:, None],2, axis=1)
 
         ## first let us define the Variables and Parameters
         lambda_dual_matrix = cp.Variable(shape=S.shape, nonneg=True)
         S_parameter = cp.Parameter(shape=S.shape, value=S, nonneg=True)
-        y_polytope_parameter = cp.Parameter(shape=y_polytope[:, None].shape, value=y_polytope[:, None])
+        y_polytope_parameter = cp.Parameter(shape=y_repeat.shape, value=y_repeat)
         K = diag_y @ X @ X.T @ diag_y
         K_parameter = cp.Parameter(shape=K.shape, PSD=True, value=K)
 
@@ -192,8 +193,8 @@ class HYDRA(BaseML):
             obj += cp.quad_form(lambda_column, K_parameter)
 
         ## constraints
-        print((y_polytope_parameter[:,0]*lambda_dual_matrix).shape)
-        const = [ y_polytope_parameter[:,0]*lambda_dual_matrix >= np.zeros((n_samples, n_clusters)),
+        print((y_repeat*lambda_dual_matrix).shape)
+        const = [y_repeat*lambda_dual_matrix >= np.zeros((n_samples, n_clusters)),
                   lambda_dual_matrix >= np.zeros(lambda_dual_matrix.shape),
                   self.C*S_parameter >= lambda_dual_matrix ]
 
