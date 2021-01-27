@@ -331,7 +331,7 @@ class HYDRA(BaseML):
             X_proj = (np.matmul(mean_direction[None,:], X_norm.transpose()) + mean_intercept).transpose().squeeze()
             X_proj = sigmoid(X_proj[:, None]*5/np.max(X_proj))
 
-            X_pred = np.rint(X_proj).astype(np.int)
+            X_pred = np.rint(X_proj[index]).astype(np.int)
 
             if balanced_accuracy_score(np.argmax(S[index],1), X_pred) > balanced_accuracy_score(np.argmax(S[index],1), 1-X_pred) :
                 Q = np.concatenate((1-X_proj, X_proj), axis=1)
