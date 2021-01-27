@@ -345,7 +345,7 @@ class HYDRA(BaseML):
             print(mean_intercept)
             '''
 
-            X_norm = X - np.mean(X, 0)[None,:]
+            X_norm = X - np.mean(X[index], 0)[None,:]
             X_proj = (np.matmul(mean_direction[None,:], X_norm.transpose()) + mean_intercept).transpose().squeeze()
             X_proj = sigmoid(X_proj[:, None]*5/np.max(X_proj))
 
