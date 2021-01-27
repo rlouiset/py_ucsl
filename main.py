@@ -327,7 +327,7 @@ class HYDRA(BaseML):
             mean_direction = (directions[0] - directions[1])/2
 
             print(np.mean(self.SVs[idx_outside_polytope][0], 0))
-            print(np.mean(self.SVs[idx_outside_polytope][0], 1))
+            print(np.mean(self.SVs[idx_outside_polytope][1], 0))
 
             support_vector_distances_0 = np.matmul(mean_direction[None,:], self.SVs[idx_outside_polytope][0].transpose())
             support_vector_distances_0 = support_vector_distances_0 / np.abs(support_vector_distances_0)
