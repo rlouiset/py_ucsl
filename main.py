@@ -477,16 +477,12 @@ class HYDRA(BaseML):
                 X[index_negatives] @ self.cluster_estimators[idx_outside_polytope]['directions'])
 
         elif self.consensus == 'SVM':
-            cluster_scores = np.zeros((np.sum(y_polytope == 1), n_clusters))
-            for i, sample in enumerate(consensus_assignment.astype(int)):
-                cluster_scores[i, 0] = np.sum(sample == 0) / self.n_consensus
-                cluster_scores[i, 1] = np.sum(sample == 1) / self.n_consensus
-
-            cluster_pred = np.argmax(cluster_scores, 1)
+            ## do censensus clustering
+            consensus_scores = consensus_clustering(consensus_assignment.astype(int), n_clusters)
 
             self.SVC_clsf[idx_outside_polytope] = SVC(kernel="linear", C=self.C, probability=True)
             ## fit the different SVM/hyperplanes
-            self.SVC_clsf[idx_outside_polytope].fit(X[index_positives], cluster_pred)
+            self.SVC_clsf[idx_outside_polytope].fit(X[index_positives], consensus_scores)
 
             S[index_positives, :] = one_hot_encode(
                 self.SVC_clsf[idx_outside_polytope].predict(X[index_positives]).astype(np.int))
@@ -495,7 +491,7 @@ class HYDRA(BaseML):
         # create the final polytope by applying all weighted subjects
         for cluster_i in range(n_clusters):
             cluster_weight = np.ascontiguousarray(S[:, cluster_i])
-            SVM_coefficient, SVM_intercept = self.launch_svc(X, y_polytope, cluster_weight, self.kernel)
+            SVM_coefficient, SVM_intercept = self.launch_svc(X, y_polytope, cluster_weight+0.000001, self.kernel)
             self.coefficients[idx_outside_polytope][cluster_i] = SVM_coefficient
             self.intercepts[idx_outside_polytope][cluster_i] = SVM_intercept
 
