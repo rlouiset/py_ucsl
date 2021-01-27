@@ -7,6 +7,7 @@ from sklearn.metrics import accuracy_score
 from sklearn.svm import SVC
 from sklearn.cluster import KMeans
 from sklearn.mixture import GaussianMixture
+from sklearn.metrics import balanced_accuracy_score
 import cvxpy as cp
 
 class HYDRA(BaseML):
@@ -320,11 +321,7 @@ class HYDRA(BaseML):
 
 
         elif self.clustering_strategy in ['mean_hp', 'mean_hp_normal']:
-            #SVM_coefficient, SVM_intercept = self.launch_svc(X, y, sample_weight=None, kernel='linear')
-            #SVM_coefficient_norm = SVM_coefficient / np.linalg.norm(SVM_coefficient) ** 2
-
             directions = np.array([self.coefficients[idx_outside_polytope][cluster_i][0] for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])])
-            #intercepts = np.array([self.intercepts[idx_outside_polytope][cluster_i][0] for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])])
 
             directions = directions / (np.linalg.norm(directions, axis=1)**2)[:, None]
             mean_direction = (directions[0] - directions[1])/2
@@ -334,7 +331,10 @@ class HYDRA(BaseML):
             X_proj = (np.matmul(mean_direction[None,:], X_norm.transpose()) + mean_intercept).transpose().squeeze()
             X_proj = sigmoid(X_proj[:, None]*5/np.max(X_proj))
 
-            Q = np.concatenate((1-X_proj, X_proj), axis=1)
+            if balanced_accuracy_score(S[:,1], np.rint(X_proj)) > balanced_accuracy_score(S[:,1], np.rint(1-X_proj)) :
+                Q = np.concatenate((1-X_proj, X_proj), axis=1)
+            else :
+                Q = np.concatenate((X_proj, 1-X_proj), axis=1)
 
             self.mean_direction[idx_outside_polytope] = mean_direction
 
