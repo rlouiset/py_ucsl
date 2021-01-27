@@ -44,7 +44,7 @@ class HYDRA(BaseML):
         self.mean_direction = {label:None for label in self.labels}
         self.SVC_clsf = {label:None for label in self.labels}
 
-        if self.consensus == 'direction' :
+        if self.consensus in ['direction', 'gmm_direction'] :
             self.cluster_estimators = {label:{'directions':None, 'K-means':None} for label in self.labels}
 
     def fit(self, X_train, y_train):
@@ -167,7 +167,7 @@ class HYDRA(BaseML):
                 directions_label = self.cluster_estimators[label]['directions']
                 cluster_predictions[label][:, 1:] = one_hot_encode(k_means_label.predict(X@directions_label))
         '''
-        if self.consensus in ['direction'] :
+        if self.consensus in ['direction', 'gmm_direction'] :
             cluster_predictions = {label: np.zeros((len(X), self.n_clusters_per_label[label] + 1)) for label in self.labels}
             for label in self.labels:
                 k_means_label = self.cluster_estimators[label]['K-means']
