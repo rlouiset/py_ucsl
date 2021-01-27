@@ -221,7 +221,6 @@ class HYDRA(BaseML):
                 S[index_positives, :] = 0
                 S[index_positives, cluster_index[index_positives]] = 1
 
-
                 ## update barycenters
                 label_barycenters = np.zeros((S.shape[1], X.shape[1]))
                 for cluster_i in range(n_clusters):
@@ -449,8 +448,7 @@ class HYDRA(BaseML):
             ## apply PCA on consensus direction
             PCA_ = PCA(n_components=n_clusters)
             self.cluster_estimators[idx_outside_polytope]['directions'] = PCA_.fit_transform(consensus_direction)
-            print(PCA_.fit_transform(consensus_direction).shape)
-            print(X[index_positives].shape)
+
             self.cluster_estimators[idx_outside_polytope]['K-means'] = KMeans(n_clusters).fit(
                 X[index_positives] @ self.cluster_estimators[idx_outside_polytope]['directions'])
             consensus_scores = self.cluster_estimators[idx_outside_polytope]['K-means'].predict(
