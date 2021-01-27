@@ -283,7 +283,7 @@ class HYDRA(BaseML):
             print('')
             ## update the cluster index for the consensus clustering
             consensus_assignment[:, consensus_i] = cluster_index[index_positives] + 1
-            consensus_direction.extend([self.coefficients[idx_outside_polytope][cluster_i][0] for cluster_i in range(len(self.coefficients[idx_outside_polytope]))])
+            consensus_direction.append([self.coefficients[idx_outside_polytope][cluster_i][0] for cluster_i in range(len(self.coefficients[idx_outside_polytope]))])
 
         if n_consensus > 1 :
             self.apply_consensus(X, y_polytope, consensus_assignment, consensus_direction, n_clusters, index_positives, index_negatives, idx_outside_polytope)
@@ -522,20 +522,34 @@ class HYDRA(BaseML):
             S[index_positives, :] *= 0
             S[index_positives, consensus_scores[index_positives]] = 1
 
-        elif self.consensus == 'gmm_direction':
-            consensus_direction = np.array(consensus_direction).T
-            ## apply PCA on consensus direction
-            PCA_ = PCA(n_components=n_clusters)
-            self.cluster_estimators[idx_outside_polytope]['directions'] = PCA_.fit_transform(consensus_direction)
-            self.cluster_estimators[idx_outside_polytope]['K-means'] = GaussianMixture(n_components=n_clusters).fit(
-                X[index_positives] @ self.cluster_estimators[idx_outside_polytope]['directions'])
+        elif self.consensus == 'mean_hp':
+            ## do censensus clustering
+            consensus_scores = consensus_clustering(consensus_assignment.astype(int), n_clusters)
+            y_clustering_positives = consensus_scores[index_positives]
+            X_positives = X[index_positives] - np.mean(X[index_positives], 1)[:,1]
 
-            ## change the weight of positivess to be 1, negatives to be 1/_clusters
+            mean_directions = []
+
+            for consensus_i in range(self.n_consensus) :
+                directions_i = consensus_direction[idx_outside_polytope][consensus_i]
+                directions_i = directions_i / (np.linalg.norm(directions_i, axis=1)**2)[:, None]
+                mean_direction_i = (directions_i[0]-directions_i[1])/2
+                distances_positives = X_positives@mean_direction_i
+                if np.mean(distances_positives[y_clustering_positives==1]) > 0 :
+                    mean_directions.append(mean_direction_i)
+                else :
+                    mean_directions.append(-mean_direction_i)
+
+            mean_direction = np.mean(np.array(mean_directions), 0)
+            X_proj = X@mean_direction
+            X_proj = sigmoid(X_proj * 5 / np.max(X_proj))
+
+            S = np.concatenate((1-X_proj, X_proj), axis=1)
+
             # then set the positives' weight to be 1 for the assigned hyperplane
-            S[index_positives, :] = one_hot_encode(self.cluster_estimators[idx_outside_polytope]['K-means'].predict(
-                X[index_positives] @ self.cluster_estimators[idx_outside_polytope]['directions']).astype(np.int))
-            S[index_negatives, :] = self.cluster_estimators[idx_outside_polytope]['K-means'].predict_proba(
-                X[index_negatives] @ self.cluster_estimators[idx_outside_polytope]['directions'])
+            S[index_positives, :] *= 0
+            S[index_positives, np.argmax(S[index_positives],1)] = 1
+
 
         elif self.consensus == 'SVM':
             ## do censensus clustering
@@ -549,3 +563,10 @@ class HYDRA(BaseML):
                 self.SVC_clsf[idx_outside_polytope].predict(X[index_positives]).astype(np.int))
             S[index_negatives, :] = self.SVC_clsf[idx_outside_polytope].predict_proba(X[index_negatives])
 
+
+        for cluster_i in range(n_clusters):
+            cluster_weight = np.ascontiguousarray(S[:, cluster_i])
+            SVM_coefficient, SVM_intercept, _ = self.launch_svc(X, y_polytope, cluster_weight + 0.000001,
+                                                                self.kernel)
+            self.coefficients[idx_outside_polytope][cluster_i] = SVM_coefficient
+            self.intercepts[idx_outside_polytope][cluster_i] = SVM_intercept
