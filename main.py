@@ -192,7 +192,7 @@ class HYDRA(BaseML):
             obj += cp.quad_form(lambda_column, K_parameter)
 
         ## constraints
-        const = [ cp.multiply(y_polytope_parameter, lambda_dual_matrix) >= np.zeros((n_samples, n_clusters)),
+        const = [ y_polytope_parameter*lambda_dual_matrix >= np.zeros((n_samples, n_clusters)),
                   lambda_dual_matrix >= np.zeros(lambda_dual_matrix.shape),
                   self.C*S_parameter >= lambda_dual_matrix ]
 
@@ -325,25 +325,6 @@ class HYDRA(BaseML):
             directions = directions / (np.linalg.norm(directions, axis=1)**2)[:, None]
             mean_direction = (directions[0] - directions[1])/2
             mean_intercept=0
-
-            '''
-            print(np.mean(self.SVs[idx_outside_polytope][0], 0))
-            print(np.mean(self.SVs[idx_outside_polytope][1], 0))
-
-            support_vector_distances_0 = np.matmul(mean_direction[None,:], self.SVs[idx_outside_polytope][0].transpose())
-            support_vector_distances_0 = support_vector_distances_0 / np.abs(support_vector_distances_0)
-            print(support_vector_distances_0.shape)
-
-            support_vector_distances_1 = np.matmul(mean_direction[None,:], self.SVs[idx_outside_polytope][1].transpose())
-            support_vector_distances_1 = support_vector_distances_1 / np.abs(support_vector_distances_1)
-            print(support_vector_distances_1.shape)
-
-            support_vector_distances = np.concatenate((support_vector_distances_0, support_vector_distances_1), axis=1)[0]
-
-            print(np.sum(support_vector_distances))
-            mean_intercept = - np.sum(support_vector_distances) / (2*len(support_vector_distances))
-            print(mean_intercept)
-            '''
 
             X_norm = X - np.mean(X[index], 0)[None,:]
             X_proj = (np.matmul(mean_direction[None,:], X_norm.transpose()) + mean_intercept).transpose().squeeze()
