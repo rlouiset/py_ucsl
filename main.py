@@ -270,7 +270,6 @@ class HYDRA(BaseML):
 
                 ## check the loss comparted to the tolorence for stopping criteria
                 loss = np.linalg.norm(np.subtract(S, S_hold), ord='fro')
-                print(loss)
                 if loss < self.tolerance:
                     break
 
@@ -291,7 +290,6 @@ class HYDRA(BaseML):
                     self.coef_lists[idx_outside_polytope][cluster_i][iter+1] = SVM_coefficient.copy()
                     self.intercept_lists[idx_outside_polytope][cluster_i][iter+1] = SVM_intercept.copy()
 
-            print('')
             ## update the cluster index for the consensus clustering
             consensus_assignment[:, consensus_i] = cluster_index[index_positives] + 1
             consensus_direction.append([self.coefficients[idx_outside_polytope][cluster_i][0] for cluster_i in range(len(self.coefficients[idx_outside_polytope]))])
@@ -493,26 +491,6 @@ class HYDRA(BaseML):
                 self.coefficients[idx_outside_polytope][cluster_i] = SVM_coefficient
                 self.intercepts[idx_outside_polytope][cluster_i] = SVM_intercept
 
-        elif self.consensus == 'original_dual':
-            ## do censensus clustering
-            consensus_scores = consensus_clustering(consensus_assignment.astype(int), n_clusters)
-            ## after deciding the final convex polytope, we refit the training data once to save the best model
-            S = np.ones((len(y_polytope), n_clusters)) / n_clusters
-            ## change the weight of positivess to be 1, negatives to be 1/_clusters
-            # then set the positives' weight to be 1 for the assigned hyperplane
-            S[index_positives, :] *= 0
-            S[index_positives, consensus_scores] = 1
-
-            SVM_dual_coefficient = self.optimize_HYDRA_dual(X, y_polytope, S)
-            print(SVM_dual_coefficient.shape)
-
-            for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope]):
-                self.coefficients[idx_outside_polytope][cluster_i] = SVM_dual_coefficient[:, cluster_i] @ np.einsum(
-                    'i,ij->ij', y_polytope, X)
-                print(self.coefficients[idx_outside_polytope][cluster_i].shape)
-                self.intercepts[idx_outside_polytope][cluster_i] = y_polytope[0] - \
-                                                                   self.coefficients[idx_outside_polytope][cluster_i] @ \
-                                                                   X[0]
 
         elif self.consensus == 'direction':
             consensus_direction = np.array(consensus_direction).T
