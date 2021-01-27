@@ -531,6 +531,8 @@ class HYDRA(BaseML):
 
             mean_directions = []
 
+            print(np.array(consensus_direction).shape)
+
             for consensus_i in range(self.n_consensus) :
                 directions_i = consensus_direction[idx_outside_polytope][consensus_i]
                 print(np.array(directions_i).shape)
