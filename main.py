@@ -46,6 +46,7 @@ class HYDRA(BaseML):
         self.mean_direction = {label:None for label in self.labels}
         self.SVC_clsf = {label:None for label in self.labels}
         self.SVs = {label:{cluster_i:None for cluster_i in range(n_clusters_per_label[label])} for label in self.labels}
+        self.mean_direction=None
 
         if self.consensus in ['direction', 'gmm_direction'] :
             self.cluster_estimators = {label:{'directions':None, 'K-means':None} for label in self.labels}
@@ -156,6 +157,17 @@ class HYDRA(BaseML):
 
                 cluster_predictions[label][:, 1] = (1-X_proj)[:,0]
                 cluster_predictions[label][:, 2] = X_proj[:,0]
+
+        if self.consensus in ['mean_hp']:
+            cluster_predictions = {label: np.zeros((len(X), self.n_clusters_per_label[label] + 1)) for label in self.labels}
+            mean_hp_scores = {label: np.zeros((len(X), self.n_clusters_per_label[label])) for label in self.labels}
+            for label in self.labels:
+                X_proj = (np.matmul(self.mean_direction[None, :], X.transpose()) + 0).transpose().squeeze()
+                X_proj = sigmoid(X_proj[:, None] * 5 / np.max(X_proj))
+
+                cluster_predictions[label][:, 1] = (1 - X_proj)[:, 0]
+                cluster_predictions[label][:, 2] = X_proj[:, 0]
+
 
         if self.consensus == 'SVM':
             cluster_predictions = {label: np.zeros((len(X), self.n_clusters_per_label[label] + 1)) for label in self.labels}
@@ -541,11 +553,11 @@ class HYDRA(BaseML):
                 else :
                     mean_directions.append(-mean_direction_i)
 
-            mean_direction = np.mean(np.array(mean_directions), 0)
-            X_proj = X@mean_direction
+            self.mean_direction = np.mean(np.array(mean_directions), 0)
+            X_proj = X@self.mean_direction
             X_proj = sigmoid(X_proj * 5 / np.max(X_proj))
 
-            S = np.concatenate((1-X_proj, X_proj), axis=1)
+            S = np.concatenate(((1-X_proj)[:,None], X_proj[:,None]), axis=1)
 
             # then set the positives' weight to be 1 for the assigned hyperplane
             S[index_positives, :] *= 0
