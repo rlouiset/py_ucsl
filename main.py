@@ -326,6 +326,9 @@ class HYDRA(BaseML):
 
             mean_direction = (directions[0] - directions[1])/2
 
+            print(np.mean(self.SVs[idx_outside_polytope][0], 0))
+            print(np.mean(self.SVs[idx_outside_polytope][0], 1))
+
             support_vector_distances_0 = np.matmul(mean_direction[None,:], self.SVs[idx_outside_polytope][0].transpose())
             support_vector_distances_0 = support_vector_distances_0 / np.abs(support_vector_distances_0)
             print(support_vector_distances_0.shape)
@@ -339,6 +342,8 @@ class HYDRA(BaseML):
             print(np.sum(support_vector_distances))
             mean_intercept = - np.sum(support_vector_distances) / (2*len(support_vector_distances))
             print(mean_intercept)
+
+            print()
 
             X_proj = (np.matmul(mean_direction[None,:], X.transpose()) + mean_intercept).transpose().squeeze()
             X_proj = sigmoid(X_proj[:, None]*5/np.max(X_proj))
