@@ -473,8 +473,8 @@ class HYDRA(BaseML):
 
             ## change the weight of positivess to be 1, negatives to be 1/_clusters
             # then set the positives' weight to be 1 for the assigned hyperplane
-            S[index_positives, :] = self.cluster_estimators[idx_outside_polytope]['K-means'].predict(
-                X[index_positives] @ self.cluster_estimators[idx_outside_polytope]['directions'])
+            S[index_positives, :] = one_hot_encode(self.cluster_estimators[idx_outside_polytope]['K-means'].predict(
+                X[index_positives] @ self.cluster_estimators[idx_outside_polytope]['directions']).astype(np.int))
             S[index_negatives, :] = self.cluster_estimators[idx_outside_polytope]['K-means'].predict(
                 X[index_negatives] @ self.cluster_estimators[idx_outside_polytope]['directions'])
 
