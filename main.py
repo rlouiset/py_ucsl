@@ -515,7 +515,7 @@ class HYDRA(BaseML):
             X_proj = sigmoid(X_proj * 5 / np.max(X_proj))
 
             S = np.concatenate(((1-X_proj)[:,None], X_proj[:,None]), axis=1)
-            Q = S[index_positives]
+            Q = S[index_positives].copy()
 
             # then set the positives' weight to be 1 for the assigned hyperplane
             S[index_positives, :] *= 0
