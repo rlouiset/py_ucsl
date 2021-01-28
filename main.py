@@ -442,11 +442,6 @@ class HYDRA(BaseML):
         S = weight_samples.copy()  ## only replace the sample weight for positive samples
         cluster_index = np.argmax(S, axis=1)
 
-        ## init barycenters
-        label_barycenters = np.zeros((S.shape[1], X.shape[1]))
-        for cluster_i in range(n_clusters):
-            label_barycenters[cluster_i] = np.mean(X[index_positives] * S[index_positives, cluster_i][:, None], 0)
-        self.barycenters[idx_outside_polytope] = label_barycenters
         return S, cluster_index
 
     def launch_svc(self, X, y, sample_weight, kernel) :
