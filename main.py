@@ -376,6 +376,7 @@ class HYDRA(BaseML):
 
         S = np.ones((len(y_polytope), n_clusters)) / n_clusters
         weight_samples = np.zeros((len(index_positives), S.shape[1]))
+
         if initialization_type == "DPP":  ##
             num_subject = y_polytope.shape[0]
             W = np.zeros((num_subject, X.shape[1]))
@@ -438,7 +439,7 @@ class HYDRA(BaseML):
             d = prob - 1
             weight_samples = proportional_assign(l, d)
 
-        S = weight_samples  ## only replace the sample weight for positive samples
+        S = weight_samples.copy()  ## only replace the sample weight for positive samples
         cluster_index = np.argmax(S, axis=1)
 
         ## init barycenters
