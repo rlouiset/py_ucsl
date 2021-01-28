@@ -159,14 +159,12 @@ class HYDRA(BaseML):
 
         if self.consensus in ['mean_hp']:
             cluster_predictions = {label: np.zeros((len(X), self.n_clusters_per_label[label] + 1)) for label in self.labels}
-            mean_hp_scores = {label: np.zeros((len(X), self.n_clusters_per_label[label])) for label in self.labels}
             for label in self.labels:
                 X_proj = (np.matmul(self.mean_direction[label][None, :], X.transpose()) + 0).transpose().squeeze()
                 X_proj = sigmoid(X_proj[:, None] * 5 / np.max(X_proj))
 
                 cluster_predictions[label][:, 1] = (1 - X_proj)[:, 0]
                 cluster_predictions[label][:, 2] = X_proj[:, 0]
-
 
         if self.consensus == 'SVM':
             cluster_predictions = {label: np.zeros((len(X), self.n_clusters_per_label[label] + 1)) for label in self.labels}
@@ -517,10 +515,11 @@ class HYDRA(BaseML):
             X_proj = sigmoid(X_proj * 5 / np.max(X_proj))
 
             S = np.concatenate(((1-X_proj)[:,None], X_proj[:,None]), axis=1)
+            Q = S[index_positives]
 
             # then set the positives' weight to be 1 for the assigned hyperplane
             S[index_positives, :] *= 0
-            S[index_positives, np.argmax(S[index_positives],1)] = 1
+            S[index_positives, np.argmax(Q,1)] = 1
 
 
         elif self.consensus == 'SVM':
@@ -538,7 +537,6 @@ class HYDRA(BaseML):
 
         for cluster_i in range(n_clusters):
             cluster_weight = np.ascontiguousarray(S[:, cluster_i])
-            SVM_coefficient, SVM_intercept, _ = self.launch_svc(X, y_polytope, cluster_weight + 0.000001,
-                                                                self.kernel)
+            SVM_coefficient, SVM_intercept, _ = self.launch_svc(X, y_polytope, cluster_weight, self.kernel)
             self.coefficients[idx_outside_polytope][cluster_i] = SVM_coefficient
             self.intercepts[idx_outside_polytope][cluster_i] = SVM_intercept
