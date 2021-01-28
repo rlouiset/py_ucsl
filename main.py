@@ -329,17 +329,14 @@ class HYDRA(BaseML):
             Q = one_hot_encode(k_means_method.fit_predict(X_proj[index]))
 
 
-        elif self.clustering_strategy in ['mean_hp', 'mean_hp_norm']:
+        elif self.clustering_strategy in ['mean_hp']:
             directions = np.array([self.coefficients[idx_outside_polytope][cluster_i][0] for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])])
 
             directions = directions / (np.linalg.norm(directions, axis=1)**2)[:, None]
             mean_direction = (directions[0] - directions[1])/2
             mean_intercept=0
 
-            if self.clustering_strategy == 'mean_hp_norm' :
-                X_norm = X.copy() - np.mean(X[index], 0)[None,:]
-            else :
-                X_norm = X.copy()
+            X_norm = X.copy()
             X_proj = (np.matmul(mean_direction[None,:], X_norm.transpose()) + mean_intercept).transpose().squeeze()
             X_proj = sigmoid(X_proj[:, None]*5/np.max(X_proj))
 
@@ -378,7 +375,7 @@ class HYDRA(BaseML):
             return S, cluster_index
 
         S = np.ones((len(y_polytope), n_clusters)) / n_clusters
-        weight_positive_samples = np.zeros((len(index_positives), S.shape[1]))
+        weight_samples = np.zeros((len(index_positives), S.shape[1]))
         if initialization_type == "DPP":  ##
             num_subject = y_polytope.shape[0]
             W = np.zeros((num_subject, X.shape[1]))
@@ -439,20 +436,7 @@ class HYDRA(BaseML):
 
             l = np.minimum(prob - 1, 0)
             d = prob - 1
-            weight_positive_samples = proportional_assign(l, d)
-
-        elif initialization_type == "SVM_support_vector":
-            X_positives, y_positives = X[index_positives, :], y_polytope[index_positives]
-            random_index_choice = np.random.randint(len(X), size=len(X)//2)
-            X_subset, y_subset = X[random_index_choice, :], y_polytope[random_index_choice]
-
-            SVC_method = SVC(kernel='linear')
-            SVC_method.fit(X_subset, y_subset)
-            X_support = X_subset[SVC_method.support_]
-
-            Kmeans_method = KMeans(n_clusters=n_clusters)
-            Kmeans_method.fit(X_support)
-            weight_positive_samples = one_hot_encode(Kmeans_method.predict(X_positives))
+            weight_samples = proportional_assign(l, d)
 
         S = weight_samples  ## only replace the sample weight for positive samples
         cluster_index = np.argmax(S, axis=1)
