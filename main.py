@@ -408,7 +408,7 @@ class HYDRA(BaseML):
 
             # then set the positives' weight to be 1 for the assigned hyperplane
             S[index_positives, :] *= 0
-            S[index_positives, np.rint(X_proj).astype(np.int)] = 1
+            S[index_positives, np.rint(X_proj[index_positives]).astype(np.int)] = 1
 
 
         for cluster_i in range(n_clusters):
