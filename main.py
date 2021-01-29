@@ -523,6 +523,9 @@ class HYDRA(BaseML):
                 directions_i = consensus_direction[consensus_i]
                 intercepts_i = consensus_intercepts[consensus_i]
 
+                print(directions_i.shape)
+                print(intercepts_i.shape)
+
                 X_0 = (np.matmul(directions_i[0][None, :], X.transpose()) + intercepts_i[0]).transpose().squeeze()
                 X_1 = (np.matmul(directions_i[1][None, :], X.transpose()) + intercepts_i[1]).transpose().squeeze()
                 mean_X.append(X[np.argmin(np.abs(X_0) + np.abs(X_1))])
