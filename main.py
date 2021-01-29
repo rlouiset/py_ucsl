@@ -340,11 +340,10 @@ class HYDRA(BaseML):
             print('X min :', X[idx_min])
             ###
 
-            directions = directions / (np.linalg.norm(directions, axis=1)**2)[:, None]
-            intercepts = intercepts / (np.linalg.norm(directions, axis=1) ** 2)
+            directions[0] = directions[0]*np.linalg.norm(directions[1])**2 / np.mean((np.linalg.norm(directions, axis=1)**2))
+            directions[1] = directions[1]*np.linalg.norm(directions[0])**2 / np.mean((np.linalg.norm(directions, axis=1)**2))
             mean_direction = (directions[0] - directions[1])/2
 
-            mean_intercept=0
             ###
             mean_intercept = - X[idx_min]@mean_direction
             print('mean intercept : ', mean_intercept)
