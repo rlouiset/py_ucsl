@@ -348,7 +348,8 @@ class HYDRA(BaseML):
             ###
             mean_intercept = - X[idx_min]@mean_direction
             if np.abs(mean_intercept) > 1 :
-                mean_intercept = 0
+                print('degenerate mean hp')
+                #mean_intercept = 0
             ###
 
             X_norm = X.copy()
