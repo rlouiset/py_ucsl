@@ -523,9 +523,6 @@ class HYDRA(BaseML):
                 directions_i = consensus_direction[consensus_i]
                 intercepts_i = consensus_intercepts[consensus_i]
 
-                print(directions_i)
-                print(intercepts_i)
-
                 X_0 = (np.matmul(directions_i[0][None, :], X.transpose()) + intercepts_i[0]).transpose().squeeze()
                 X_1 = (np.matmul(directions_i[1][None, :], X.transpose()) + intercepts_i[1]).transpose().squeeze()
                 mean_X.append(X[np.argmin(np.abs(X_0) + np.abs(X_1))])
@@ -539,6 +536,8 @@ class HYDRA(BaseML):
                     mean_directions.append(-mean_direction_i)
 
             self.mean_direction[idx_outside_polytope] = np.mean(np.array(mean_directions), 0)
+            print(self.mean_direction[idx_outside_polytope].shape)
+            print(np.mean(mean_X, 0).shape)
             self.mean_intercept[idx_outside_polytope] = - np.mean(mean_X, 0) @ self.mean_direction[idx_outside_polytope]
             X_proj = X@self.mean_direction[idx_outside_polytope]
             X_proj = sigmoid(X_proj * 5 / np.max(X_proj))
