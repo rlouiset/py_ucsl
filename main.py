@@ -348,7 +348,7 @@ class HYDRA(BaseML):
             ###
             mean_intercept = - X[idx_min]@mean_direction
             if np.abs(mean_intercept) > 1 :
-                mean_intercept = mean_intercept / np.abs(mean_intercept)
+                mean_intercept = mean_intercept * 0.5 / np.abs(mean_intercept)
             ###
 
             X_norm = X.copy()
@@ -356,7 +356,11 @@ class HYDRA(BaseML):
             X_proj = sigmoid(X_proj[:, None]*5/np.max(X_proj))
 
             X_pred = np.rint(X_proj[index]).astype(np.int)
+            print(X_pred[:10])
 
+            print(balanced_accuracy_score(np.argmax(S[index],1), X_pred))
+            print(balanced_accuracy_score(np.argmax(S[index],1), 1-X_pred))
+            print('')
             if balanced_accuracy_score(np.argmax(S[index],1), X_pred) > balanced_accuracy_score(np.argmax(S[index],1), 1-X_pred) :
                 Q = np.concatenate((1-X_proj, X_proj), axis=1)
             else :
