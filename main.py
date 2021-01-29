@@ -297,7 +297,7 @@ class HYDRA(BaseML):
             consensus_intercepts.append(self.mean_intercept)
 
         if n_consensus > 1 :
-            self.apply_consensus(X, y_polytope, consensus_assignment, consensus_direction, n_clusters, index_positives, index_negatives, idx_outside_polytope)
+            self.apply_consensus(X, y_polytope, consensus_assignment, consensus_direction, consensus_intercepts, n_clusters, index_positives, index_negatives, idx_outside_polytope)
 
     def update_S(self, X, y, S, index, cluster_index, idx_outside_polytope) :
         if self.n_clusters_per_label[idx_outside_polytope] == 1 :
