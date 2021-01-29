@@ -348,9 +348,7 @@ class HYDRA(BaseML):
             ###
             mean_intercept = - X[idx_min]@mean_direction
             if np.abs(mean_intercept) > 1 :
-                mean_intercept = mean_intercept * 0.1 / np.abs(mean_intercept)
-            print(mean_intercept)
-            print('')
+                mean_intercept = mean_intercept / np.abs(mean_intercept)
             ###
 
             X_norm = X.copy()
@@ -538,8 +536,6 @@ class HYDRA(BaseML):
 
             self.mean_direction[idx_outside_polytope] = np.mean(np.array(mean_directions), 0)
             self.mean_intercept[idx_outside_polytope] = - np.mean(mean_X, 0)@self.mean_direction[idx_outside_polytope]
-
-            print(self.mean_intercept[idx_outside_polytope])
 
             X_proj = X@self.mean_direction[idx_outside_polytope] + self.mean_intercept[idx_outside_polytope]
             X_proj = sigmoid(X_proj * 5 / np.max(X_proj))
