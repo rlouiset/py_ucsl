@@ -208,10 +208,13 @@ class HYDRA(BaseML):
                 self.coef_lists[idx_outside_polytope][cluster_i][0] = SVM_coefficient.copy()
                 self.intercept_lists[idx_outside_polytope][cluster_i][0] = SVM_intercept.copy()
 
+            lambda_sigmoid = 0
             for iter in range(self.n_iterations):
+                lambda_sigmoid += (5 / self.n_iterations)
+
                 ## decide the convergence of the polytope based on the toleration
                 S_hold = S.copy()
-                S, cluster_index = self.update_S(X, y, S, index_positives, cluster_index, idx_outside_polytope)
+                S, cluster_index = self.update_S(X, y, S, index_positives, cluster_index, idx_outside_polytope, lambda_sigmoid=lambda_sigmoid)
                 self.S_lists[idx_outside_polytope][1+iter]=S.copy()
 
                 if self.clustering_strategy == 'original':
