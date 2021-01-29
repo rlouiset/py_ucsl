@@ -426,10 +426,6 @@ class HYDRA(BaseML):
 
         for cluster_i in range(n_clusters):
             cluster_weight = np.ascontiguousarray(S[:, cluster_i])
-            SVM_coefficient, SVM_intercept = self.launch_svc(X, y_polytope, cluster_weight + 0.000001,
-                                                                self.kernel)
+            SVM_coefficient, SVM_intercept = self.launch_svc(X, y_polytope, cluster_weight + 0.000001, self.kernel)
             self.coefficients[idx_outside_polytope][cluster_i] = SVM_coefficient
             self.intercepts[idx_outside_polytope][cluster_i] = SVM_intercept
-
-            self.coef_lists[idx_outside_polytope][cluster_i][-1] = SVM_coefficient.copy()
-            self.intercept_lists[idx_outside_polytope][cluster_i][-1] = SVM_intercept.copy()
