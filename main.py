@@ -349,6 +349,8 @@ class HYDRA(BaseML):
             mean_intercept = - X[idx_min]@mean_direction
             if np.abs(mean_intercept) > 1 :
                 mean_intercept = mean_intercept * 0.1 / np.abs(mean_intercept)
+            print(mean_intercept)
+            print('')
             ###
 
             X_norm = X.copy()
