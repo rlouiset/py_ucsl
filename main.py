@@ -399,32 +399,27 @@ class HYDRA(BaseML):
             mean_intercept = []
 
             for consensus_i in range(self.n_consensus) :
-                print(consensus_i)
                 directions_i = consensus_direction[consensus_i]
-                print(directions_i)
                 intercept_i = consensus_intercepts[consensus_i]
-                print(intercept_i)
 
                 directions_i = directions_i / (np.linalg.norm(directions_i, axis=1)**2)[:, None]
-                print(directions_i)
-                mean_direction_i = np.mean(directions_i, 0)
-                print(mean_direction_i)
+                mean_direction_i = directions_i[0,:]-directions_i[1,:]
+                mean_direction_i /= 2
 
                 distances_positives_i = X_positives@mean_direction_i + intercept_i
-                print(distances_positives_i)
                 pred_positives_i = np.rint(sigmoid(distances_positives_i)).astype(np.int)
 
                 ARI_i = ARI(pred_positives_i, y_clustering_positives)
                 print(ARI_i)
                 if ARI_i > 0.1 :
-                    mean_intercept.append(mean_intercept)
+                    mean_intercept.append(intercept_i)
                     if np.mean(distances_positives_i[y_clustering_positives==1]) > 0 :
                         mean_directions.append(mean_direction_i)
                     else :
                         mean_directions.append(-mean_direction_i)
 
             self.mean_direction[idx_outside_polytope] = np.mean(np.array(mean_directions), 0)
-            self.mean_intercept[idx_outside_polytope] = - np.mean(np.array(mean_intercept), 0)
+            self.mean_intercept[idx_outside_polytope] = np.mean(np.array(mean_intercept), 0)
 
             X_proj = X@self.mean_direction[idx_outside_polytope] + self.mean_intercept[idx_outside_polytope]
             X_proj = sigmoid(X_proj * 5 / np.max(X_proj))
