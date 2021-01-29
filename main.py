@@ -6,6 +6,7 @@ from sklearn.decomposition import PCA, FastICA
 from sklearn.metrics import accuracy_score
 from sklearn.svm import SVC
 from sklearn.cluster import KMeans
+from sklearn.metrics import adjusted_rand_score as ARI
 from sklearn.mixture import GaussianMixture
 from sklearn.metrics import balanced_accuracy_score
 import cvxpy as cp
@@ -47,6 +48,7 @@ class HYDRA(BaseML):
         self.SVs = {label:{cluster_i:None for cluster_i in range(n_clusters_per_label[label])} for label in self.labels}
         self.mean_direction={label:None for label in self.labels}
         self.mean_intercept = {label:0 for label in self.labels}
+        self.intercept_bank = 0
 
         if self.consensus in ['direction', 'gmm_direction'] :
             self.cluster_estimators = {label:{'directions':None, 'K-means':None} for label in self.labels}
@@ -181,39 +183,6 @@ class HYDRA(BaseML):
                 cluster_predictions[label][:, 1:] = one_hot_encode(k_means_label.predict(X@directions_label).astype(np.int))
         return cluster_predictions
 
-    def optimize_HYDRA_dual(self, X, y_polytope, S):
-
-        ## first let us define shapes
-        n_samples = X.shape[0]
-        # n_features = X.shape[1]
-        n_clusters = S.shape[1]
-        diag_y = np.eye(n_samples, n_samples) * y_polytope[:, None]
-        y_repeat = np.repeat(y_polytope[:, None],2, axis=1)
-
-        ## first let us define the Variables and Parameters
-        lambda_dual_matrix = cp.Variable(shape=S.shape, nonneg=True)
-        S_parameter = cp.Parameter(shape=S.shape, value=S, nonneg=True)
-        y_polytope_parameter = cp.Parameter(shape=y_repeat.shape, value=y_repeat)
-        K = diag_y @ X @ X.T @ diag_y
-        K_parameter = cp.Parameter(shape=K.shape, PSD=True, value=K)
-
-        ## objective function
-        #obj = .5 * cp.quad_form(y_polytope_value, cp.multiply((lambda_dual_matrix@(lambda_dual_matrix.T)),X_gram_matrix)) - cp.sum(lambda_dual_matrix)
-        obj = - cp.sum(lambda_dual_matrix)
-        for k in range(n_clusters) :
-            lambda_column = lambda_dual_matrix[:,k][:, None]
-            obj += cp.quad_form(lambda_column, K_parameter)
-
-        ## constraints
-        print(cp.multiply(y_polytope_parameter, lambda_dual_matrix).shape)
-        const = [cp.multiply(y_polytope_parameter, lambda_dual_matrix) >= np.zeros((n_samples, n_clusters)),
-                  lambda_dual_matrix >= np.zeros(lambda_dual_matrix.shape),
-                  self.C*S_parameter >= lambda_dual_matrix ]
-
-        ## solve the problem
-        prob = cp.Problem(cp.Minimize(obj), const)
-        prob.solve()
-        return lambda_dual_matrix.value
 
     def predict_cluster_assignement(self, X):
         cluster_predictions = self.predict_distances(X)
@@ -246,8 +215,6 @@ class HYDRA(BaseML):
                 SVM_coefficient, SVM_intercept, SV = self.launch_svc(X, y_polytope, cluster_i_weight, kernel=self.kernel)
                 self.coefficients[idx_outside_polytope][cluster_i] = SVM_coefficient
                 self.intercepts[idx_outside_polytope][cluster_i] = SVM_intercept
-
-                self.SVs[idx_outside_polytope][cluster_i] = SV
 
                 self.coef_lists[idx_outside_polytope][cluster_i][0] = SVM_coefficient.copy()
                 self.intercept_lists[idx_outside_polytope][cluster_i][0] = SVM_intercept.copy()
@@ -286,20 +253,18 @@ class HYDRA(BaseML):
                     self.coefficients[idx_outside_polytope][cluster_i] = SVM_coefficient
                     self.intercepts[idx_outside_polytope][cluster_i] = SVM_intercept
 
-                    self.SVs[idx_outside_polytope][cluster_i] = SV
-
                     self.coef_lists[idx_outside_polytope][cluster_i][iter+1] = SVM_coefficient.copy()
                     self.intercept_lists[idx_outside_polytope][cluster_i][iter+1] = SVM_intercept.copy()
 
             ## update the cluster index for the consensus clustering
             consensus_assignment[:, consensus_i] = cluster_index[index_positives] + 1
             consensus_direction.append([self.coefficients[idx_outside_polytope][cluster_i][0] for cluster_i in range(len(self.coefficients[idx_outside_polytope]))])
-            consensus_intercepts.append([self.intercepts[idx_outside_polytope][cluster_i][0] for cluster_i in range(len(self.intercepts[idx_outside_polytope]))])
+            consensus_intercepts.append(self.mean_intercept)
 
         if n_consensus > 1 :
             self.apply_consensus(X, y_polytope, consensus_assignment, consensus_direction, consensus_intercepts, n_clusters, index_positives, index_negatives, idx_outside_polytope)
 
-    def update_S(self, X, y, S, index, cluster_index, idx_outside_polytope) :
+    def update_S(self, X, y, S, index, cluster_index, idx_outside_polytope, lambda_sigmoid=5) :
         if self.n_clusters_per_label[idx_outside_polytope] == 1 :
             S[index] = 1
             cluster_index[index] = 0
@@ -311,24 +276,7 @@ class HYDRA(BaseML):
             for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope]) :
                  ## Apply the data again the trained model to get the final SVM scores
                  svm_scores[:, cluster_i] = 1+(np.matmul(self.coefficients[idx_outside_polytope][cluster_i], X.transpose()) + self.intercepts[idx_outside_polytope][cluster_i]).transpose().squeeze()
-            # svm_scores[svm_scores<0] = 0
             Q = py_softmax(svm_scores, 1)
-            #Q = svm_scores[index] / (np.sum(svm_scores[index], 1)[:, None]+0.0000001)
-
-        elif self.clustering_strategy in ['direction']:
-            SVM_coefficient, SVM_intercept, _ = self.launch_svc(X, y, sample_weight=None, kernel='linear')
-            SVM_coefficient_norm = SVM_coefficient / np.linalg.norm(SVM_coefficient) ** 2
-
-            directions = np.array([self.coefficients[idx_outside_polytope][cluster_i][0] for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])])
-
-            for i, direction in enumerate(directions) :
-                directions[i] = direction - np.dot(direction, SVM_coefficient_norm[0]) * SVM_coefficient_norm[0]
-
-            directions = PCA(n_components=1).fit_transform(directions.T).T
-
-            X_proj = X @ directions.T
-            k_means_method = KMeans(n_clusters=self.n_clusters_per_label[idx_outside_polytope])
-            Q = one_hot_encode(k_means_method.fit_predict(X_proj[index]))
 
 
         elif self.clustering_strategy in ['mean_hp']:
@@ -338,7 +286,7 @@ class HYDRA(BaseML):
             ###
             X_0 = (np.matmul(directions[0][None,:], X.transpose()) + intercepts[0]).transpose().squeeze()
             X_1 = (np.matmul(directions[1][None,:], X.transpose()) + intercepts[1]).transpose().squeeze()
-            idx_min = np.argmin(np.abs(X_0)+np.abs(X_1))
+            min_indices = np.argpartition(np.abs(X_0)+np.abs(X_1), 10)
             ###
 
             directions[0] = directions[0]*np.linalg.norm(directions[1])**2 / np.mean((np.linalg.norm(directions, axis=1)**2))
@@ -346,22 +294,17 @@ class HYDRA(BaseML):
             mean_direction = (directions[0] - directions[1])/2
 
             ###
-            mean_intercept = - X[idx_min]@mean_direction
-            if np.abs(mean_intercept) > 1 :
-                print('degenerate mean hp')
-                #mean_intercept = 0
+            mean_intercept = - np.mean(X[min_indices]@mean_direction)
+            if np.abs(mean_intercept) > 3 :
+                mean_intercept = 0
+            self.intercept_bank = mean_intercept
             ###
 
             X_norm = X.copy()
             X_proj = (np.matmul(mean_direction[None,:], X_norm.transpose()) + mean_intercept).transpose().squeeze()
-            X_proj = sigmoid(X_proj[:, None]*5/np.max(X_proj))
+            X_proj = sigmoid(X_proj[:, None]*lambda_sigmoid/np.max(X_proj))
 
-            X_pred = np.rint(X_proj[index]).astype(np.int)
-            print(X_pred[:10])
-
-            print(balanced_accuracy_score(np.argmax(S[index],1), X_pred))
-            print(balanced_accuracy_score(np.argmax(S[index],1), 1-X_pred))
-            print('')
+            #X_pred = np.rint(X_proj[index]).astype(np.int)
             '''
             if balanced_accuracy_score(np.argmax(S[index],1), X_pred) > balanced_accuracy_score(np.argmax(S[index],1), 1-X_pred) :
                 Q = np.concatenate((1-X_proj, X_proj), axis=1)
@@ -369,21 +312,6 @@ class HYDRA(BaseML):
                 Q = np.concatenate((X_proj, 1-X_proj), axis=1)
             '''
             Q = np.concatenate((1 - X_proj, X_proj), axis=1)
-
-
-        elif self.clustering_strategy == 'boundary_barycenter':
-            ##
-            cluster_barycenters =  self.barycenters[idx_outside_polytope]
-            boundary_baricenters_scores = np.zeros((S.shape))
-            for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope]) :
-                w_cluster_i = self.coefficients[idx_outside_polytope][cluster_i]
-                b_cluster_i = self.intercepts[idx_outside_polytope][cluster_i]
-                w_cluster_i_norm = w_cluster_i / np.linalg.norm(w_cluster_i)**2
-                boundary_barycenter_i = cluster_barycenters[cluster_i] + (cluster_barycenters[cluster_i]@w_cluster_i[0]+b_cluster_i)*w_cluster_i_norm
-                boundary_baricenters_scores[:,cluster_i] = np.linalg.norm((X-boundary_barycenter_i), axis=1)
-
-            # compute closest assigned hyperplan normal drection
-            Q = py_softmax(-boundary_baricenters_scores, 1)
 
         S = Q.copy()
         cluster_index[index] = np.argmax(Q[index], axis=1)
@@ -417,45 +345,6 @@ class HYDRA(BaseML):
             for i in range(n_clusters):
                 prob[:, i] = np.matmul(
                     np.multiply(X, np.divide(1, np.linalg.norm(X, axis=1))[:, np.newaxis]),
-                    W[Widx[i], :].transpose())
-
-            l = np.minimum(prob - 1, 0)
-            d = prob - 1
-            weight_samples = proportional_assign(l, d)
-
-        elif initialization_type == "DPP_batch":  ##
-            batch_size = 32
-            num_subject = y_polytope.shape[0]
-
-            SVM_coefficient, SVM_intercept, _ = self.launch_svc(X, y_polytope, sample_weight=None, kernel='linear')
-            self.SVM_coefficient_norm = SVM_coefficient / np.linalg.norm(SVM_coefficient) ** 2
-
-            W = np.zeros((num_subject, X.shape[1]))
-            for j in range(num_subject):
-                ipt = np.random.randint(len(index_positives))
-                icn = np.random.randint(len(index_negatives))
-
-                X_ortho_dist_ipt = np.linalg.norm(X - (X @ SVM_coefficient.T) * self.SVM_coefficient_norm + (
-                        X[index_positives[ipt]] @ SVM_coefficient[0]) * self.SVM_coefficient_norm - X[index_positives[ipt]],
-                                              axis=1)
-                X_ortho_dist_icn = np.linalg.norm(X - (X @ SVM_coefficient.T) * self.SVM_coefficient_norm + (
-                        X[index_negatives[icn]] @ SVM_coefficient[0]) * self.SVM_coefficient_norm - X[index_negatives[icn]],
-                                              axis=1)
-
-                ipt_batch_idxs = X_ortho_dist_ipt[index_positives].argsort()[batch_size:][::-1]
-                icn_batch_idxs = X_ortho_dist_icn[index_negatives].argsort()[batch_size:][::-1]
-
-                W[j, :] = np.mean(X[index_positives[ipt_batch_idxs], :], 0) - np.mean(X[index_negatives[icn_batch_idxs], :], 0)
-
-            KW = np.matmul(W, W.transpose())
-            KW = np.divide(KW, np.sqrt(np.multiply(np.diag(KW)[:, np.newaxis], np.diag(KW)[:, np.newaxis].transpose())))
-            evalue, evector = np.linalg.eig(KW)
-            Widx = sample_dpp(np.real(evalue), np.real(evector), n_clusters)
-            prob = np.zeros((len(index_positives), n_clusters))  # only consider the PTs
-
-            for i in range(n_clusters):
-                prob[:, i] = np.matmul(
-                    np.multiply(X[index_positives, :], np.divide(1, np.linalg.norm(X[index_positives, :], axis=1))[:, np.newaxis]),
                     W[Widx[i], :].transpose())
 
             l = np.minimum(prob - 1, 0)
@@ -524,26 +413,28 @@ class HYDRA(BaseML):
             X_positives = X[index_positives] #- np.mean(X[index_positives], 1)[:,None]
 
             mean_directions = []
-            mean_X = []
+            mean_intercept = []
 
             for consensus_i in range(self.n_consensus) :
                 directions_i = consensus_direction[consensus_i]
-                intercepts_i = consensus_intercepts[consensus_i]
-
-                X_0 = (np.matmul(directions_i[0][None, :], X.transpose()) + intercepts_i[0]).transpose().squeeze()
-                X_1 = (np.matmul(directions_i[1][None, :], X.transpose()) + intercepts_i[1]).transpose().squeeze()
-                mean_X.append(X[np.argmin(np.abs(X_0) + np.abs(X_1))])
+                intercept_i = consensus_intercepts[consensus_i]
 
                 directions_i = directions_i / (np.linalg.norm(directions_i, axis=1)**2)[:, None]
                 mean_direction_i = (directions_i[0]-directions_i[1])/2
-                distances_positives = X_positives@mean_direction_i
-                if np.mean(distances_positives[y_clustering_positives==1]) > 0 :
-                    mean_directions.append(mean_direction_i)
-                else :
-                    mean_directions.append(-mean_direction_i)
+
+                distances_positives_i = X_positives@mean_direction_i + intercept_i
+                pred_positives_i = np.rint(sigmoid(distances_positives_i)).astype(np.int)
+
+                print(ARI(pred_positives_i, y_clustering_positives))
+                if ARI(pred_positives_i, y_clustering_positives) > 0.1 :
+                    mean_intercept.append(mean_intercept)
+                    if np.mean(distances_positives[y_clustering_positives==1]) > 0 :
+                        mean_directions.append(mean_direction_i)
+                    else :
+                        mean_directions.append(-mean_direction_i)
 
             self.mean_direction[idx_outside_polytope] = np.mean(np.array(mean_directions), 0)
-            self.mean_intercept[idx_outside_polytope] = - np.mean(mean_X, 0)@self.mean_direction[idx_outside_polytope]
+            self.mean_intercept[idx_outside_polytope] = - np.mean(np.array(mean_intercept), 0)
 
             X_proj = X@self.mean_direction[idx_outside_polytope] + self.mean_intercept[idx_outside_polytope]
             X_proj = sigmoid(X_proj * 5 / np.max(X_proj))
@@ -553,19 +444,6 @@ class HYDRA(BaseML):
             # then set the positives' weight to be 1 for the assigned hyperplane
             S[index_positives, :] *= 0
             S[index_positives, np.argmax(S[index_positives],1)] = 1
-
-
-        elif self.consensus == 'SVM':
-            ## do censensus clustering
-            consensus_scores = consensus_clustering(consensus_assignment.astype(int), n_clusters)
-
-            self.SVC_clsf[idx_outside_polytope] = SVC(kernel="linear", C=self.C, probability=True)
-            ## fit the different SVM/hyperplanes
-            self.SVC_clsf[idx_outside_polytope].fit(X[index_positives], consensus_scores)
-
-            S[index_positives, :] = one_hot_encode(
-                self.SVC_clsf[idx_outside_polytope].predict(X[index_positives]).astype(np.int))
-            S[index_negatives, :] = self.SVC_clsf[idx_outside_polytope].predict_proba(X[index_negatives])
 
 
         for cluster_i in range(n_clusters):
