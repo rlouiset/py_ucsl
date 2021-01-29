@@ -210,7 +210,7 @@ class HYDRA(BaseML):
 
             lambda_sigmoid = 0
             for iter in range(self.n_iterations):
-                lambda_sigmoid += (5 / self.n_iterations)
+                lambda_sigmoid += (10 / self.n_iterations)
 
                 ## decide the convergence of the polytope based on the toleration
                 S_hold = S.copy()
