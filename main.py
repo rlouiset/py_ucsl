@@ -373,7 +373,7 @@ class HYDRA(BaseML):
             ## do censensus clustering
             y_clustering_positives = consensus_clustering(consensus_assignment.astype(int), n_clusters)
 
-            X_positives = X[index_positives] #- np.mean(X[index_positives], 1)[:,None]
+            X_positives = X[index_positives]
 
             mean_directions = []
             mean_intercept = []
@@ -391,7 +391,6 @@ class HYDRA(BaseML):
                 pred_positives_i = np.rint(sigmoid(distances_positives_i)).astype(np.int)
 
                 ARI_i = ARI(pred_positives_i, y_clustering_positives)
-                print("ARI : ", ARI_i)
                 if ARI_i > 0.1 :
                     mean_intercept.append(intercept_i)
                     if np.mean(distances_positives_i[y_clustering_positives==1]) > 0 :
