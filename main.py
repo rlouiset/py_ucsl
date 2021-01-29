@@ -361,10 +361,12 @@ class HYDRA(BaseML):
             print(balanced_accuracy_score(np.argmax(S[index],1), X_pred))
             print(balanced_accuracy_score(np.argmax(S[index],1), 1-X_pred))
             print('')
+            '''
             if balanced_accuracy_score(np.argmax(S[index],1), X_pred) > balanced_accuracy_score(np.argmax(S[index],1), 1-X_pred) :
                 Q = np.concatenate((1-X_proj, X_proj), axis=1)
             else :
                 Q = np.concatenate((X_proj, 1-X_proj), axis=1)
+            '''
 
 
         elif self.clustering_strategy == 'boundary_barycenter':
