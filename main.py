@@ -212,7 +212,7 @@ class HYDRA(BaseML):
 
             for cluster_i in range(n_clusters):
                 cluster_i_weight = np.ascontiguousarray(S[:, cluster_i])
-                SVM_coefficient, SVM_intercept, SV = self.launch_svc(X, y_polytope, cluster_i_weight, kernel=self.kernel)
+                SVM_coefficient, SVM_intercept = self.launch_svc(X, y_polytope, cluster_i_weight, kernel=self.kernel)
                 self.coefficients[idx_outside_polytope][cluster_i] = SVM_coefficient
                 self.intercepts[idx_outside_polytope][cluster_i] = SVM_intercept
 
@@ -249,7 +249,7 @@ class HYDRA(BaseML):
                                         iter - 1))
                         print(
                             "Be careful, this could cause problem because of the ill-posed solution. Especially when k==2")
-                    SVM_coefficient, SVM_intercept, SV = self.launch_svc(X, y_polytope, cluster_i_weight+0.00001, kernel=self.kernel)
+                    SVM_coefficient, SVM_intercept = self.launch_svc(X, y_polytope, cluster_i_weight+0.00001, kernel=self.kernel)
                     self.coefficients[idx_outside_polytope][cluster_i] = SVM_coefficient
                     self.intercepts[idx_outside_polytope][cluster_i] = SVM_intercept
 
@@ -364,9 +364,8 @@ class HYDRA(BaseML):
 
         SVM_coefficient = SVC_clsf.coef_
         SVM_intercept = SVC_clsf.intercept_
-        SV = SVC_clsf.support_vectors_
 
-        return SVM_coefficient, SVM_intercept, SV
+        return SVM_coefficient, SVM_intercept
 
     def apply_consensus(self, X, y_polytope, consensus_assignment, consensus_direction, consensus_intercepts, n_clusters, index_positives,
                         index_negatives, idx_outside_polytope):
@@ -383,30 +382,13 @@ class HYDRA(BaseML):
 
             for cluster_i in range(n_clusters):
                 cluster_weight = np.ascontiguousarray(S[:, cluster_i])
-                SVM_coefficient, SVM_intercept, _ = self.launch_svc(X, y_polytope, cluster_weight + 0.000001, self.kernel)
+                SVM_coefficient, SVM_intercept = self.launch_svc(X, y_polytope, cluster_weight + 0.000001, self.kernel)
                 self.coefficients[idx_outside_polytope][cluster_i] = SVM_coefficient
                 self.intercepts[idx_outside_polytope][cluster_i] = SVM_intercept
 
 
-        elif self.consensus == 'direction':
-            consensus_direction = np.array(consensus_direction).T
-            ## apply PCA on consensus direction
-            PCA_ = PCA(n_components=n_clusters)
-            self.cluster_estimators[idx_outside_polytope]['directions'] = PCA_.fit_transform(consensus_direction)
-
-            self.cluster_estimators[idx_outside_polytope]['K-means'] = KMeans(n_clusters).fit(
-                X[index_positives] @ self.cluster_estimators[idx_outside_polytope]['directions'])
-            consensus_scores = self.cluster_estimators[idx_outside_polytope]['K-means'].predict(
-                X @ self.cluster_estimators[idx_outside_polytope]['directions'])
-
-            ## after deciding the final convex polytope, we refit the training data once to save the best model
-            S = np.ones((len(y_polytope), n_clusters)) / n_clusters
-            ## change the weight of positivess to be 1, negatives to be 1/_clusters
-            # then set the positives' weight to be 1 for the assigned hyperplane
-            S[index_positives, :] *= 0
-            S[index_positives, consensus_scores[index_positives]] = 1
-
         elif self.consensus == 'mean_hp':
+            print('mean_hp conensus : ')
             ## do censensus clustering
             consensus_scores = consensus_clustering(consensus_assignment.astype(int), n_clusters)
 
@@ -417,6 +399,7 @@ class HYDRA(BaseML):
             mean_intercept = []
 
             for consensus_i in range(self.n_consensus) :
+                print(consensus_i)
                 directions_i = consensus_direction[consensus_i]
                 intercept_i = consensus_intercepts[consensus_i]
 
@@ -449,7 +432,7 @@ class HYDRA(BaseML):
 
         for cluster_i in range(n_clusters):
             cluster_weight = np.ascontiguousarray(S[:, cluster_i])
-            SVM_coefficient, SVM_intercept, _ = self.launch_svc(X, y_polytope, cluster_weight + 0.000001,
+            SVM_coefficient, SVM_intercept = self.launch_svc(X, y_polytope, cluster_weight + 0.000001,
                                                                 self.kernel)
             self.coefficients[idx_outside_polytope][cluster_i] = SVM_coefficient
             self.intercepts[idx_outside_polytope][cluster_i] = SVM_intercept
