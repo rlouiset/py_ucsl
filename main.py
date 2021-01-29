@@ -305,13 +305,6 @@ class HYDRA(BaseML):
             X_proj = (np.matmul(mean_direction[None,:], X_norm.transpose()) + mean_intercept).transpose().squeeze()
             X_proj = sigmoid(X_proj[:, None]*lambda_sigmoid/np.max(X_proj))
 
-            #X_pred = np.rint(X_proj[index]).astype(np.int)
-            '''
-            if balanced_accuracy_score(np.argmax(S[index],1), X_pred) > balanced_accuracy_score(np.argmax(S[index],1), 1-X_pred) :
-                Q = np.concatenate((1-X_proj, X_proj), axis=1)
-            else :
-                Q = np.concatenate((X_proj, 1-X_proj), axis=1)
-            '''
             Q = np.concatenate((1 - X_proj, X_proj), axis=1)
 
         S = Q.copy()
@@ -437,3 +430,6 @@ class HYDRA(BaseML):
                                                                 self.kernel)
             self.coefficients[idx_outside_polytope][cluster_i] = SVM_coefficient
             self.intercepts[idx_outside_polytope][cluster_i] = SVM_intercept
+
+            self.coef_lists[idx_outside_polytope][cluster_i][len(self.coef_lists[idx_outside_polytope][cluster_i])] = SVM_coefficient.copy()
+            self.intercept_lists[idx_outside_polytope][cluster_i][len(self.intercept_lists[idx_outside_polytope][cluster_i])] = SVM_intercept.copy()
