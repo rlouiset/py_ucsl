@@ -332,20 +332,22 @@ class HYDRA(BaseML):
             directions = np.array([self.coefficients[idx_outside_polytope][cluster_i][0] for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])])
             intercepts = np.array([self.intercepts[idx_outside_polytope][cluster_i][0] for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])])
 
+            ###
+            X_0 = (np.matmul(directions[0][None,:], X.transpose()) + intercepts[0]).transpose().squeeze()
+            X_1 = (np.matmul(directions[1][None,:], X.transpose()) + intercepts[1]).transpose().squeeze()
+            idx_min = np.argmin(np.abs(X_0)+np.abs(X_1))
+            print('idx min : ', (np.abs(X_0)+np.abs(X_1))[idx_min])
+            print('X min :', X[idx_min])
+            ###
+
             directions = directions / (np.linalg.norm(directions, axis=1)**2)[:, None]
             intercepts = intercepts / (np.linalg.norm(directions, axis=1) ** 2)
             mean_direction = (directions[0] - directions[1])/2
 
             mean_intercept=0
             ###
-            X_0 = (np.matmul(directions[0][None,:], X.transpose()) + intercepts[0]).transpose().squeeze()
-            X_1 = (np.matmul(directions[1][None,:], X.transpose()) + intercepts[1]).transpose().squeeze()
-
-            idx_min = np.argmin(np.abs(X_0)+np.abs(X_1))
-            print('idx min : ', (np.abs(X_0)+np.abs(X_1))[idx_min])
             mean_intercept = - X[idx_min]@mean_direction
             print('mean intercept : ', mean_intercept)
-
             ###
 
             X_norm = X.copy()
