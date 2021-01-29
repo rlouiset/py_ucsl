@@ -162,7 +162,7 @@ class HYDRA(BaseML):
             cluster_predictions = {label: np.zeros((len(X), self.n_clusters_per_label[label] + 1)) for label in self.labels}
             mean_hp_scores = {label: np.zeros((len(X), self.n_clusters_per_label[label])) for label in self.labels}
             for label in self.labels:
-                X_proj = (np.matmul(self.mean_direction[label][None, :], X.transpose()) + self.mean_intercept).transpose().squeeze()
+                X_proj = (np.matmul(self.mean_direction[label][None, :], X.transpose()) + self.mean_intercept[label]).transpose().squeeze()
                 X_proj = sigmoid(X_proj[:, None] * 5 / np.max(X_proj))
 
                 cluster_predictions[label][:, 1] = (1 - X_proj)[:, 0]
