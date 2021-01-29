@@ -46,6 +46,7 @@ class HYDRA(BaseML):
         self.SVC_clsf = {label:None for label in self.labels}
         self.SVs = {label:{cluster_i:None for cluster_i in range(n_clusters_per_label[label])} for label in self.labels}
         self.mean_direction={label:None for label in self.labels}
+        self.mean_intercept = {label: None for label in self.labels}
 
         if self.consensus in ['direction', 'gmm_direction'] :
             self.cluster_estimators = {label:{'directions':None, 'K-means':None} for label in self.labels}
@@ -148,8 +149,8 @@ class HYDRA(BaseML):
                 directions = np.array([self.coefficients[label][cluster_i][0] for cluster_i in range(self.n_clusters_per_label[label])])
                 directions = directions / (np.linalg.norm(directions, axis=1)**2)[:, None]
 
+                mean_intercept = self.mean_intercept[label]
                 mean_direction = (directions[0] - directions[1])/2
-                mean_intercept = 0
 
                 X_proj = (np.matmul(mean_direction[None,:], X.transpose()) + mean_intercept).transpose().squeeze()
                 X_proj = sigmoid(X_proj[:, None]*5/np.max(X_proj))
@@ -230,6 +231,7 @@ class HYDRA(BaseML):
 
         consensus_assignment = np.zeros((np.sum(y_polytope==1), n_consensus))
         consensus_direction = []
+        consensus_intercepts = []
 
         index_positives = np.where(y_polytope == 1)[0]  # index for Positive Labels
         index_negatives = np.where(y_polytope == -1)[0]  # index for Negative Labels
@@ -292,6 +294,7 @@ class HYDRA(BaseML):
             ## update the cluster index for the consensus clustering
             consensus_assignment[:, consensus_i] = cluster_index[index_positives] + 1
             consensus_direction.append([self.coefficients[idx_outside_polytope][cluster_i][0] for cluster_i in range(len(self.coefficients[idx_outside_polytope]))])
+            consensus_intercepts.append(self.mean_intercept)
 
         if n_consensus > 1 :
             self.apply_consensus(X, y_polytope, consensus_assignment, consensus_direction, n_clusters, index_positives, index_negatives, idx_outside_polytope)
@@ -346,6 +349,7 @@ class HYDRA(BaseML):
             mean_intercept = - X[idx_min]@mean_direction
             if np.abs(mean_intercept) > 1 :
                 mean_intercept = mean_intercept * 0.1 / np.abs(mean_intercept)
+            self.mean_intercept = mean_intercept
             ###
 
             X_norm = X.copy()
@@ -467,7 +471,7 @@ class HYDRA(BaseML):
 
         return SVM_coefficient, SVM_intercept, SV
 
-    def apply_consensus(self, X, y_polytope, consensus_assignment, consensus_direction, n_clusters, index_positives,
+    def apply_consensus(self, X, y_polytope, consensus_assignment, consensus_direction, consensus_intercepts, n_clusters, index_positives,
                         index_negatives, idx_outside_polytope):
         S = np.ones((len(y_polytope), n_clusters)) / n_clusters
         if self.consensus == 'original':
@@ -510,12 +514,19 @@ class HYDRA(BaseML):
             consensus_scores = consensus_clustering(consensus_assignment.astype(int), n_clusters)
 
             y_clustering_positives = consensus_scores
-            X_positives = X[index_positives] - np.mean(X[index_positives], 1)[:,None]
+            X_positives = X[index_positives] #- np.mean(X[index_positives], 1)[:,None]
 
             mean_directions = []
+            mean_X = []
 
             for consensus_i in range(self.n_consensus) :
                 directions_i = consensus_direction[consensus_i]
+                intercepts_i = consensus_intercepts[consensus_i]
+
+                X_0 = (np.matmul(directions_i[0][None, :], X.transpose()) + intercepts_i[0]).transpose().squeeze()
+                X_1 = (np.matmul(directions_i[1][None, :], X.transpose()) + intercepts_i[1]).transpose().squeeze()
+                mean_X.append(X[np.argmin(np.abs(X_0) + np.abs(X_1))])
+
                 directions_i = directions_i / (np.linalg.norm(directions_i, axis=1)**2)[:, None]
                 mean_direction_i = (directions_i[0]-directions_i[1])/2
                 distances_positives = X_positives@mean_direction_i
@@ -525,6 +536,7 @@ class HYDRA(BaseML):
                     mean_directions.append(-mean_direction_i)
 
             self.mean_direction[idx_outside_polytope] = np.mean(np.array(mean_directions), 0)
+            self.mean_intercept[idx_outside_polytope] = - np.mean(mean_X, 0) @ self.mean_direction[idx_outside_polytope]
             X_proj = X@self.mean_direction[idx_outside_polytope]
             X_proj = sigmoid(X_proj * 5 / np.max(X_proj))
 
