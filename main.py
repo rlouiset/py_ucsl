@@ -46,7 +46,7 @@ class HYDRA(BaseML):
         self.SVC_clsf = {label:None for label in self.labels}
         self.SVs = {label:{cluster_i:None for cluster_i in range(n_clusters_per_label[label])} for label in self.labels}
         self.mean_direction={label:None for label in self.labels}
-        self.mean_intercept = {label: None for label in self.labels}
+        self.mean_intercept = {label: 0 for label in self.labels}
 
         if self.consensus in ['direction', 'gmm_direction'] :
             self.cluster_estimators = {label:{'directions':None, 'K-means':None} for label in self.labels}
@@ -538,8 +538,9 @@ class HYDRA(BaseML):
             self.mean_direction[idx_outside_polytope] = np.mean(np.array(mean_directions), 0)
             print(self.mean_direction[idx_outside_polytope].shape)
             print(np.mean(mean_X, 0).shape)
-            self.mean_intercept[idx_outside_polytope] = - np.mean(mean_X, 0) @ self.mean_direction[idx_outside_polytope]
-            X_proj = X@self.mean_direction[idx_outside_polytope]
+            self.mean_intercept[idx_outside_polytope] = - np.sum(np.mean(mean_X, 0)*self.mean_direction[idx_outside_polytope])
+
+            X_proj = X@self.mean_direction[idx_outside_polytope] + self.mean_intercept[idx_outside_polytope]
             X_proj = sigmoid(X_proj * 5 / np.max(X_proj))
 
             S = np.concatenate(((1-X_proj)[:,None], X_proj[:,None]), axis=1)
