@@ -407,7 +407,7 @@ class HYDRA(BaseML):
 
                 directions_i = directions_i / (np.linalg.norm(directions_i, axis=1)**2)[:, None]
                 print(directions_i)
-                mean_direction_i = (directions_i[0]-directions_i[1])/2
+                mean_direction_i = np.mean(directions_i, 0)
                 print(mean_direction_i)
 
                 distances_positives_i = X_positives@mean_direction_i + intercept_i
