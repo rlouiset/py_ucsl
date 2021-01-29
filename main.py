@@ -431,5 +431,5 @@ class HYDRA(BaseML):
             self.coefficients[idx_outside_polytope][cluster_i] = SVM_coefficient
             self.intercepts[idx_outside_polytope][cluster_i] = SVM_intercept
 
-            self.coef_lists[idx_outside_polytope][cluster_i][len(self.coef_lists[idx_outside_polytope][cluster_i])-1] = SVM_coefficient.copy()
-            self.intercept_lists[idx_outside_polytope][cluster_i][len(self.intercept_lists[idx_outside_polytope][cluster_i])-1] = SVM_intercept.copy()
+            self.coef_lists[idx_outside_polytope][cluster_i][-1] = SVM_coefficient.copy()
+            self.intercept_lists[idx_outside_polytope][cluster_i][-1] = SVM_intercept.copy()
