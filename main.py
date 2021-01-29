@@ -390,10 +390,9 @@ class HYDRA(BaseML):
         elif self.consensus == 'mean_hp':
             print('mean_hp conensus : ')
             ## do censensus clustering
-            consensus_scores = consensus_clustering(consensus_assignment.astype(int), n_clusters)
+            y_clustering_positives = consensus_clustering(consensus_assignment.astype(int), n_clusters)
             print('afetr spectral clustering')
 
-            y_clustering_positives = consensus_scores
             X_positives = X[index_positives] #- np.mean(X[index_positives], 1)[:,None]
 
             mean_directions = []
@@ -402,16 +401,22 @@ class HYDRA(BaseML):
             for consensus_i in range(self.n_consensus) :
                 print(consensus_i)
                 directions_i = consensus_direction[consensus_i]
+                print(directions_i)
                 intercept_i = consensus_intercepts[consensus_i]
+                print(intercept_i)
 
                 directions_i = directions_i / (np.linalg.norm(directions_i, axis=1)**2)[:, None]
+                print(directions_i)
                 mean_direction_i = (directions_i[0]-directions_i[1])/2
+                print(mean_direction_i)
 
                 distances_positives_i = X_positives@mean_direction_i + intercept_i
+                print(distances_positives_i)
                 pred_positives_i = np.rint(sigmoid(distances_positives_i)).astype(np.int)
 
-                print(ARI(pred_positives_i, y_clustering_positives))
-                if ARI(pred_positives_i, y_clustering_positives) > 0.1 :
+                ARI_i = ARI(pred_positives_i, y_clustering_positives)
+                print(ARI_i)
+                if ARI_i > 0.1 :
                     mean_intercept.append(mean_intercept)
                     if np.mean(distances_positives_i[y_clustering_positives==1]) > 0 :
                         mean_directions.append(mean_direction_i)
