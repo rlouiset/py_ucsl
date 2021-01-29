@@ -165,22 +165,11 @@ class HYDRA(BaseML):
             mean_hp_scores = {label: np.zeros((len(X), self.n_clusters_per_label[label])) for label in self.labels}
             for label in self.labels:
                 X_proj = (np.matmul(self.mean_direction[label][None, :], X.transpose()) + self.mean_intercept[label]).transpose().squeeze()
-                X_proj = sigmoid(X_proj[:, None] * 5 / np.max(X_proj))
+                X_proj = sigmoid(X_proj * 5 / np.max(X_proj))
 
-                cluster_predictions[label][:, 1] = (1 - X_proj)[:, 0]
-                cluster_predictions[label][:, 2] = X_proj[:, 0]
+                cluster_predictions[label][:, 1] = (1 - X_proj)
+                cluster_predictions[label][:, 2] = X_proj
 
-        if self.consensus == 'SVM':
-            cluster_predictions = {label: np.zeros((len(X), self.n_clusters_per_label[label] + 1)) for label in self.labels}
-            for label in self.labels:
-                cluster_predictions[label][:,1:] = self.SVC_clsf[label].predict_proba(X)
-
-        if self.consensus in ['direction', 'gmm_direction'] :
-            cluster_predictions = {label: np.zeros((len(X), self.n_clusters_per_label[label] + 1)) for label in self.labels}
-            for label in self.labels:
-                k_means_label = self.cluster_estimators[label]['K-means']
-                directions_label = self.cluster_estimators[label]['directions']
-                cluster_predictions[label][:, 1:] = one_hot_encode(k_means_label.predict(X@directions_label).astype(np.int))
         return cluster_predictions
 
 
@@ -416,11 +405,11 @@ class HYDRA(BaseML):
             X_proj = X@self.mean_direction[idx_outside_polytope] + self.mean_intercept[idx_outside_polytope]
             X_proj = sigmoid(X_proj * 5 / np.max(X_proj))
 
-            Q = np.concatenate(((1-X_proj)[:,None], X_proj[:,None]), axis=1)
+            S = np.concatenate(((1-X_proj)[:,None], X_proj[:,None]), axis=1)
 
             # then set the positives' weight to be 1 for the assigned hyperplane
             S[index_positives, :] *= 0
-            S[index_positives, np.argmax(Q[index_positives],1)] = 1
+            S[index_positives, np.rint(X_proj).astype(np.int)] = 1
 
 
         for cluster_i in range(n_clusters):
