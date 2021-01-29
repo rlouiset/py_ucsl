@@ -416,15 +416,11 @@ class HYDRA(BaseML):
             X_proj = X@self.mean_direction[idx_outside_polytope] + self.mean_intercept[idx_outside_polytope]
             X_proj = sigmoid(X_proj * 5 / np.max(X_proj))
 
-            S = np.concatenate(((1-X_proj)[:,None], X_proj[:,None]), axis=1)
-
-            print(idx_outside_polytope)
-            print(np.argmax(S[index_negatives], 1))
-            print('')
+            Q = np.concatenate(((1-X_proj)[:,None], X_proj[:,None]), axis=1)
 
             # then set the positives' weight to be 1 for the assigned hyperplane
             S[index_positives, :] *= 0
-            S[index_positives, np.argmax(S[index_positives],1)] = 1
+            S[index_positives, np.argmax(Q[index_positives],1)] = 1
 
 
         for cluster_i in range(n_clusters):
@@ -432,3 +428,6 @@ class HYDRA(BaseML):
             SVM_coefficient, SVM_intercept = self.launch_svc(X, y_polytope, cluster_weight, self.kernel)
             self.coefficients[idx_outside_polytope][cluster_i] = SVM_coefficient
             self.intercepts[idx_outside_polytope][cluster_i] = SVM_intercept
+
+            self.coef_lists[idx_outside_polytope][cluster_i][-1] = SVM_coefficient.copy()
+            self.intercept_lists[idx_outside_polytope][cluster_i][-1] = SVM_intercept.copy()
