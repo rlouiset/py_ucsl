@@ -259,7 +259,7 @@ class HYDRA(BaseML):
             ## update the cluster index for the consensus clustering
             consensus_assignment[:, consensus_i] = cluster_index[index_positives] + 1
             consensus_direction.append([self.coefficients[idx_outside_polytope][cluster_i][0] for cluster_i in range(len(self.coefficients[idx_outside_polytope]))])
-            consensus_intercepts.append(self.mean_intercept)
+            consensus_intercepts.append(self.intercept_bank)
 
         if n_consensus > 1 :
             self.apply_consensus(X, y_polytope, consensus_assignment, consensus_direction, consensus_intercepts, n_clusters, index_positives, index_negatives, idx_outside_polytope)
@@ -296,6 +296,7 @@ class HYDRA(BaseML):
             ###
             mean_intercept = - np.mean(X[min_indices]@mean_direction)
             if np.abs(mean_intercept) > 3 :
+                print("degenarete intercept")
                 mean_intercept = 0
             self.intercept_bank = mean_intercept
             ###
@@ -428,7 +429,7 @@ class HYDRA(BaseML):
                 print(ARI(pred_positives_i, y_clustering_positives))
                 if ARI(pred_positives_i, y_clustering_positives) > 0.1 :
                     mean_intercept.append(mean_intercept)
-                    if np.mean(distances_positives[y_clustering_positives==1]) > 0 :
+                    if np.mean(distances_positives_i[y_clustering_positives==1]) > 0 :
                         mean_directions.append(mean_direction_i)
                     else :
                         mean_directions.append(-mean_direction_i)
