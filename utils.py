@@ -165,11 +165,15 @@ def consensus_clustering(clustering_results, k):
     ## here is to compute the Laplacian matrix
     Laplacian = np.subtract(np.diag(np.sum(cooccurence_matrix, axis=1)), cooccurence_matrix)
 
+    print('step')
+
     Laplacian_norm = np.subtract(np.eye(num_pt), np.matmul(
         np.matmul(np.diag(1 / np.sqrt(np.sum(cooccurence_matrix, axis=1))), cooccurence_matrix),
         np.diag(1 / np.sqrt(np.sum(cooccurence_matrix, axis=1)))))
     ## replace the nan with 0
     Laplacian_norm = np.nan_to_num(Laplacian_norm)
+
+    print('step')
 
     ## check if the Laplacian norm is symmetric or not, because matlab eig function will automatically check this, but not in numpy or scipy
     evalue, evector = scipy.linalg.eigh(Laplacian_norm)
@@ -177,6 +181,8 @@ def consensus_clustering(clustering_results, k):
     ## check if the eigen vector is complex
     if np.any(np.iscomplex(evector)):
         evalue, evector = scipy.linalg.eigh(Laplacian)
+
+    print('before kmeans')
 
     ## create the kmean algorithm with sklearn
     kmeans = KMeans(n_clusters=k, n_init=20).fit(evector.real[:, 0: k])

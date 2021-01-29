@@ -391,6 +391,7 @@ class HYDRA(BaseML):
             print('mean_hp conensus : ')
             ## do censensus clustering
             consensus_scores = consensus_clustering(consensus_assignment.astype(int), n_clusters)
+            print('afetr spectral clustering')
 
             y_clustering_positives = consensus_scores
             X_positives = X[index_positives] #- np.mean(X[index_positives], 1)[:,None]
