@@ -330,10 +330,24 @@ class HYDRA(BaseML):
 
         elif self.clustering_strategy in ['mean_hp']:
             directions = np.array([self.coefficients[idx_outside_polytope][cluster_i][0] for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])])
+            intercepts = np.array([self.intercepts[idx_outside_polytope][cluster_i][0] for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])])
 
             directions = directions / (np.linalg.norm(directions, axis=1)**2)[:, None]
+            intercepts = intercepts / (np.linalg.norm(directions, axis=1) ** 2)[:, None]
             mean_direction = (directions[0] - directions[1])/2
+
             mean_intercept=0
+            ###
+            X_0 = (np.matmul(directions[0][None,:], X.transpose()) + intercepts[0]).transpose().squeeze()
+            print(X_0.shape)
+            X_1 = (np.matmul(directions[1][None,:], X.transpose()) + intercepts[1]).transpose().squeeze()
+            print(X_1.shape)
+            idx_min = np.armin(X_0+X_1)
+            print((X_0+X_1)[idx_min])
+            mean_intercept = - X[idx_min]@mean_direction
+            print(mean_intercept)
+
+            ###
 
             X_norm = X.copy()
             X_proj = (np.matmul(mean_direction[None,:], X_norm.transpose()) + mean_intercept).transpose().squeeze()
