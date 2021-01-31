@@ -227,6 +227,7 @@ class HYDRA(BaseML):
                 ## check the loss comparted to the tolorence for stopping criteria
                 print(ARI(np.argmax(S,1), np.argmax(S_hold,1)))
                 loss = np.linalg.norm(np.subtract(S, S_hold), ord='fro')
+                print(loss)
                 if loss < self.tolerance:
                     break
 
