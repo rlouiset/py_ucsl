@@ -225,10 +225,8 @@ class HYDRA(BaseML):
                 self.barycenters[idx_outside_polytope] = label_barycenters
 
                 ## check the loss comparted to the tolorence for stopping criteria
-                print(ARI(np.argmax(S,1), np.argmax(S_hold,1)))
-                loss = np.linalg.norm(np.subtract(S, S_hold), ord='fro')
-                print(loss)
-                if loss < self.tolerance:
+                cluster_consistency = ARI(np.argmax(S,1), np.argmax(S_hold,1))
+                if cluster_consistency > 0.9 :
                     break
 
                 for cluster_i in range(n_clusters):
