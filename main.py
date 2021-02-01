@@ -226,12 +226,13 @@ class HYDRA(BaseML):
 
                 ## check the loss comparted to the tolorence for stopping criteria
                 cluster_consistency = ARI(np.argmax(S[index_positives],1), np.argmax(S_hold[index_positives],1))
+                print(cluster_consistency)
                 if cluster_consistency > 0.9 :
                     break
 
                 for cluster_i in range(n_clusters):
                     if np.count_nonzero(S[index_positives, cluster_i]) == 0 :
-                        print("Cluster dropped, meaning that all Positive Labels has been assigned to one single hyperplane in iteration: %d" % ( iter - 1))
+                        #print("Cluster dropped, meaning that all Positive Labels has been assigned to one single hyperplane in iteration: %d" % ( iter - 1))
                         print("Re-initialization of the clustering...")
                         S, cluster_index = self.init_S(X, y_polytope, index_positives, index_negatives, n_clusters, idx_outside_polytope, initialization_type=self.initialization_type)
 
