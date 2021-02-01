@@ -378,7 +378,6 @@ class HYDRA(BaseML):
             mean_intercept = []
 
             converged = False
-            '''
             for consensus_i in range(self.n_consensus) :
                 directions_i = consensus_direction[consensus_i]
                 intercept_i = consensus_intercepts[consensus_i]
@@ -399,7 +398,6 @@ class HYDRA(BaseML):
                         mean_directions.append(mean_direction_i)
                     else :
                         mean_directions.append(-mean_direction_i)
-            '''
 
             if not converged :
                 print('not converged')
@@ -411,10 +409,6 @@ class HYDRA(BaseML):
 
             self.mean_direction[idx_outside_polytope] = np.mean(np.array(mean_directions), 0)
             self.mean_intercept[idx_outside_polytope] = np.mean(np.array(mean_intercept), 0)
-
-            print(self.mean_direction[idx_outside_polytope].shape)
-            print(self.mean_intercept[idx_outside_polytope].shape)
-            print('')
 
             X_proj = X@self.mean_direction[idx_outside_polytope] + self.mean_intercept[idx_outside_polytope]
             X_proj = sigmoid(X_proj * 5 / np.max(X_proj))
