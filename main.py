@@ -230,14 +230,14 @@ class HYDRA(BaseML):
                     break
 
                 for cluster_i in range(n_clusters):
+                    if np.count_nonzero(S[index_positives, cluster_i]) == 0 :
+                        print("Cluster dropped, meaning that all Positive Labels has been assigned to one single hyperplane in iteration: %d" % ( iter - 1))
+                        print("Re-initialization of the clustering...")
+                        S, cluster_index = self.init_S(X, y_polytope, index_positives, index_negatives, n_clusters, idx_outside_polytope, initialization_type=self.initialization_type)
+
+                for cluster_i in range(n_clusters):
                     cluster_i_weight = np.ascontiguousarray(S[:, cluster_i])
-                    if np.count_nonzero(cluster_i_weight[index_positives]) == 0:
-                        print(
-                            "Cluster dropped, meaning that all Positive Labels has been assigned to one single hyperplane in iteration: %d" % (
-                                        iter - 1))
-                        print(
-                            "Be careful, this could cause problem because of the ill-posed solution. Especially when k==2")
-                    SVM_coefficient, SVM_intercept = self.launch_svc(X, y_polytope, cluster_i_weight+0.00001, kernel=self.kernel)
+                    SVM_coefficient, SVM_intercept = self.launch_svc(X, y_polytope, cluster_i_weight, kernel=self.kernel)
                     self.coefficients[idx_outside_polytope][cluster_i] = SVM_coefficient
                     self.intercepts[idx_outside_polytope][cluster_i] = SVM_intercept
 
