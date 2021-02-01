@@ -249,6 +249,7 @@ class HYDRA(BaseML):
             consensus_assignment[:, consensus_i] = cluster_index[index_positives] + 1
             consensus_direction.append([self.coefficients[idx_outside_polytope][cluster_i][0] for cluster_i in range(len(self.coefficients[idx_outside_polytope]))])
             consensus_intercepts.append(self.intercept_bank)
+        print('')
 
         if n_consensus > 1 :
             self.apply_consensus(X, y_polytope, consensus_assignment, consensus_direction, consensus_intercepts, n_clusters, index_positives, index_negatives, idx_outside_polytope)
