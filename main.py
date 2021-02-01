@@ -378,6 +378,7 @@ class HYDRA(BaseML):
             mean_intercept = []
 
             converged = False
+            '''
             for consensus_i in range(self.n_consensus) :
                 directions_i = consensus_direction[consensus_i]
                 intercept_i = consensus_intercepts[consensus_i]
@@ -398,6 +399,7 @@ class HYDRA(BaseML):
                         mean_directions.append(mean_direction_i)
                     else :
                         mean_directions.append(-mean_direction_i)
+            '''
 
             if not converged :
                 print('not converged')
