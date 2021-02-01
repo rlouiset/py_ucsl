@@ -414,6 +414,7 @@ class HYDRA(BaseML):
                 pred_positives_i = np.rint(sigmoid(distances_positives_i)).astype(np.int)
 
                 ARI_i = ARI(pred_positives_i, y_clustering_positives)
+                print(ARI_i)
                 if ARI_i > 0.1 :
                     mean_intercept.append(intercept_i)
                     if np.mean(distances_positives_i[y_clustering_positives==1]) > 0 :
@@ -432,6 +433,8 @@ class HYDRA(BaseML):
             # then set the positives' weight to be 1 for the assigned hyperplane
             S[index_positives, :] *= 0
             S[index_positives, np.rint(X_proj[index_positives]).astype(np.int)] = 1
+
+            self.S_lists[idx_outside_polytope][-1] = S.copy()
 
 
         for cluster_i in range(n_clusters):
