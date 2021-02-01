@@ -338,8 +338,8 @@ class HYDRA(BaseML):
             num_subject = y_polytope.shape[0]
             W = np.zeros((num_subject, X.shape[1]))
             for j in range(num_subject):
-                ipt = np.random.randint(len(index_positives), size=8)
-                icn = np.random.randint(len(index_negatives), size=8)
+                ipt = np.random.randint(len(index_positives), size=32)
+                icn = np.random.randint(len(index_negatives), size=32)
                 W[j, :] = np.mean(X[index_positives[ipt], :],0) - np.mean(X[index_negatives[icn], :],0)
 
             KW = np.matmul(W, W.transpose())
