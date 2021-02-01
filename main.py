@@ -226,7 +226,6 @@ class HYDRA(BaseML):
 
                 ## check the loss comparted to the tolorence for stopping criteria
                 cluster_consistency = ARI(np.argmax(S[index_positives],1), np.argmax(S_hold[index_positives],1))
-                print(cluster_consistency)
                 if cluster_consistency > 0.9 :
                     break
 
