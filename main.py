@@ -401,6 +401,7 @@ class HYDRA(BaseML):
             mean_directions = []
             mean_intercept = []
 
+            converged = False
             for consensus_i in range(self.n_consensus) :
                 directions_i = consensus_direction[consensus_i]
                 intercept_i = consensus_intercepts[consensus_i]
@@ -416,11 +417,16 @@ class HYDRA(BaseML):
                 ARI_i = ARI(pred_positives_i, y_clustering_positives)
                 print(ARI_i)
                 if ARI_i > 0.1 :
+                    converged = True
                     mean_intercept.append(intercept_i)
                     if np.mean(distances_positives_i[y_clustering_positives==1]) > 0 :
                         mean_directions.append(mean_direction_i)
                     else :
                         mean_directions.append(-mean_direction_i)
+
+            if not converged :
+                mean_directions = consensus_direction
+                mean_intercept = consensus_intercepts
 
             self.mean_direction[idx_outside_polytope] = np.mean(np.array(mean_directions), 0)
             self.mean_intercept[idx_outside_polytope] = np.mean(np.array(mean_intercept), 0)
