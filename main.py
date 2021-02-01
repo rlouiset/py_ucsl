@@ -415,7 +415,6 @@ class HYDRA(BaseML):
                 pred_positives_i = np.rint(sigmoid(distances_positives_i)).astype(np.int)
 
                 ARI_i = ARI(pred_positives_i, y_clustering_positives)
-                print(ARI_i)
                 if ARI_i > 0.1 :
                     converged = True
                     mean_intercept.append(intercept_i)
