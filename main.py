@@ -340,7 +340,7 @@ class HYDRA(BaseML):
             for j in range(num_subject):
                 ipt = np.random.randint(len(index_positives), size=8)
                 icn = np.random.randint(len(index_negatives), size=8)
-                print(X[index_positives[ipt].shape)
+                print(X[index_positives[ipt],:].shape)
                 W[j, :] = np.mean(X[index_positives[ipt], :],0) - np.mean(X[index_negatives[icn], :],0)
 
             KW = np.matmul(W, W.transpose())
