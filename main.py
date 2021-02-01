@@ -403,7 +403,10 @@ class HYDRA(BaseML):
 
             if not converged :
                 print('not converged')
+
                 mean_directions = consensus_direction.copy()
+                mean_directions = mean_directions / (np.linalg.norm(mean_directions, axis=2)**2)[:, :, None]
+                mean_directions = mean_directions[0] - mean_directions[1]
                 mean_intercept = consensus_intercepts.copy()
 
             self.mean_direction[idx_outside_polytope] = np.mean(np.array(mean_directions), 0)
