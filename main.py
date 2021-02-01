@@ -333,6 +333,31 @@ class HYDRA(BaseML):
             d = prob - 1
             weight_samples = proportional_assign(l, d)
 
+
+        if initialization_type == "DPP_batch":  ##
+            num_subject = y_polytope.shape[0]
+            W = np.zeros((num_subject, X.shape[1]))
+            for j in range(num_subject):
+                ipt = np.random.randint(len(index_positives), size=8)
+                icn = np.random.randint(len(index_negatives), size=8)
+                print(X[index_positives[ipt].shape)
+                W[j, :] = np.mean(X[index_positives[ipt], :],0) - np.mean(X[index_negatives[icn], :],0)
+
+            KW = np.matmul(W, W.transpose())
+            KW = np.divide(KW, np.sqrt(np.multiply(np.diag(KW)[:, np.newaxis], np.diag(KW)[:, np.newaxis].transpose())))
+            evalue, evector = np.linalg.eig(KW)
+            Widx = sample_dpp(np.real(evalue), np.real(evector), n_clusters)
+            prob = np.zeros((len(X), n_clusters))  # only consider the PTs
+
+            for i in range(n_clusters):
+                prob[:, i] = np.matmul(
+                    np.multiply(X, np.divide(1, np.linalg.norm(X, axis=1))[:, np.newaxis]),
+                    W[Widx[i], :].transpose())
+
+            l = np.minimum(prob - 1, 0)
+            d = prob - 1
+            weight_samples = proportional_assign(l, d)
+
         S = weight_samples.copy()  ## only replace the sample weight for positive samples
         cluster_index = np.argmax(S, axis=1)
 
