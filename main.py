@@ -277,9 +277,6 @@ class HYDRA(BaseML):
 
             ###
             mean_intercept = - np.mean(X[min_indices]@mean_direction)
-            if np.abs(mean_intercept) > 3 :
-                print("degenarete intercept")
-                mean_intercept = 0
             self.intercept_bank = mean_intercept
             ###
 
@@ -365,7 +362,6 @@ class HYDRA(BaseML):
         elif self.consensus == 'mean_hp':
             ## do censensus clustering
             y_clustering_positives = consensus_clustering(consensus_assignment.astype(int), n_clusters)
-
             X_positives = X[index_positives]
 
             mean_directions = []
@@ -395,7 +391,6 @@ class HYDRA(BaseML):
 
             if not converged :
                 print('not converged')
-
                 mean_directions = consensus_direction.copy()
                 mean_directions = mean_directions / (np.linalg.norm(mean_directions, axis=2)**2)[:, :, None]
                 mean_directions = mean_directions[0] - mean_directions[1]
