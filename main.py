@@ -361,7 +361,7 @@ class HYDRA(BaseML):
                         w_clusterings[clustering_i][clustering_j] = ARI(consensus_assignment[:,clustering_i], consensus_assignment[:,clustering_j])
             w_clusterings = np.sum(w_clusterings, 1)
             w_clusterings[w_clusterings<0] = 0
-            w_clusterings = np.array(w_clusterings) / np.sum(w_clusterings)
+            w_clusterings = w_clusterings / np.sum(w_clusterings)
             print(w_clusterings)
 
             ## do censensus clustering
@@ -375,8 +375,17 @@ class HYDRA(BaseML):
 
 
         elif self.consensus == 'mean_hp':
+            ## clustering relevancy
+            w_clusterings = np.zeros((consensus_assignment.shape[1], consensus_assignment.shape[1]))
+            for clustering_i in range(len(w_clusterings)) :
+                for clustering_j in range(len(w_clusterings)) :
+                    if clustering_j != clustering_i :
+                        w_clusterings[clustering_i][clustering_j] = ARI(consensus_assignment[:,clustering_i], consensus_assignment[:,clustering_j])
+            w_clusterings = np.sum(w_clusterings, 1)
+            w_clusterings[w_clusterings<0] = 0
+            w_clusterings = w_clusterings / np.sum(w_clusterings)
             ## do censensus clustering
-            y_clustering_positives = consensus_clustering(consensus_assignment.astype(int), n_clusters)
+            y_clustering_positives = consensus_clustering(consensus_assignment.astype(int), n_clusters, cluster_weight=w_clusterings)
             X_positives = X[index_positives]
 
             mean_directions = []
