@@ -439,4 +439,4 @@ class HYDRA(BaseML):
             self.mean_direction[idx_outside_polytope] = (directions[0] - directions[1])/2
 
             ###
-            self.mean_intercept[idx_outside_polytope] = - np.mean(X[min_indices]@self.mean_direction)
+            self.mean_intercept[idx_outside_polytope] = - np.mean(X[min_indices]@self.mean_direction[idx_outside_polytope])
