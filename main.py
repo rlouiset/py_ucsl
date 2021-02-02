@@ -207,7 +207,7 @@ class HYDRA(BaseML):
                 S, cluster_index = self.update_S(X, y, S, index_positives, cluster_index, idx_outside_polytope)
                 self.S_lists[idx_outside_polytope][1+iter]=S.copy()
 
-                if self.clustering_strategy == 'original':
+                if self.clustering_strategy in ['original', 'nw_mean_hp']:
                     S[index_negatives, :] = 1/n_clusters
                 S[index_positives, :] = 0
                 S[index_positives, cluster_index[index_positives]] = 1
@@ -261,7 +261,7 @@ class HYDRA(BaseML):
             Q = py_softmax(svm_scores, 1)
 
 
-        elif self.clustering_strategy in ['mean_hp']:
+        elif self.clustering_strategy in ['mean_hp', 'nw_mean_hp']:
             directions = np.array([self.coefficients[idx_outside_polytope][cluster_i][0] for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])])
             intercepts = np.array([self.intercepts[idx_outside_polytope][cluster_i][0] for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])])
 
@@ -352,11 +352,17 @@ class HYDRA(BaseML):
             S[index_positives, :] *= 0
             S[index_positives, consensus_scores] = 1
 
-            for cluster_i in range(n_clusters):
-                cluster_weight = np.ascontiguousarray(S[:, cluster_i])
-                SVM_coefficient, SVM_intercept = self.launch_svc(X, y_polytope, cluster_weight + 0.000001, self.kernel)
-                self.coefficients[idx_outside_polytope][cluster_i] = SVM_coefficient
-                self.intercepts[idx_outside_polytope][cluster_i] = SVM_intercept
+        if self.consensus == 'woriginal':
+            ## clustering relevancy
+
+            ## do censensus clustering
+            consensus_scores = consensus_clustering(consensus_assignment.astype(int), n_clusters)
+            ## after deciding the final convex polytope, we refit the training data once to save the best model
+            S = np.ones((len(y_polytope), n_clusters)) / n_clusters
+            ## change the weight of positivess to be 1, negatives to be 1/_clusters
+            # then set the positives' weight to be 1 for the assigned hyperplane
+            S[index_positives, :] *= 0
+            S[index_positives, consensus_scores] = 1
 
 
         elif self.consensus == 'mean_hp':
@@ -420,7 +426,7 @@ class HYDRA(BaseML):
             self.coef_lists[idx_outside_polytope][cluster_i][-1] = SVM_coefficient.copy()
             self.intercept_lists[idx_outside_polytope][cluster_i][-1] = SVM_intercept.copy()
 
-            if self.consensus == 'original' :
+            if self.consensus in ['original', 'w_original'] :
                 directions = np.array([self.coefficients[idx_outside_polytope][cluster_i][0] for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])])
                 intercepts = np.array([self.intercepts[idx_outside_polytope][cluster_i][0] for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])])
 
