@@ -432,16 +432,16 @@ class HYDRA(BaseML):
             self.coef_lists[idx_outside_polytope][cluster_i][-1] = SVM_coefficient.copy()
             self.intercept_lists[idx_outside_polytope][cluster_i][-1] = SVM_intercept.copy()
 
-            if self.consensus in ['original', 'w_original'] :
-                print('ha')
-                directions = np.array([self.coefficients[idx_outside_polytope][cluster_i][0] for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])])
-                intercepts = np.array([self.intercepts[idx_outside_polytope][cluster_i][0] for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])])
+        if self.consensus in ['original', 'w_original'] :
+            print('ha')
+            directions = np.array([self.coefficients[idx_outside_polytope][cluster_i][0] for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])])
+            intercepts = np.array([self.intercepts[idx_outside_polytope][cluster_i][0] for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])])
 
-                X_0 = (np.matmul(directions[0][None,:], X.transpose()) + intercepts[0]).transpose().squeeze()
-                X_1 = (np.matmul(directions[1][None,:], X.transpose()) + intercepts[1]).transpose().squeeze()
-                min_indices = np.argpartition(np.abs(X_0)+np.abs(X_1), 10)
+            X_0 = (np.matmul(directions[0][None,:], X.transpose()) + intercepts[0]).transpose().squeeze()
+            X_1 = (np.matmul(directions[1][None,:], X.transpose()) + intercepts[1]).transpose().squeeze()
+            min_indices = np.argpartition(np.abs(X_0)+np.abs(X_1), 10)
 
-                directions[0] = directions[0]*np.linalg.norm(directions[1])**2 / np.mean((np.linalg.norm(directions, axis=1)**2))
-                directions[1] = directions[1]*np.linalg.norm(directions[0])**2 / np.mean((np.linalg.norm(directions, axis=1)**2))
-                self.mean_direction[idx_outside_polytope] = (directions[0] - directions[1])/2
-                self.mean_intercept[idx_outside_polytope] = - np.mean(X[min_indices]@self.mean_direction[idx_outside_polytope])
+            directions[0] = directions[0]*np.linalg.norm(directions[1])**2 / np.mean((np.linalg.norm(directions, axis=1)**2))
+            directions[1] = directions[1]*np.linalg.norm(directions[0])**2 / np.mean((np.linalg.norm(directions, axis=1)**2))
+            self.mean_direction[idx_outside_polytope] = (directions[0] - directions[1])/2
+            self.mean_intercept[idx_outside_polytope] = - np.mean(X[min_indices]@self.mean_direction[idx_outside_polytope])
