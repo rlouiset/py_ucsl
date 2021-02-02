@@ -202,8 +202,8 @@ class HYDRA(BaseML):
                 S, cluster_index = self.update_S(X, y, S, index_positives, cluster_index, idx_outside_polytope)
                 self.S_lists[idx_outside_polytope][1+iter]=S.copy()
 
-                #if self.clustering_strategy in ['original', 'nw_mean_hp']:
-                #    S[index_negatives, :] = 1/n_clusters
+                if self.clustering_strategy in ['original', 'nw_mean_hp']:
+                    S[index_negatives, :] = 1/n_clusters
                 #if self.consensus in ['original', 'w_original']:
                 #    S[index_negatives, :] = 1/n_clusters
                 S[index_positives, :] = 0
@@ -371,7 +371,7 @@ class HYDRA(BaseML):
             for clustering_i in range(len(w_clusterings)) :
                 for clustering_j in range(len(w_clusterings)) :
                     if clustering_j != clustering_i :
-                        w_clusterings[clustering_i][clustering_j] = ARI(consensus_assignment[:,clustering_i], consensus_assignment[:,clustering_j])
+                        w_clusterings[clustering_i][clustering_j] = ARI(consensus_assignment[index_positives,clustering_i], consensus_assignment[index_positives,clustering_j])
             w_clusterings = np.sum(w_clusterings, 1)
             w_clusterings[w_clusterings<0] = 0
             w_clusterings = w_clusterings / np.sum(w_clusterings)
