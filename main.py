@@ -357,11 +357,13 @@ class HYDRA(BaseML):
             w_clusterings = np.zeros((consensus_assignment.shape[1], consensus_assignment.shape[1]))
             for clustering_i in range(len(w_clusterings)) :
                 for clustering_j in range(len(w_clusterings)) :
-                    w_clusterings[clustering_i][clustering_j] = ARI(consensus_assignment[clustering_i], consensus_assignment[clustering_j])
+                    w_clusterings[clustering_i][clustering_j] = ARI(consensus_assignment[:,clustering_i], consensus_assignment[:,clustering_j])
             print(w_clusterings)
+            w_clusterings = np.sum(w_clusterings, 1)
             w_clusterings[w_clusterings<0] = 0
             w_clusterings = np.array(w_clusterings) / np.sum(w_clusterings)
             print(w_clusterings)
+            print('')
 
             ## do censensus clustering
             consensus_scores = consensus_clustering(consensus_assignment.astype(int), n_clusters, cluster_weight=w_clusterings)
