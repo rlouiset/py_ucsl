@@ -433,6 +433,7 @@ class HYDRA(BaseML):
             self.intercept_lists[idx_outside_polytope][cluster_i][-1] = SVM_intercept.copy()
 
             if self.consensus in ['original', 'w_original'] :
+                print('ha')
                 directions = np.array([self.coefficients[idx_outside_polytope][cluster_i][0] for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])])
                 intercepts = np.array([self.intercepts[idx_outside_polytope][cluster_i][0] for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])])
 
