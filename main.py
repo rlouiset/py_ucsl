@@ -354,11 +354,12 @@ class HYDRA(BaseML):
 
         if self.consensus == 'w_original':
             ## clustering relevancy
-            w_clusterings = [0]*consensus_assignment.shape[1]
+            w_clusterings = np.array([0]*consensus_assignment.shape[1])
             for clustering_i in range(len(w_clusterings)) :
                 for clustering_j in range(len(w_clusterings)) :
                     if clustering_j != clustering_i :
                         w_clusterings[clustering_i] += ARI(consensus_assignment[clustering_i], consensus_assignment[clustering_j])
+            w_clusterings[w_clusterings<0] = 0
             w_clusterings = np.array(w_clusterings) / np.sum(w_clusterings)
             print(w_clusterings)
 
