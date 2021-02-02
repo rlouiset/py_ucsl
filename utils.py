@@ -1,6 +1,7 @@
 import numpy as np
 import scipy
 from sklearn.cluster import KMeans
+from sklearn.mixture import GaussianMixture
 
 def one_hot_encode(y):
     ''' utils function in order to turn a label vector into a one hot encoded matrix '''
@@ -184,5 +185,40 @@ def consensus_clustering(clustering_results, k, cluster_weight=None):
     ## create the kmean algorithm with sklearn
     kmeans = KMeans(n_clusters=k, n_init=20).fit(evector.real[:, 0: k])
     final_predict = kmeans.labels_
+
+    return final_predict
+
+
+def consensus_clustering_neg(clustering_results, k, index_positives, cluster_weight=None):
+    n = clustering_results.shape[0]
+    cooccurence_matrix = np.zeros((n, n))
+
+    for i in range(n - 1):
+        for j in range(i + 1, n):
+            if cluster_weight is None :
+                cooccurence_matrix[i, j] = sum(clustering_results[i, :] == clustering_results[j, :])
+            else :
+                cooccurence_matrix[i, j] = sum( cluster_weight*(clustering_results[i, :] == clustering_results[j, :]).astype(np.int) )
+
+    cooccurence_matrix = np.add(cooccurence_matrix, cooccurence_matrix.transpose())
+    ## here is to compute the Laplacian matrix
+    Laplacian = np.subtract(np.diag(np.sum(cooccurence_matrix, axis=1)), cooccurence_matrix)
+
+    Laplacian_norm = np.subtract(np.eye(n), np.matmul(
+        np.matmul(np.diag(1 / np.sqrt(np.sum(cooccurence_matrix, axis=1))), cooccurence_matrix),
+        np.diag(1 / np.sqrt(np.sum(cooccurence_matrix, axis=1)))))
+    ## replace the nan with 0
+    Laplacian_norm = np.nan_to_num(Laplacian_norm)
+
+    ## check if the Laplacian norm is symmetric or not, because matlab eig function will automatically check this, but not in numpy or scipy
+    evalue, evector = scipy.linalg.eigh(Laplacian_norm)
+
+    ## check if the eigen vector is complex
+    if np.any(np.iscomplex(evector)):
+        evalue, evector = scipy.linalg.eigh(Laplacian)
+
+    ## create the kmean algorithm with sklearn
+    gmm = GaussianMixture(n_components=k).fit(evector.real[index_positives, 0: k])
+    final_predict = gmm.predict_proba(evector.real[:, 0: k])
 
     return final_predict
