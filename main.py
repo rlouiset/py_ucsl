@@ -352,11 +352,17 @@ class HYDRA(BaseML):
             S[index_positives, :] *= 0
             S[index_positives, consensus_scores] = 1
 
-        if self.consensus == 'woriginal':
+        if self.consensus == 'w_original':
             ## clustering relevancy
+            w_clusterings = [0]*consensus_assignment.shape[1]
+            for clustering_i in range(len(w_clusterings)) :
+                for clustering_j in range(len(w_clusterings)) :
+                    if clustering_j != clustering_i :
+                        w_clusterings[clustering_i] += ARI(consensus_assignment[clustering_i], consensus_assignment[clustering_j])
+            w_clusterings = np.array(w_clusterings) / np.sum(w_clusterings)
 
             ## do censensus clustering
-            consensus_scores = consensus_clustering(consensus_assignment.astype(int), n_clusters)
+            consensus_scores = consensus_clustering(consensus_assignment.astype(int), n_clusters, cluster_weight=w_clusterings)
             ## after deciding the final convex polytope, we refit the training data once to save the best model
             S = np.ones((len(y_polytope), n_clusters)) / n_clusters
             ## change the weight of positivess to be 1, negatives to be 1/_clusters

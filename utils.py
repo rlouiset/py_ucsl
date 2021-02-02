@@ -153,13 +153,16 @@ def elem_sym_poly(lambda_value, k):
 
     return E
 
-def consensus_clustering(clustering_results, k):
+def consensus_clustering(clustering_results, k, cluster_weight=None):
     num_pt = clustering_results.shape[0]
     cooccurence_matrix = np.zeros((num_pt, num_pt))
 
     for i in range(num_pt - 1):
         for j in range(i + 1, num_pt):
-            cooccurence_matrix[i, j] = sum(clustering_results[i, :] == clustering_results[j, :])
+            if cluster_weight is None :
+                cooccurence_matrix[i, j] = sum(clustering_results[i, :] == clustering_results[j, :])
+            else :
+                cooccurence_matrix[i, j] = sum( cluster_weight*(clustering_results[i, :] == clustering_results[j, :]).astype(np.int) )
 
     cooccurence_matrix = np.add(cooccurence_matrix, cooccurence_matrix.transpose())
     ## here is to compute the Laplacian matrix
