@@ -360,6 +360,7 @@ class HYDRA(BaseML):
                     if clustering_j != clustering_i :
                         w_clusterings[clustering_i] += ARI(consensus_assignment[clustering_i], consensus_assignment[clustering_j])
             w_clusterings = np.array(w_clusterings) / np.sum(w_clusterings)
+            print(w_clusterings)
 
             ## do censensus clustering
             consensus_scores = consensus_clustering(consensus_assignment.astype(int), n_clusters, cluster_weight=w_clusterings)
@@ -433,7 +434,6 @@ class HYDRA(BaseML):
             self.intercept_lists[idx_outside_polytope][cluster_i][-1] = SVM_intercept.copy()
 
         if self.consensus in ['original', 'w_original'] :
-            print('ha')
             directions = np.array([self.coefficients[idx_outside_polytope][cluster_i][0] for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])])
             intercepts = np.array([self.intercepts[idx_outside_polytope][cluster_i][0] for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])])
 
