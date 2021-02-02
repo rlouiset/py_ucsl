@@ -388,10 +388,11 @@ class HYDRA(BaseML):
             y_clustering_positives = consensus_clustering(consensus_assignment.astype(int), n_clusters, cluster_weight=w_clusterings)
             X_positives = X[index_positives]
 
-            mean_directions = []
-            mean_intercept = []
+            #mean_directions = []
+            #mean_intercept = []
 
             converged = False
+            max_ARI = 0
             for consensus_i in range(self.n_consensus) :
                 directions_i = consensus_direction[consensus_i]
                 intercept_i = consensus_intercepts[consensus_i]
@@ -405,20 +406,18 @@ class HYDRA(BaseML):
                 pred_positives_i = np.rint(sigmoid(distances_positives_i)).astype(np.int)
 
                 ARI_i = ARI(pred_positives_i, y_clustering_positives)
-                if ARI_i > 0.1 :
+
+                if ARI_i > max_ARI :
+                    max_ARI = ARI_i
+                    self.mean_direction[idx_outside_polytope] = mean_direction_i
+                    self.mean_intercept[idx_outside_polytope] = intercept_i
+                '''if ARI_i > 0.1 :
                     converged = True
                     mean_intercept.append(intercept_i)
                     if np.mean(distances_positives_i[y_clustering_positives==1]) > 0 :
                         mean_directions.append(mean_direction_i)
                     else :
-                        mean_directions.append(-mean_direction_i)
-
-            if not converged :
-                print('not converged')
-                mean_directions = consensus_direction.copy()
-                mean_directions = mean_directions / (np.linalg.norm(mean_directions, axis=2)**2)[:, :, None]
-                mean_directions = mean_directions[0] - mean_directions[1]
-                mean_intercept = consensus_intercepts.copy()
+                        mean_directions.append(-mean_direction_i)'''
 
             self.mean_direction[idx_outside_polytope] = np.mean(np.array(mean_directions), 0)
             self.mean_intercept[idx_outside_polytope] = np.mean(np.array(mean_intercept), 0)
