@@ -218,7 +218,7 @@ def consensus_clustering_neg(clustering_results, k, cluster_weight=None):
         evalue, evector = scipy.linalg.eigh(Laplacian)
 
     ## create the kmean algorithm with sklearn
-    kmeans = KMeans(n_components=k).fit(evector.real[:, 0: k])
+    kmeans = KMeans(n_clusters=k).fit(evector.real[:, 0: k])
     final_predict = kmeans.labels_
 
     return final_predict
