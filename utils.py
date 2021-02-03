@@ -219,6 +219,6 @@ def consensus_clustering_neg(clustering_results, k, cluster_weight=None):
 
     ## create the kmean algorithm with sklearn
     kmeans = KMeans(n_clusters=k).fit(evector.real[:, 0: k])
-    final_predict = kmeans.labels_
+    final_predict = one_hot_encode(kmeans.labels_.astype(np.int))
 
     return final_predict
