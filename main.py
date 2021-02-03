@@ -351,7 +351,7 @@ class HYDRA(BaseML):
             for clustering_i in range(len(w_clusterings)) :
                 for clustering_j in range(len(w_clusterings)) :
                     if clustering_j != clustering_i :
-                        w_clusterings[clustering_i][clustering_j] = ARI(consensus_assignment[:,clustering_i], consensus_assignment[:,clustering_j])
+                        w_clusterings[clustering_i][clustering_j] = ARI(consensus_assignment[index_positives,clustering_i], consensus_assignment[index_positives,clustering_j])
             w_clusterings = np.sum(w_clusterings, 1)
             w_clusterings[w_clusterings<0] = 0
             w_clusterings = w_clusterings / np.sum(w_clusterings)
