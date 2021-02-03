@@ -196,6 +196,7 @@ class HYDRA(BaseML):
                 self.coef_lists[idx_outside_polytope][cluster_i][0] = SVM_coefficient.copy()
                 self.intercept_lists[idx_outside_polytope][cluster_i][0] = SVM_intercept.copy()
 
+            max_cc = 0
             for iter in range(self.n_iterations):
                 ## decide the convergence of the polytope based on the toleration
                 S_hold = S.copy()
@@ -215,7 +216,12 @@ class HYDRA(BaseML):
 
                 ## check the loss comparted to the tolorence for stopping criteria
                 cluster_consistency = ARI(np.argmax(S[index_positives],1), np.argmax(S_hold[index_positives],1))
-                if cluster_consistency > 0.8 :
+                if max_cc < cluster_consistency:
+                    max_cc = cluster_consistency
+                    best_SVM_coefficient = self.coefficients[idx_outside_polytope]
+                    best_mean_intercept = self.intercept_bank
+                    best_cluster_index = cluster_index
+                if cluster_consistency > 0.95 :
                     break
 
                 for cluster_i in range(n_clusters):
@@ -234,9 +240,9 @@ class HYDRA(BaseML):
                     self.intercept_lists[idx_outside_polytope][cluster_i][iter+1] = SVM_intercept.copy()
 
             ## update the cluster index for the consensus clustering
-            consensus_assignment[:, consensus_i] = cluster_index
-            consensus_direction.append([self.coefficients[idx_outside_polytope][cluster_i][0] for cluster_i in range(len(self.coefficients[idx_outside_polytope]))])
-            consensus_intercepts.append(self.intercept_bank)
+            consensus_assignment[:, consensus_i] = best_cluster_index
+            consensus_direction.append([best_SVM_coefficient[cluster_i][0] for cluster_i in range(len(best_SVM_coefficient))])
+            consensus_intercepts.append(best_mean_intercept)
 
         if n_consensus > 1 :
             self.apply_consensus(X, y_polytope, consensus_assignment, consensus_direction, consensus_intercepts, n_clusters, index_positives, index_negatives, idx_outside_polytope)
