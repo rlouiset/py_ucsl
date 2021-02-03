@@ -215,7 +215,7 @@ class HYDRA(BaseML):
 
                 ## check the loss comparted to the tolorence for stopping criteria
                 cluster_consistency = ARI(np.argmax(S[index_positives],1), np.argmax(S_hold[index_positives],1))
-                if cluster_consistency > 0.9 :
+                if cluster_consistency > 0.8 :
                     break
 
                 for cluster_i in range(n_clusters):
@@ -375,12 +375,10 @@ class HYDRA(BaseML):
             w_clusterings = w_clusterings / np.sum(w_clusterings)
 
             ## do censensus clustering
-            consensus_scores = consensus_clustering_neg(consensus_assignment.astype(int), n_clusters, index_positives, cluster_weight=w_clusterings)
+            consensus_scores = consensus_clustering_neg(consensus_assignment.astype(int), n_clusters, cluster_weight=w_clusterings)
             ## change the weight of positivess to be 1, negatives to be 1/_clusters
             # then set the positives' weight to be 1 for the assigned hyperplane
             S = consensus_scores.copy()
-            S[index_positives, :] *= 0
-            S[index_positives, np.argmax(consensus_scores[index_positives], 1)] = 1
 
 
         elif self.consensus == 'mean_hp':
