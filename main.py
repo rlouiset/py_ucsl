@@ -281,8 +281,7 @@ class HYDRA(BaseML):
             self.intercept_bank = mean_intercept
             ###
 
-            X_norm = X.copy()
-            X_proj = (np.matmul(mean_direction[None,:], X_norm.transpose()) + mean_intercept).transpose().squeeze()
+            X_proj = (np.matmul(mean_direction[None,:], X.transpose()) + mean_intercept).transpose().squeeze()
             X_proj = sigmoid(X_proj[:, None]*lambda_sigmoid/np.max(X_proj))
 
             Q = np.concatenate((1 - X_proj, X_proj), axis=1)
@@ -351,7 +350,7 @@ class HYDRA(BaseML):
             S[index_positives, :] *= 0
             S[index_positives, consensus_scores] = 1
 
-        if self.consensus == 'w_original':
+        if self.consensus in ['w_original', 'post_neg_w_original'] :
             ## clustering relevancy
             w_clusterings = np.zeros((consensus_assignment.shape[1], consensus_assignment.shape[1]))
             for clustering_i in range(len(w_clusterings)) :
@@ -387,7 +386,7 @@ class HYDRA(BaseML):
             S = consensus_scores.copy()
 
 
-        elif self.consensus == 'mean_hp':
+        elif self.consensus == 'best_hp':
             ## clustering relevancy
             w_clusterings = np.zeros((consensus_assignment.shape[1], consensus_assignment.shape[1]))
             for clustering_i in range(len(w_clusterings)) :
@@ -442,7 +441,7 @@ class HYDRA(BaseML):
             self.coef_lists[idx_outside_polytope][cluster_i][-1] = SVM_coefficient.copy()
             self.intercept_lists[idx_outside_polytope][cluster_i][-1] = SVM_intercept.copy()
 
-        if self.consensus in ['original', 'w_original', 'neg_w_original'] :
+        if self.consensus in ['original', 'w_original', 'neg_w_original', 'best_hp'] :
             directions = np.array([self.coefficients[idx_outside_polytope][cluster_i][0] for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])])
             intercepts = np.array([self.intercepts[idx_outside_polytope][cluster_i][0] for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])])
 
@@ -454,3 +453,34 @@ class HYDRA(BaseML):
             directions[1] = directions[1]*np.linalg.norm(directions[0])**2 / np.mean((np.linalg.norm(directions, axis=1)**2))
             self.mean_direction[idx_outside_polytope] = (directions[0] - directions[1])/2
             self.mean_intercept[idx_outside_polytope] = - np.mean(X[min_indices]@self.mean_direction[idx_outside_polytope])
+
+        if self.consensus == "post_neg_w_original" :
+            directions = np.array([self.coefficients[idx_outside_polytope][cluster_i][0] for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])])
+            intercepts = np.array([self.intercepts[idx_outside_polytope][cluster_i][0] for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])])
+
+            X_0 = (np.matmul(directions[0][None,:], X.transpose()) + intercepts[0]).transpose().squeeze()
+            X_1 = (np.matmul(directions[1][None,:], X.transpose()) + intercepts[1]).transpose().squeeze()
+            min_indices = np.argpartition(np.abs(X_0)+np.abs(X_1), 10)
+
+            directions[0] = directions[0]*np.linalg.norm(directions[1])**2 / np.mean((np.linalg.norm(directions, axis=1)**2))
+            directions[1] = directions[1]*np.linalg.norm(directions[0])**2 / np.mean((np.linalg.norm(directions, axis=1)**2))
+            self.mean_direction[idx_outside_polytope] = (directions[0] - directions[1])/2
+            self.mean_intercept[idx_outside_polytope] = - np.mean(X[min_indices]@self.mean_direction[idx_outside_polytope])
+
+            X_proj = (np.matmul(self.mean_direction[idx_outside_polytope][None,:], X.transpose()) + self.mean_intercept[idx_outside_polytope]).transpose().squeeze()
+            X_proj = sigmoid(X_proj[:, None]*5/np.max(X_proj))
+
+            S = np.concatenate((1 - X_proj, X_proj), axis=1)
+            cluster_index = np.argmax(S, 1)
+
+            S[index_positives, :] = 0
+            S[index_positives, cluster_index[index_positives]] = 1
+
+            for cluster_i in range(n_clusters):
+                cluster_weight = np.ascontiguousarray(S[:, cluster_i])
+                SVM_coefficient, SVM_intercept = self.launch_svc(X, y_polytope, cluster_weight, self.kernel)
+                self.coefficients[idx_outside_polytope][cluster_i] = SVM_coefficient
+                self.intercepts[idx_outside_polytope][cluster_i] = SVM_intercept
+
+                self.coef_lists[idx_outside_polytope][cluster_i][-1] = SVM_coefficient.copy()
+                self.intercept_lists[idx_outside_polytope][cluster_i][-1] = SVM_intercept.copy()
