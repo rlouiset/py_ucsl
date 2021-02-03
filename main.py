@@ -204,8 +204,6 @@ class HYDRA(BaseML):
 
                 if self.clustering_strategy in ['original', 'nw_mean_hp']:
                     S[index_negatives, :] = 1/n_clusters
-                #if self.consensus in ['original', 'w_original']:
-                #    S[index_negatives, :] = 1/n_clusters
                 S[index_positives, :] = 0
                 S[index_positives, cluster_index[index_positives]] = 1
 
@@ -217,7 +215,7 @@ class HYDRA(BaseML):
 
                 ## check the loss comparted to the tolorence for stopping criteria
                 cluster_consistency = ARI(np.argmax(S[index_positives],1), np.argmax(S_hold[index_positives],1))
-                if cluster_consistency > 0.8 :
+                if cluster_consistency > 0.9 :
                     break
 
                 for cluster_i in range(n_clusters):

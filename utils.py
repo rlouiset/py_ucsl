@@ -189,7 +189,7 @@ def consensus_clustering(clustering_results, k, cluster_weight=None):
     return final_predict
 
 
-def consensus_clustering_neg(clustering_results, k, index_positives, cluster_weight=None):
+def consensus_clustering_neg(clustering_results, k, cluster_weight=None):
     n = clustering_results.shape[0]
     cooccurence_matrix = np.zeros((n, n))
 
@@ -218,7 +218,7 @@ def consensus_clustering_neg(clustering_results, k, index_positives, cluster_wei
         evalue, evector = scipy.linalg.eigh(Laplacian)
 
     ## create the kmean algorithm with sklearn
-    gmm = GaussianMixture(n_components=k).fit(evector.real[index_positives, 0: k])
-    final_predict = gmm.predict_proba(evector.real[:, 0: k])
+    kmeans = KMeans(n_components=k).fit(evector.real[:, 0: k])
+    final_predict = kmeans.labels_
 
     return final_predict
