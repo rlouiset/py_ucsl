@@ -206,7 +206,7 @@ class HYDRA(BaseML):
                 S_hold = S.copy()
                 S, cluster_index = self.update_S(X, y, S, index_positives, cluster_index, idx_outside_polytope)
                 self.S_lists[idx_outside_polytope][1+iter]=S.copy()
-                self.S_momentum[idx_outside_polytope] = (0.99*S+0.01*self.S_momentum[idx_outside_polytope])
+                self.S_momentum[idx_outside_polytope] = (0.5*S+0.5*self.S_momentum[idx_outside_polytope])
 
                 if self.clustering_strategy in ['original', 'nw_mean_hp']:
                     S[index_negatives, :] = 1/n_clusters
