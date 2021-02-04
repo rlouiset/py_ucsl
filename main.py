@@ -261,6 +261,17 @@ class HYDRA(BaseML):
                  svm_scores[:, cluster_i] = 1+(np.matmul(self.coefficients[idx_outside_polytope][cluster_i], X.transpose()) + self.intercepts[idx_outside_polytope][cluster_i]).transpose().squeeze()
             Q = py_softmax(svm_scores, 1)
 
+        if self.clustering_strategy == 'k_means' :
+            X_proj = np.zeros(X.shape)
+            for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope]):
+                w_cluster_i = self.coefficients[idx_outside_polytope][cluster_i]
+                b_cluster_i = self.intercepts[idx_outside_polytope][cluster_i]
+                w_cluster_i_norm = w_cluster_i / np.linalg.norm(w_cluster_i) ** 2
+                X_proj_i = X - (X @ w_cluster_i[0] + b_cluster_i) * w_cluster_i_norm
+                X_proj += S[:, cluster_i] * X_proj_i
+            print(X_proj.shape)
+            Q = KMeans(n_clusters=self.n_clusters_per_label[idx_outside_polytope]).fit_predict(X_proj)
+
 
         elif self.clustering_strategy in ['mean_hp', 'nw_mean_hp']:
             directions = np.array([self.coefficients[idx_outside_polytope][cluster_i][0] for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])])
