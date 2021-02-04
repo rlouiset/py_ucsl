@@ -189,6 +189,7 @@ class HYDRA(BaseML):
             ## depending on the weight initialization strategy, random hyperplanes were initialized with maximum diversity to constitute the convex polytope
             S, cluster_index = self.init_S(X, y_polytope, index_positives, index_negatives, n_clusters, idx_outside_polytope, initialization_type=self.initialization_type)
             self.S_lists[idx_outside_polytope][0]=S.copy()
+            self.S_momentum[idx_outside_polytope]=S.copy()
 
             for cluster_i in range(n_clusters):
                 cluster_i_weight = np.ascontiguousarray(S[:, cluster_i])
@@ -205,6 +206,7 @@ class HYDRA(BaseML):
                 S_hold = S.copy()
                 S, cluster_index = self.update_S(X, y, S, index_positives, cluster_index, idx_outside_polytope)
                 self.S_lists[idx_outside_polytope][1+iter]=S.copy()
+                self.S_momentum[idx_outside_polytope] = (0.9*S+0.1*self.S_momentum[idx_outside_polytope])
 
                 if self.clustering_strategy in ['original', 'nw_mean_hp']:
                     S[index_negatives, :] = 1/n_clusters
@@ -225,8 +227,8 @@ class HYDRA(BaseML):
                     best_mean_intercept = self.intercept_bank
                     best_cluster_index = cluster_index
                 print(cluster_consistency)
-                #if cluster_consistency > 0.95 :
-                #    break
+                if cluster_consistency > 0.95 :
+                    break
 
                 for cluster_i in range(n_clusters):
                     if np.count_nonzero(S[index_positives, cluster_i]) == 0 :
@@ -273,14 +275,16 @@ class HYDRA(BaseML):
                 b_cluster_i = self.intercepts[idx_outside_polytope][cluster_i]
                 w_cluster_i_norm = w_cluster_i / np.linalg.norm(w_cluster_i) ** 2
                 X_proj_i = X - (X @ w_cluster_i.T + b_cluster_i) * np.repeat(w_cluster_i_norm, X.shape[0], axis=0)
-                X_proj += S[:, cluster_i][:,None] * X_proj_i
+                X_proj += self.S_momentum[idx_outside_polytope][:,cluster_i][:,None] * X_proj_i
             self.X_proj_list[idx_outside_polytope].append(X_proj.copy())
-            centroids = [np.mean(S[index, cluster_i][:,None]*X_proj[index,:], 0) for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])]
-            print(centroids)
+            #centroids = [np.mean(S[index, cluster_i][:,None]*X_proj[index,:], 0) for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])]
             #for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope]):
             #    centroid_scores[:,cluster_i] = np.linalg.norm((X_proj-centroids[cluster_i]), axis=1)
             GMM = GaussianMixture(n_components=2).fit(X_proj[index])
             Q = GMM.predict_proba(X_proj)
+            if balanced_accuracy_score(np.argmax(Q, 1), np.argmax(S, 1)) < 0.5  :
+                Q = 1-Q
+
 
 
         elif self.clustering_strategy in ['mean_hp', 'nw_mean_hp']:
