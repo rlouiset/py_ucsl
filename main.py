@@ -45,8 +45,6 @@ class HYDRA(BaseML):
         self.coef_lists = {label:{cluster_i:dict() for cluster_i in range(n_clusters_per_label[label])} for label in self.labels}
         self.intercept_lists = {label:{cluster_i:dict() for cluster_i in range(n_clusters_per_label[label])} for label in self.labels}
 
-        self.S_momentum = {label:None for label in self.labels}
-
         self.mean_direction={label:None for label in self.labels}
         self.mean_intercept = {label:0 for label in self.labels}
         self.intercept_bank = 0
@@ -206,7 +204,6 @@ class HYDRA(BaseML):
                 S_hold = S.copy()
                 S, cluster_index = self.update_S(X, y, S, index_positives, cluster_index, idx_outside_polytope)
                 self.S_lists[idx_outside_polytope][1+iter]=S.copy()
-                self.S_momentum[idx_outside_polytope] = (0.99*S+0.01*self.S_momentum[idx_outside_polytope])
 
                 if self.clustering_strategy in ['original', 'nw_mean_hp']:
                     S[index_negatives, :] = 1/n_clusters
