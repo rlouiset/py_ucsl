@@ -281,7 +281,7 @@ class HYDRA(BaseML):
             #for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope]):
             #    centroid_scores[:,cluster_i] = np.linalg.norm((X_proj-centroids[cluster_i]), axis=1)
             KM = KMeans(n_clusters=2, init=np.array(centroids), n_init=1).fit(X_proj[index])
-            Q = KM.predict(X_proj)
+            Q = one_hot_encode(KM.predict(X_proj))
 
 
 
