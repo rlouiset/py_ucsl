@@ -270,7 +270,8 @@ class HYDRA(BaseML):
                 X_proj_i = X - (X @ w_cluster_i.T + b_cluster_i) * np.repeat(w_cluster_i_norm, X.shape[0], axis=0)
                 X_proj += S[:, cluster_i][:, None] * X_proj_i
             print(X_proj.shape)
-            Q = KMeans(n_clusters=self.n_clusters_per_label[idx_outside_polytope]).fit_predict(X_proj)
+            KM = KMeans(n_clusters=self.n_clusters_per_label[idx_outside_polytope]).fit(X_proj)
+            Q = one_hot_encode(KM.labels_)
 
 
         elif self.clustering_strategy in ['mean_hp', 'nw_mean_hp']:
