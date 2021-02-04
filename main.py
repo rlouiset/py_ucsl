@@ -267,12 +267,7 @@ class HYDRA(BaseML):
                 w_cluster_i = self.coefficients[idx_outside_polytope][cluster_i]
                 b_cluster_i = self.intercepts[idx_outside_polytope][cluster_i]
                 w_cluster_i_norm = w_cluster_i / np.linalg.norm(w_cluster_i) ** 2
-                print(X.shape)
-                print(w_cluster_i_norm.shape)
-                print((X @ w_cluster_i.T).shape)
-                print(b_cluster_i.shape)
-                print(np.repeat(w_cluster_i_norm, X.shape[0]).shape)
-                X_proj_i = X - (X @ w_cluster_i.T + b_cluster_i)[:,0] * np.repeat(w_cluster_i_norm, X.shape[0], axis=0)
+                X_proj_i = X - (X @ w_cluster_i.T + b_cluster_i) * np.repeat(w_cluster_i_norm, X.shape[0], axis=0)
                 X_proj += S[:, cluster_i] * X_proj_i
             print(X_proj.shape)
             Q = KMeans(n_clusters=self.n_clusters_per_label[idx_outside_polytope]).fit_predict(X_proj)
