@@ -274,9 +274,10 @@ class HYDRA(BaseML):
                 X_proj += 0.5 * X_proj_i
             self.X_proj_list[idx_outside_polytope].append(X_proj.copy())
             centroids = [np.mean(S[index, cluster_i][:,None]*X_proj[index,:], 0) for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])]
+            print(centroids)
             for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope]):
                 centroid_scores[:,cluster_i] = np.linalg.norm((X_proj-centroids[cluster_i]), axis=1)
-            Q = py_softmax(1/centroid_scores, 1)
+            Q = py_softmax(-centroid_scores, 1)
 
 
         elif self.clustering_strategy in ['mean_hp', 'nw_mean_hp']:
