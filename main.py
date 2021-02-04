@@ -275,15 +275,13 @@ class HYDRA(BaseML):
                 b_cluster_i = self.intercepts[idx_outside_polytope][cluster_i]
                 w_cluster_i_norm = w_cluster_i / np.linalg.norm(w_cluster_i) ** 2
                 X_proj_i = X - (X @ w_cluster_i.T + b_cluster_i) * np.repeat(w_cluster_i_norm, X.shape[0], axis=0)
-                X_proj += self.S_momentum[idx_outside_polytope][:,cluster_i][:,None] * X_proj_i
+                X_proj += 0.5 * X_proj_i
             self.X_proj_list[idx_outside_polytope].append(X_proj.copy())
-            #centroids = [np.mean(S[index, cluster_i][:,None]*X_proj[index,:], 0) for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])]
+            centroids = [np.mean(S[index, cluster_i][:,None]*X_proj[index,:], 0) for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])]
             #for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope]):
             #    centroid_scores[:,cluster_i] = np.linalg.norm((X_proj-centroids[cluster_i]), axis=1)
-            GMM = GaussianMixture(n_components=2).fit(X_proj[index])
-            Q = GMM.predict_proba(X_proj)
-            if balanced_accuracy_score(np.argmax(Q, 1), np.argmax(S, 1)) < 0.5  :
-                Q = 1-Q
+            KM = KMeans(n_clusters=2, init=np.array(centroids), n_init=1).fit(X_proj[index])
+            Q = KM.predict(X_proj)
 
 
 
