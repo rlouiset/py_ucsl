@@ -227,8 +227,8 @@ class HYDRA(BaseML):
                     best_mean_intercept = self.intercept_bank
                     best_cluster_index = cluster_index
                 print(cluster_consistency)
-                if cluster_consistency > 0.95 :
-                    break
+                #if cluster_consistency > 0.95 :
+                #    break
 
                 for cluster_i in range(n_clusters):
                     if np.count_nonzero(S[index_positives, cluster_i]) == 0 :
