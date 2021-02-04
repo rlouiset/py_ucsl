@@ -269,8 +269,8 @@ class HYDRA(BaseML):
                 w_cluster_i_norm = w_cluster_i / np.linalg.norm(w_cluster_i) ** 2
                 X_proj_i = X - (X @ w_cluster_i.T + b_cluster_i) * np.repeat(w_cluster_i_norm, X.shape[0], axis=0)
                 X_proj += S[:, cluster_i][:, None] * X_proj_i
-            KM = KMeans(n_clusters=self.n_clusters_per_label[idx_outside_polytope]).fit(X_proj)
-            Q = one_hot_encode(KM.labels_)
+            GMM = GaussianMixture(n_components=self.n_clusters_per_label[idx_outside_polytope]).fit(X_proj[index])
+            Q = GMM.predict_proba(X_proj)
 
 
         elif self.clustering_strategy in ['mean_hp', 'nw_mean_hp']:
