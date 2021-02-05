@@ -357,7 +357,7 @@ class HYDRA(BaseML):
 
         return SVM_coefficient, SVM_intercept
 
-    def launch_rvc(self, X, y, sample_weight, kernel) :
+    #def launch_rvc(self, X, y, sample_weight, kernel) :
 
     def apply_consensus(self, X, y_polytope, consensus_assignment, consensus_direction, consensus_intercepts, n_clusters, index_positives,
                         index_negatives, idx_outside_polytope):
