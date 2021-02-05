@@ -217,11 +217,6 @@ class HYDRA(BaseML):
 
                 ## check the loss comparted to the tolorence for stopping criteria
                 cluster_consistency = ARI(np.argmax(S[index_positives],1), np.argmax(S_hold[index_positives],1))
-                if max_cc < cluster_consistency:
-                    max_cc = cluster_consistency
-                    best_SVM_coefficient = self.coefficients[idx_outside_polytope]
-                    best_mean_intercept = self.intercept_bank
-                    best_cluster_index = cluster_index
                 print(cluster_consistency)
                 if cluster_consistency > 0.95 :
                     break
@@ -240,11 +235,6 @@ class HYDRA(BaseML):
 
                     self.coef_lists[idx_outside_polytope][cluster_i][iter+1] = SVM_coefficient.copy()
                     self.intercept_lists[idx_outside_polytope][cluster_i][iter+1] = SVM_intercept.copy()
-
-            ## update the cluster index for the consensus clustering
-            consensus_assignment[:, consensus_i] = best_cluster_index
-            consensus_direction.append([best_SVM_coefficient[cluster_i][0] for cluster_i in range(len(best_SVM_coefficient))])
-            consensus_intercepts.append(best_mean_intercept)
 
         if n_consensus > 1 :
             self.apply_consensus(X, y_polytope, consensus_assignment, consensus_direction, consensus_intercepts, n_clusters, index_positives, index_negatives, idx_outside_polytope)
@@ -266,12 +256,23 @@ class HYDRA(BaseML):
         if self.clustering_strategy == 'k_means' :
             X_proj = np.zeros(X.shape)
             #centroid_scores = np.zeros((S.shape))
+            '''
             for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope]):
                 w_cluster_i = self.coefficients[idx_outside_polytope][cluster_i]
                 b_cluster_i = self.intercepts[idx_outside_polytope][cluster_i]
                 w_cluster_i_norm = w_cluster_i / np.linalg.norm(w_cluster_i) ** 2
                 X_proj_i = X - (X @ w_cluster_i.T + b_cluster_i) * np.repeat(w_cluster_i_norm, X.shape[0], axis=0)
                 X_proj += 0.5 * X_proj_i
+            '''
+            directions = np.array(self.coefficients[idx_outside_polytope])
+            basis = []
+            for v in directions:
+                w = v - np.sum(np.dot(v, b) * b for b in basis)
+                if (w > 1e-10).any():
+                    basis.append(w / np.linalg.norm(w))
+            basis = np.array(basis)
+            X_proj = X @ basis
+
             self.X_proj_list[idx_outside_polytope].append(X_proj.copy())
             centroids = [np.mean(S[index, cluster_i][:,None]*X_proj[index,:], 0) for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])]
             #for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope]):
