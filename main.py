@@ -170,7 +170,6 @@ class HYDRA(BaseML):
 
     def run(self, X, y, idx_outside_polytope):
         n_clusters = self.n_clusters_per_label[idx_outside_polytope]
-        print(n_clusters)
         n_consensus = self.n_consensus if (n_clusters > 1) else 1
         ## put the label idx_center_polytope at the center of the polytope by setting it to positive labels
         y_polytope = np.copy(y)
