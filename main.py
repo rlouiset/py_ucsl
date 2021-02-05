@@ -198,7 +198,7 @@ class HYDRA(BaseML):
 
                     self.coef_lists[idx_outside_polytope][cluster_i][0] = SVM_coefficient.copy()
                     self.intercept_lists[idx_outside_polytope][cluster_i][0] = SVM_intercept.copy()
-                elif self.clustering_strategy == "k_means":
+                elif self.clustering_strategy == "kernelized_k_means":
                     rvc_clf_i = self.launch_rvc(X, y_polytope, cluster_i_weight, kernel=self.kernel)
 
             for iter in range(self.n_iterations):
