@@ -252,6 +252,8 @@ class HYDRA(BaseML):
 
         if self.clustering_strategy == 'k_means' :
             directions = [self.coefficients[idx_outside_polytope][cluster_i][0] for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])]
+            shuffled_idx = np.random.permutation(len(directions))
+            directions = np.array(directions)[shuffled_idx]
             basis = []
             for v in directions:
                 w = v - np.sum(np.dot(v, b) * b for b in basis)
