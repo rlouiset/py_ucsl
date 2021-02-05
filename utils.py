@@ -3,10 +3,12 @@ import scipy
 from sklearn.cluster import KMeans
 from sklearn.mixture import GaussianMixture
 
-def one_hot_encode(y):
+def one_hot_encode(y, n_classes=None):
     ''' utils function in order to turn a label vector into a one hot encoded matrix '''
+    if n_classes is None :
+        n_classes = np.max(y)+1
     y_one_hot = np.copy(y)
-    return np.eye(np.max(y_one_hot)+1)[y_one_hot]
+    return np.eye(n_classes)[y_one_hot]
 
 def sigmoid(x):
     return 1 / (1 + np.exp(-x))
