@@ -217,7 +217,7 @@ class HYDRA(BaseML):
 
                 ## check the loss comparted to the tolorence for stopping criteria
                 cluster_consistency = ARI(np.argmax(S[index_positives],1), np.argmax(S_hold[index_positives],1))
-                print(cluster_consistency)
+                #print(cluster_consistency)
                 if cluster_consistency > 0.95 :
                     break
 
@@ -271,7 +271,6 @@ class HYDRA(BaseML):
                 if len(basis)<self.n_clusters_per_label[idx_outside_polytope] or (w > 1e-10).any():
                     basis.append(w / np.linalg.norm(w))
             basis = np.array(basis)
-            print(basis.shape)
             X_proj = X @ basis.T
 
             self.X_proj_list[idx_outside_polytope].append(X_proj.copy())
