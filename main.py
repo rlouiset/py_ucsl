@@ -191,7 +191,7 @@ class HYDRA(BaseML):
 
             for cluster_i in range(n_clusters):
                 cluster_i_weight = np.ascontiguousarray(S[:, cluster_i])
-                if self.clustering_strategy == "k_means" :
+                if self.clustering_strategy in ["k_means", 'original'] :
                     SVM_coefficient, SVM_intercept = self.launch_svc(X, y_polytope, cluster_i_weight, kernel=self.kernel)
                     self.coefficients[idx_outside_polytope][cluster_i] = SVM_coefficient
                     self.intercepts[idx_outside_polytope][cluster_i] = SVM_intercept
@@ -251,9 +251,7 @@ class HYDRA(BaseML):
             Q = py_softmax(svm_scores, 1)
 
         if self.clustering_strategy == 'k_means' :
-            directions = np.array([self.coefficients[idx_outside_polytope][cluster_i][0] for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])])
-            #shuffler = np.random.permutation(len(directions))
-            #directions = directions[shuffler]
+            directions = [self.coefficients[idx_outside_polytope][cluster_i][0] for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])]
             basis = []
             for v in directions:
                 w = v - np.sum(np.dot(v, b) * b for b in basis)
@@ -266,7 +264,7 @@ class HYDRA(BaseML):
             centroids = [np.mean(S[index, cluster_i][:,None]*X_proj[index,:], 0) for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])]
             #for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope]):
             #    centroid_scores[:,cluster_i] = np.linalg.norm((X_proj-centroids[cluster_i]), axis=1)
-            KM = KMeans(n_clusters=self.n_clusters_per_label[idx_outside_polytope], init=np.array(centroids), n_init=1).fit(X_proj[index])
+            KM = KMeans(n_clusters=self.n_clusters_per_label[idx_outside_polytope], init=np.array(centroids), n_init=1).fit(X_proj[index])  #
             Q = one_hot_encode(KM.predict(X_proj), n_classes=self.n_clusters_per_label[idx_outside_polytope])
 
         if self.clustering_strategy == 'kernelized_k_means' :
