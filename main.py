@@ -264,7 +264,7 @@ class HYDRA(BaseML):
                 X_proj_i = X - (X @ w_cluster_i.T + b_cluster_i) * np.repeat(w_cluster_i_norm, X.shape[0], axis=0)
                 X_proj += 0.5 * X_proj_i
             '''
-            directions = self.coefficients[idx_outside_polytope]
+            directions = [self.coefficients[idx_outside_polytope][cluster_i] for cluster_i in self.n_clusters_per_label[idx_outside_polytope]]
             print(directions)
             basis = []
             for v in directions:
