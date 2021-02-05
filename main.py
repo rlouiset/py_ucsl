@@ -251,7 +251,9 @@ class HYDRA(BaseML):
             Q = py_softmax(svm_scores, 1)
 
         if self.clustering_strategy == 'k_means' :
-            directions = [self.coefficients[idx_outside_polytope][cluster_i][0] for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])]
+            directions = np.array([self.coefficients[idx_outside_polytope][cluster_i][0] for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])])
+            shuffler = np.random.permutation(len(directions))
+            directions = directions[shuffler]
             basis = []
             for v in directions:
                 w = v - np.sum(np.dot(v, b) * b for b in basis)
@@ -261,6 +263,7 @@ class HYDRA(BaseML):
             X_proj = X @ basis.T
 
             self.X_proj_list[idx_outside_polytope].append(X_proj.copy())
+            S = S[:, shuffler]
             centroids = [np.mean(S[index, cluster_i][:,None]*X_proj[index,:], 0) for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])]
             #for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope]):
             #    centroid_scores[:,cluster_i] = np.linalg.norm((X_proj-centroids[cluster_i]), axis=1)
