@@ -7,6 +7,7 @@ from sklearn.metrics import accuracy_score
 from sklearn.svm import SVC
 from sklearn.cluster import KMeans
 from sklearn.metrics import adjusted_rand_score as ARI
+from sklearn_rvm import EMRVC
 from sklearn.mixture import GaussianMixture
 from sklearn.metrics import balanced_accuracy_score
 import cvxpy as cp
@@ -190,12 +191,15 @@ class HYDRA(BaseML):
 
             for cluster_i in range(n_clusters):
                 cluster_i_weight = np.ascontiguousarray(S[:, cluster_i])
-                SVM_coefficient, SVM_intercept = self.launch_svc(X, y_polytope, cluster_i_weight, kernel=self.kernel)
-                self.coefficients[idx_outside_polytope][cluster_i] = SVM_coefficient
-                self.intercepts[idx_outside_polytope][cluster_i] = SVM_intercept
+                if self.clustering_strategy == "k_means" :
+                    SVM_coefficient, SVM_intercept = self.launch_svc(X, y_polytope, cluster_i_weight, kernel=self.kernel)
+                    self.coefficients[idx_outside_polytope][cluster_i] = SVM_coefficient
+                    self.intercepts[idx_outside_polytope][cluster_i] = SVM_intercept
 
-                self.coef_lists[idx_outside_polytope][cluster_i][0] = SVM_coefficient.copy()
-                self.intercept_lists[idx_outside_polytope][cluster_i][0] = SVM_intercept.copy()
+                    self.coef_lists[idx_outside_polytope][cluster_i][0] = SVM_coefficient.copy()
+                    self.intercept_lists[idx_outside_polytope][cluster_i][0] = SVM_intercept.copy()
+                elif self.clustering_strategy == "k_means":
+                    rvc_clf_i = self.launch_rvc(X, y_polytope, cluster_i_weight, kernel=self.kernel)
 
             for iter in range(self.n_iterations):
                 ## decide the convergence of the polytope based on the toleration
@@ -251,7 +255,7 @@ class HYDRA(BaseML):
             basis = []
             for v in directions:
                 w = v - np.sum(np.dot(v, b) * b for b in basis)
-                if len(basis)<self.n_clusters_per_label[idx_outside_polytope] or (w > 1e-10).any():
+                if len(basis)<2 or (w > 1e-10).any():
                     basis.append(w / np.linalg.norm(w))
             basis = np.array(basis)
             X_proj = X @ basis.T
@@ -357,7 +361,9 @@ class HYDRA(BaseML):
 
         return SVM_coefficient, SVM_intercept
 
-    #def launch_rvc(self, X, y, sample_weight, kernel) :
+    def launch_rvc(self, X, y, sample_weight) :
+        clf = EMRVC(kernel='rbf', gamma='scale').fit(X, y, sample_weight=sample_weight)
+        return clf
 
     def apply_consensus(self, X, y_polytope, consensus_assignment, consensus_direction, consensus_intercepts, n_clusters, index_positives,
                         index_negatives, idx_outside_polytope):
