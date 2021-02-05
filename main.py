@@ -252,12 +252,12 @@ class HYDRA(BaseML):
 
         if self.clustering_strategy == 'k_means' :
             directions = np.array([self.coefficients[idx_outside_polytope][cluster_i][0] for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])])
-            shuffler = np.random.permutation(len(directions))
-            directions = directions[shuffler]
+            #shuffler = np.random.permutation(len(directions))
+            #directions = directions[shuffler]
             basis = []
             for v in directions:
                 w = v - np.sum(np.dot(v, b) * b for b in basis)
-                if len(basis)<4 or (w > 1e-10).any():
+                if len(basis)<self.n_clusters_per_label[idx_outside_polytope] or (w > 1e-10).any():
                     basis.append(w / np.linalg.norm(w))
             basis = np.array(basis)
             X_proj = X @ basis.T
@@ -266,7 +266,7 @@ class HYDRA(BaseML):
             centroids = [np.mean(S[index, cluster_i][:,None]*X_proj[index,:], 0) for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])]
             #for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope]):
             #    centroid_scores[:,cluster_i] = np.linalg.norm((X_proj-centroids[cluster_i]), axis=1)
-            KM = KMeans(n_clusters=self.n_clusters_per_label[idx_outside_polytope]).fit(X_proj[index])  # , init=np.array(centroids), n_init=1
+            KM = KMeans(n_clusters=self.n_clusters_per_label[idx_outside_polytope], init=np.array(centroids), n_init=1).fit(X_proj[index])
             Q = one_hot_encode(KM.predict(X_proj), n_classes=self.n_clusters_per_label[idx_outside_polytope])
 
         if self.clustering_strategy == 'kernelized_k_means' :
