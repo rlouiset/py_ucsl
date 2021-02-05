@@ -171,6 +171,7 @@ class HYDRA(BaseML):
 
     def run(self, X, y, idx_outside_polytope):
         n_clusters = self.n_clusters_per_label[idx_outside_polytope]
+        print(n_clusters)
         n_consensus = self.n_consensus if (n_clusters > 1) else 1
         ## put the label idx_center_polytope at the center of the polytope by setting it to positive labels
         y_polytope = np.copy(y)
@@ -190,7 +191,9 @@ class HYDRA(BaseML):
             self.S_lists[idx_outside_polytope][0]=S.copy()
 
             for cluster_i in range(n_clusters):
+                print(cluster_i)
                 cluster_i_weight = np.ascontiguousarray(S[:, cluster_i])
+                print(cluster_i_weight[:10])
                 if self.clustering_strategy in ["k_means", 'original'] :
                     SVM_coefficient, SVM_intercept = self.launch_svc(X, y_polytope, cluster_i_weight, kernel=self.kernel)
                     self.coefficients[idx_outside_polytope][cluster_i] = SVM_coefficient
