@@ -268,7 +268,8 @@ class HYDRA(BaseML):
             basis = []
             for v in directions:
                 w = v - np.sum(np.dot(v, b) * b for b in basis)
-                basis.append(w / np.linalg.norm(w))
+                if len(basis)<self.n_clusters_per_label[idx_outside_polytope] or (w > 1e-10).any():
+                    basis.append(w / np.linalg.norm(w))
             basis = np.array(basis)
             print(basis.shape)
             X_proj = X @ basis.T
