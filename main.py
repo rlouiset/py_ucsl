@@ -197,7 +197,6 @@ class HYDRA(BaseML):
                 self.coef_lists[idx_outside_polytope][cluster_i][0] = SVM_coefficient.copy()
                 self.intercept_lists[idx_outside_polytope][cluster_i][0] = SVM_intercept.copy()
 
-            max_cc = 0
             for iter in range(self.n_iterations):
                 ## decide the convergence of the polytope based on the toleration
                 S_hold = S.copy()
@@ -208,12 +207,6 @@ class HYDRA(BaseML):
                     S[index_negatives, :] = 1/n_clusters
                 S[index_positives, :] = 0
                 S[index_positives, cluster_index[index_positives]] = 1
-
-                ## update barycenters
-                label_barycenters = np.zeros((S.shape[1], X.shape[1]))
-                for cluster_i in range(n_clusters):
-                    label_barycenters[cluster_i] = np.mean(X[index_positives] * S[index_positives, cluster_i][:, None],0)
-                self.barycenters[idx_outside_polytope] = label_barycenters
 
                 ## check the loss comparted to the tolorence for stopping criteria
                 cluster_consistency = ARI(np.argmax(S[index_positives],1), np.argmax(S_hold[index_positives],1))
@@ -254,16 +247,6 @@ class HYDRA(BaseML):
             Q = py_softmax(svm_scores, 1)
 
         if self.clustering_strategy == 'k_means' :
-            X_proj = np.zeros(X.shape)
-            #centroid_scores = np.zeros((S.shape))
-            '''
-            for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope]):
-                w_cluster_i = self.coefficients[idx_outside_polytope][cluster_i]
-                b_cluster_i = self.intercepts[idx_outside_polytope][cluster_i]
-                w_cluster_i_norm = w_cluster_i / np.linalg.norm(w_cluster_i) ** 2
-                X_proj_i = X - (X @ w_cluster_i.T + b_cluster_i) * np.repeat(w_cluster_i_norm, X.shape[0], axis=0)
-                X_proj += 0.5 * X_proj_i
-            '''
             directions = [self.coefficients[idx_outside_polytope][cluster_i][0] for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])]
             basis = []
             for v in directions:
@@ -280,7 +263,22 @@ class HYDRA(BaseML):
             KM = KMeans(n_clusters=self.n_clusters_per_label[idx_outside_polytope], init=np.array(centroids), n_init=1).fit(X_proj[index])  #
             Q = one_hot_encode(KM.predict(X_proj))
 
+        if self.clustering_strategy == 'kernelized_k_means' :
+            directions = [self.coefficients[idx_outside_polytope][cluster_i][0] for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])]
+            basis = []
+            for v in directions:
+                w = v - np.sum(np.dot(v, b) * b for b in basis)
+                if len(basis)<self.n_clusters_per_label[idx_outside_polytope] or (w > 1e-10).any():
+                    basis.append(w / np.linalg.norm(w))
+            basis = np.array(basis)
+            X_proj = X @ basis.T
 
+            self.X_proj_list[idx_outside_polytope].append(X_proj.copy())
+            centroids = [np.mean(S[index, cluster_i][:,None]*X_proj[index,:], 0) for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])]
+            #for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope]):
+            #    centroid_scores[:,cluster_i] = np.linalg.norm((X_proj-centroids[cluster_i]), axis=1)
+            KM = KMeans(n_clusters=self.n_clusters_per_label[idx_outside_polytope], init=np.array(centroids), n_init=1).fit(X_proj[index])  #
+            Q = one_hot_encode(KM.predict(X_proj))
 
         elif self.clustering_strategy in ['mean_hp', 'nw_mean_hp']:
             directions = np.array([self.coefficients[idx_outside_polytope][cluster_i][0] for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])])
@@ -358,6 +356,8 @@ class HYDRA(BaseML):
         SVM_intercept = SVC_clsf.intercept_
 
         return SVM_coefficient, SVM_intercept
+
+    def launch_rvc(self, X, y, sample_weight, kernel) :
 
     def apply_consensus(self, X, y_polytope, consensus_assignment, consensus_direction, consensus_intercepts, n_clusters, index_positives,
                         index_negatives, idx_outside_polytope):
