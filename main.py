@@ -237,7 +237,7 @@ class HYDRA(BaseML):
                     self.intercept_lists[idx_outside_polytope][cluster_i][iter+1] = SVM_intercept.copy()
 
             ## update the cluster index for the consensus clustering
-            consensus_assignment[:, consensus_i] = cluster_index[index_positives] + 1
+            consensus_assignment[:, consensus_i] = cluster_index + 1
             consensus_direction.append([self.coefficients[idx_outside_polytope][cluster_i][0] for cluster_i in range(len(self.coefficients[idx_outside_polytope]))])
             consensus_intercepts.append(self.intercept_bank)
 
