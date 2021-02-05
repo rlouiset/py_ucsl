@@ -257,7 +257,7 @@ class HYDRA(BaseML):
             basis = []
             for v in directions:
                 w = v - np.sum(np.dot(v, b) * b for b in basis)
-                if len(basis)<2 or (w > 1e-10).any():
+                if len(basis)<4 or (w > 1e-10).any():
                     basis.append(w / np.linalg.norm(w))
             basis = np.array(basis)
             X_proj = X @ basis.T
