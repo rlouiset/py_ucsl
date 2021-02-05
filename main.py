@@ -188,12 +188,12 @@ class HYDRA(BaseML):
         for consensus_i in range(n_consensus):
             ## depending on the weight initialization strategy, random hyperplanes were initialized with maximum diversity to constitute the convex polytope
             S, cluster_index = self.init_S(X, y_polytope, index_positives, index_negatives, n_clusters, idx_outside_polytope, initialization_type=self.initialization_type)
+            print(np.unique(cluster_index))
             self.S_lists[idx_outside_polytope][0]=S.copy()
 
             for cluster_i in range(n_clusters):
                 print(cluster_i)
                 cluster_i_weight = np.ascontiguousarray(S[:, cluster_i])
-                print(cluster_i_weight[:10])
                 if self.clustering_strategy in ["k_means", 'original'] :
                     SVM_coefficient, SVM_intercept = self.launch_svc(X, y_polytope, cluster_i_weight, kernel=self.kernel)
                     self.coefficients[idx_outside_polytope][cluster_i] = SVM_coefficient
@@ -202,7 +202,7 @@ class HYDRA(BaseML):
                     self.coef_lists[idx_outside_polytope][cluster_i][0] = SVM_coefficient.copy()
                     self.intercept_lists[idx_outside_polytope][cluster_i][0] = SVM_intercept.copy()
                 elif self.clustering_strategy == "kernelized_k_means":
-                    rvc_clf_i = self.launch_rvc(X, y_polytope, cluster_i_weight, kernel=self.kernel)
+                    rvc_clf_i = self.launch_rvc(X, y_polytope, cluster_i_weight)
 
             for iter in range(self.n_iterations):
                 ## decide the convergence of the polytope based on the toleration
@@ -236,6 +236,11 @@ class HYDRA(BaseML):
                     self.coef_lists[idx_outside_polytope][cluster_i][iter+1] = SVM_coefficient.copy()
                     self.intercept_lists[idx_outside_polytope][cluster_i][iter+1] = SVM_intercept.copy()
 
+            ## update the cluster index for the consensus clustering
+            consensus_assignment[:, consensus_i] = cluster_index[index_positives] + 1
+            consensus_direction.append([self.coefficients[idx_outside_polytope][cluster_i][0] for cluster_i in range(len(self.coefficients[idx_outside_polytope]))])
+            consensus_intercepts.append(self.intercept_bank)
+
         if n_consensus > 1 :
             self.apply_consensus(X, y_polytope, consensus_assignment, consensus_direction, consensus_intercepts, n_clusters, index_positives, index_negatives, idx_outside_polytope)
 
@@ -255,8 +260,6 @@ class HYDRA(BaseML):
 
         if self.clustering_strategy == 'k_means' :
             directions = [self.coefficients[idx_outside_polytope][cluster_i][0] for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])]
-            shuffled_idx = np.random.permutation(len(directions))
-            directions = np.array(directions)[shuffled_idx]
             basis = []
             for v in directions:
                 w = v - np.sum(np.dot(v, b) * b for b in basis)
@@ -326,7 +329,6 @@ class HYDRA(BaseML):
             return S, cluster_index
 
         S = np.ones((len(y_polytope), n_clusters)) / n_clusters
-        weight_samples = np.zeros((len(index_positives), S.shape[1]))
 
         if initialization_type == "DPP":  ##
             num_subject = y_polytope.shape[0]
@@ -349,9 +351,8 @@ class HYDRA(BaseML):
 
             l = np.minimum(prob - 1, 0)
             d = prob - 1
-            weight_samples = proportional_assign(l, d)
+            S = proportional_assign(l, d)
 
-        S = weight_samples.copy()  ## only replace the sample weight for positive samples
         cluster_index = np.argmax(S, axis=1)
 
         return S, cluster_index
