@@ -262,7 +262,7 @@ class HYDRA(BaseML):
             #for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope]):
             #    centroid_scores[:,cluster_i] = np.linalg.norm((X_proj-centroids[cluster_i]), axis=1)
             KM = KMeans(n_clusters=self.n_clusters_per_label[idx_outside_polytope], init=np.array(centroids), n_init=1).fit(X_proj[index])  #
-            Q = one_hot_encode(KM.predict(X_proj))
+            Q = one_hot_encode(KM.predict(X_proj), n_classes=self.n_clusters_per_label[idx_outside_polytope])
 
         if self.clustering_strategy == 'kernelized_k_means' :
             directions = [self.coefficients[idx_outside_polytope][cluster_i][0] for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])]
@@ -279,7 +279,7 @@ class HYDRA(BaseML):
             #for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope]):
             #    centroid_scores[:,cluster_i] = np.linalg.norm((X_proj-centroids[cluster_i]), axis=1)
             KM = KMeans(n_clusters=self.n_clusters_per_label[idx_outside_polytope], init=np.array(centroids), n_init=1).fit(X_proj[index])  #
-            Q = one_hot_encode(KM.predict(X_proj), n_classes=3)
+            Q = one_hot_encode(KM.predict(X_proj), n_classes=self.n_clusters_per_label[idx_outside_polytope])
 
         elif self.clustering_strategy in ['mean_hp', 'nw_mean_hp']:
             directions = np.array([self.coefficients[idx_outside_polytope][cluster_i][0] for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])])
