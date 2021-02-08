@@ -203,14 +203,6 @@ class HYDRA(BaseML):
                     self.coef_lists[idx_outside_polytope][cluster_i][0] = SVM_coefficient.copy()
                     self.intercept_lists[idx_outside_polytope][cluster_i][0] = SVM_intercept.copy()
 
-                elif self.clustering_strategy == "kernelized_k_means":
-                    SVM_coefficient, SVM_intercept = self.launch_svc(X, y_polytope, cluster_i_weight, kernel='rbf')
-                    self.coefficients[idx_outside_polytope][cluster_i] = SVM_coefficient
-                    self.intercepts[idx_outside_polytope][cluster_i] = SVM_intercept
-
-                    self.coef_lists[idx_outside_polytope][cluster_i][0] = SVM_coefficient.copy()
-                    self.intercept_lists[idx_outside_polytope][cluster_i][0] = SVM_intercept.copy()
-
             for iter in range(self.n_iterations):
                 ## decide the convergence of the polytope based on the toleration
                 S_hold = S.copy()
@@ -280,24 +272,6 @@ class HYDRA(BaseML):
             centroids = [np.mean(S[index, cluster_i][:,None]*X_proj[index,:], 0) for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])]
             KM = KMeans(n_clusters=self.n_clusters_per_label[idx_outside_polytope], init=np.array(centroids), n_init=1).fit(X_proj[index])
 
-            Q = one_hot_encode(KM.predict(X_proj), n_classes=self.n_clusters_per_label[idx_outside_polytope])
-
-
-        if self.clustering_strategy == 'kernelized_k_means' :
-            directions = [self.rvc[idx_outside_polytope][cluster_i].mu_ for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])]
-            basis = []
-            for v in directions:
-                w = v - np.sum(np.dot(v, b) * b for b in basis)
-                if len(basis)<self.n_clusters_per_label[idx_outside_polytope] or (w > 1e-10).any():
-                    basis.append(w / np.linalg.norm(w))
-            basis = np.array(basis)
-            X_proj = self.rvc[idx_outside_polytope][0].Phi_ @ basis.T
-
-            self.X_proj_list[idx_outside_polytope].append(X_proj.copy())
-            centroids = [np.mean(S[index, cluster_i][:,None]*X_proj[index,:], 0) for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])]
-            #for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope]):
-            #    centroid_scores[:,cluster_i] = np.linalg.norm((X_proj-centroids[cluster_i]), axis=1)
-            KM = KMeans(n_clusters=self.n_clusters_per_label[idx_outside_polytope], init=np.array(centroids), n_init=1).fit(X_proj[index])  #
             Q = one_hot_encode(KM.predict(X_proj), n_classes=self.n_clusters_per_label[idx_outside_polytope])
 
         elif self.clustering_strategy in ['mean_hp', 'nw_mean_hp']:
@@ -372,20 +346,14 @@ class HYDRA(BaseML):
         ## fit the different SVM/hyperplanes
         SVC_clsf.fit(X, y, sample_weight=sample_weight)
 
-        SVM_coefficient = SVC_clsf.coef_
-        SVM_intercept = SVC_clsf.intercept_[0]
-        '''
-
-        print(SVC_clsf._compute_kernel(X).shape)
-        print(np.sum(np.abs(X-SVC_clsf._compute_kernel(X))))
-        print(SVC_clsf.dual_coef_.shape)
+        #SVM_coefficient = SVC_clsf.coef_
+        #SVM_intercept = SVC_clsf.intercept_[0]
 
         X_support = X[SVC_clsf.support_]
         y_support = y[SVC_clsf.support_]
 
         SVM_coefficient = SVC_clsf.dual_coef_[0] @ np.einsum('i,ij->ij', y_support, X_support)
         SVM_intercept = SVC_clsf.intercept_[0]
-        '''
 
         return SVM_coefficient, SVM_intercept
 
