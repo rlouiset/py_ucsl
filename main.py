@@ -266,7 +266,7 @@ class HYDRA(BaseML):
                 if len(basis)<self.n_clusters_per_label[idx_outside_polytope] or (w > 1e-10).any():
                     basis.append(w / np.linalg.norm(w))
                     norms.append(np.linalg.norm(v))
-            basis = np.array(basis) * np.array(norms)
+            basis = np.array(basis) * np.array(norms)[:,None]
 
             if self.kernel == 'rbf' :
                 X_rbf = sklearn.metrics.pairwise.pairwise_kernels(X, metric='rbf', gamma=1 / (X.shape[1] * X.var()))
