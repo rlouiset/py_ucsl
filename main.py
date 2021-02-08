@@ -41,6 +41,8 @@ class HYDRA(BaseML):
         self.coefficients = {label:{cluster_i:None for cluster_i in range(n_clusters_per_label[label])} for label in self.labels}
         self.intercepts = {label:{cluster_i:None for cluster_i in range(n_clusters_per_label[label])} for label in self.labels}
 
+        self.rvc = {label:{cluster_i:None for cluster_i in range(n_clusters_per_label[label])} for label in self.labels}
+
         self.S_lists = {label:dict() for label in self.labels}
         self.X_proj_list = {label:[] for label in self.labels}
         self.coef_lists = {label:{cluster_i:dict() for cluster_i in range(n_clusters_per_label[label])} for label in self.labels}
@@ -171,7 +173,6 @@ class HYDRA(BaseML):
 
     def run(self, X, y, idx_outside_polytope):
         n_clusters = self.n_clusters_per_label[idx_outside_polytope]
-        print(n_clusters)
         n_consensus = self.n_consensus if (n_clusters > 1) else 1
         ## put the label idx_center_polytope at the center of the polytope by setting it to positive labels
         y_polytope = np.copy(y)
@@ -188,11 +189,9 @@ class HYDRA(BaseML):
         for consensus_i in range(n_consensus):
             ## depending on the weight initialization strategy, random hyperplanes were initialized with maximum diversity to constitute the convex polytope
             S, cluster_index = self.init_S(X, y_polytope, index_positives, index_negatives, n_clusters, idx_outside_polytope, initialization_type=self.initialization_type)
-            print(np.unique(cluster_index))
             self.S_lists[idx_outside_polytope][0]=S.copy()
 
             for cluster_i in range(n_clusters):
-                print(cluster_i)
                 cluster_i_weight = np.ascontiguousarray(S[:, cluster_i])
                 if self.clustering_strategy in ["k_means", 'original'] :
                     SVM_coefficient, SVM_intercept = self.launch_svc(X, y_polytope, cluster_i_weight, kernel=self.kernel)
@@ -203,6 +202,7 @@ class HYDRA(BaseML):
                     self.intercept_lists[idx_outside_polytope][cluster_i][0] = SVM_intercept.copy()
                 elif self.clustering_strategy == "kernelized_k_means":
                     rvc_clf_i = self.launch_rvc(X, y_polytope, cluster_i_weight)
+                    self.rvc[idx_outside_polytope][cluster_i] = rvc_clf_i
 
             for iter in range(self.n_iterations):
                 ## decide the convergence of the polytope based on the toleration
@@ -276,13 +276,19 @@ class HYDRA(BaseML):
             Q = one_hot_encode(KM.predict(X_proj), n_classes=self.n_clusters_per_label[idx_outside_polytope])
 
         if self.clustering_strategy == 'kernelized_k_means' :
-            directions = [self.coefficients[idx_outside_polytope][cluster_i][0] for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])]
+            directions = [self.rvc[idx_outside_polytope][cluster_i].mu_ for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])]
             basis = []
             for v in directions:
                 w = v - np.sum(np.dot(v, b) * b for b in basis)
                 if len(basis)<self.n_clusters_per_label[idx_outside_polytope] or (w > 1e-10).any():
                     basis.append(w / np.linalg.norm(w))
             basis = np.array(basis)
+
+            print(basis.shape)
+
+            print(self.rvc[idx_outside_polytope][0].Phi_.shape)
+            print(self.rvc[idx_outside_polytope][1].Phi_.shape)
+
             X_proj = X @ basis.T
 
             self.X_proj_list[idx_outside_polytope].append(X_proj.copy())
