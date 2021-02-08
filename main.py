@@ -261,7 +261,6 @@ class HYDRA(BaseML):
 
         if self.clustering_strategy == 'k_means' :
             directions = [self.coefficients[idx_outside_polytope][cluster_i][0] for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])]
-            centroid_scores = np.zeros(S.shape)
 
             basis = []
             for v in directions:
@@ -275,11 +274,7 @@ class HYDRA(BaseML):
             centroids = [np.mean(S[index, cluster_i][:,None]*X_proj[index,:], 0) for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])]
             KM = KMeans(n_clusters=self.n_clusters_per_label[idx_outside_polytope], init=np.array(centroids), n_init=1).fit(X_proj[index])
 
-            for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope]):
-                centroid_scores[:,cluster_i] = np.linalg.norm((X_proj-KM.cluster_centers_[cluster_i]), axis=1)
-            Q = py_softmax(centroid_scores)
-
-            Q[index] = one_hot_encode(KM.predict(X_proj[index]), n_classes=self.n_clusters_per_label[idx_outside_polytope])
+            Q = one_hot_encode(KM.predict(X_proj), n_classes=self.n_clusters_per_label[idx_outside_polytope])
 
 
         if self.clustering_strategy == 'kernelized_k_means' :
