@@ -7,7 +7,8 @@ from sklearn.metrics import accuracy_score
 from sklearn.svm import SVC
 from sklearn.cluster import KMeans
 from sklearn.metrics import adjusted_rand_score as ARI
-from sklearn_rvm import EMRVC
+from rvm import *
+#from sklearn_rvm import EMRVC
 from sklearn.mixture import GaussianMixture
 from sklearn.metrics import balanced_accuracy_score
 import cvxpy as cp
