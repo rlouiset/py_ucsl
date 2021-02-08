@@ -6,7 +6,7 @@ from sklearn.decomposition import PCA, FastICA
 from sklearn.metrics import accuracy_score
 from sklearn.svm import SVC
 from sklearn.svm._base import _one_vs_one_coef
-from sklearn.cluster import KMeans
+from sklearn.cluster import KMeans, DBSCAN
 from sklearn.metrics import adjusted_rand_score as ARI
 from rvm import *
 import sklearn
@@ -161,7 +161,7 @@ class HYDRA(BaseML):
 
     def run(self, X, y, idx_outside_polytope):
         n_clusters = self.n_clusters_per_label[idx_outside_polytope]
-        n_consensus = self.n_consensus if (n_clusters > 1) else 1
+        n_consensus = self.n_consensus if (self.n_clusters_per_label[idx_outside_polytope] > 1) else 1
         ## put the label idx_center_polytope at the center of the polytope by setting it to positive labels
         y_polytope = np.copy(y)
         y_polytope[y_polytope!=idx_outside_polytope] = -1    ## if label is inside of the polytope, the distance is negative and the label is not divided into
@@ -176,18 +176,17 @@ class HYDRA(BaseML):
 
         for consensus_i in range(n_consensus):
             ## depending on the weight initialization strategy, random hyperplanes were initialized with maximum diversity to constitute the convex polytope
-            S, cluster_index = self.init_S(X, y_polytope, index_positives, index_negatives, n_clusters, idx_outside_polytope, initialization_type=self.initialization_type)
+            S, cluster_index = self.init_S(X, y_polytope, index_positives, index_negatives, self.n_clusters_per_label[idx_outside_polytope], idx_outside_polytope, initialization_type=self.initialization_type)
             self.S_lists[idx_outside_polytope][0]=S.copy()
 
-            for cluster_i in range(n_clusters):
+            for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope]):
                 cluster_i_weight = np.ascontiguousarray(S[:, cluster_i])
-                if self.clustering_strategy in ["k_means", 'original', 'mean_hp'] :
-                    SVM_coefficient, SVM_intercept = self.launch_svc(X, y_polytope, cluster_i_weight, kernel=self.kernel)
-                    self.coefficients[idx_outside_polytope][cluster_i] = SVM_coefficient
-                    self.intercepts[idx_outside_polytope][cluster_i] = SVM_intercept
+                SVM_coefficient, SVM_intercept = self.launch_svc(X, y_polytope, cluster_i_weight, kernel=self.kernel)
+                self.coefficients[idx_outside_polytope][cluster_i] = SVM_coefficient
+                self.intercepts[idx_outside_polytope][cluster_i] = SVM_intercept
 
-                    self.coef_lists[idx_outside_polytope][cluster_i][0] = SVM_coefficient.copy()
-                    self.intercept_lists[idx_outside_polytope][cluster_i][0] = SVM_intercept.copy()
+                self.coef_lists[idx_outside_polytope][cluster_i][0] = SVM_coefficient.copy()
+                self.intercept_lists[idx_outside_polytope][cluster_i][0] = SVM_intercept.copy()
 
             for iter in range(self.n_iterations):
                 ## decide the convergence of the polytope based on the toleration
@@ -195,7 +194,7 @@ class HYDRA(BaseML):
                 S, cluster_index = self.update_S(X, y, S, index_positives, cluster_index, idx_outside_polytope)
                 self.S_lists[idx_outside_polytope][1+iter]=S.copy()
 
-                if self.clustering_strategy in ['original', 'nw_mean_hp']:
+                if self.clustering_strategy in ['original']:
                     S[index_negatives, :] = 1/n_clusters
                 S[index_positives, :] = 0
                 S[index_positives, cluster_index[index_positives]] = 1
@@ -206,13 +205,13 @@ class HYDRA(BaseML):
                 if cluster_consistency > 0.95 :
                     break
 
-                for cluster_i in range(n_clusters):
+                for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope]):
                     if np.count_nonzero(S[index_positives, cluster_i]) == 0 :
                         #print("Cluster dropped, meaning that all Positive Labels has been assigned to one single hyperplane in iteration: %d" % ( iter - 1))
                         print("Re-initialization of the clustering...")
-                        S, cluster_index = self.init_S(X, y_polytope, index_positives, index_negatives, n_clusters, idx_outside_polytope, initialization_type=self.initialization_type)
+                        S, cluster_index = self.init_S(X, y_polytope, index_positives, index_negatives, self.n_clusters_per_label[idx_outside_polytope], idx_outside_polytope, initialization_type=self.initialization_type)
 
-                for cluster_i in range(n_clusters):
+                for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope]):
                     cluster_i_weight = np.ascontiguousarray(S[:, cluster_i])
                     SVM_coefficient, SVM_intercept = self.launch_svc(X, y_polytope, cluster_i_weight, kernel=self.kernel)
                     self.coefficients[idx_outside_polytope][cluster_i] = SVM_coefficient
@@ -262,6 +261,28 @@ class HYDRA(BaseML):
             KM = KMeans(n_clusters=self.n_clusters_per_label[idx_outside_polytope], init=np.array(centroids), n_init=1).fit(X_proj[index])
 
             Q = one_hot_encode(KM.predict(X_proj), n_classes=self.n_clusters_per_label[idx_outside_polytope])
+
+        if self.clustering_strategy == 'DBSCAN' :
+            directions = [self.coefficients[idx_outside_polytope][cluster_i][0] for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])]
+
+            basis = []
+            norms = []
+            for v in directions:
+                w = v - np.sum(np.dot(v, b) * b for b in basis)
+                if len(basis)<self.n_clusters_per_label[idx_outside_polytope] or (w > 1e-10).any():
+                    basis.append(w / np.linalg.norm(w))
+                    norms.append(np.linalg.norm(v))
+            basis = np.array(basis) * np.array(norms)[:,None]
+
+            X_proj = X @ basis.T
+
+            self.X_proj_list[idx_outside_polytope].append(X_proj.copy())
+            dbscan = DBSCAN().fit(X_proj[index])
+
+            labels = dbscan.labels_
+            self.n_clusters_per_label[idx_outside_polytope] = len(set(labels)) - (1 if -1 in labels else 0)
+
+            Q = one_hot_encode(dbscan.predict(X_proj), n_classes=self.n_clusters_per_label[idx_outside_polytope])
 
         elif self.clustering_strategy in ['mean_hp']:
             directions = np.array([self.coefficients[idx_outside_polytope][cluster_i][0] for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])])
