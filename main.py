@@ -349,7 +349,7 @@ class HYDRA(BaseML):
         return S, cluster_index
 
     def launch_svc(self, X, y, sample_weight, kernel) :
-        SVC_clsf = SVC(kernel=kernel, C=self.C)
+        SVC_clsf = SVC(kernel='linear', C=self.C)
 
         if kernel=='rbf' :
             X_rbf = sklearn.metrics.pairwise.pairwise_kernels(X, metric='rbf', gamma=1/(X.shape[1] * X.var()))
