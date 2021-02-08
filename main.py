@@ -266,13 +266,9 @@ class HYDRA(BaseML):
                 if len(basis)<self.n_clusters_per_label[idx_outside_polytope] or (w > 1e-10).any():
                     basis.append(w / np.linalg.norm(w))
                     norms.append(np.linalg.norm(v))
-            basis = np.array(basis) #* np.array(norms)[:,None]
+            basis = np.array(basis) * np.array(norms)[:,None]
 
-            if self.kernel == 'rbf' :
-                X_rbf = sklearn.metrics.pairwise.pairwise_kernels(X, metric='rbf', gamma=1 / (X.shape[1] * X.var()))
-                X_proj = X_rbf @ basis.T
-            else :
-                X_proj = X @ basis.T
+            X_proj = X @ basis.T
 
             self.X_proj_list[idx_outside_polytope].append(X_proj.copy())
             centroids = [np.mean(S[index, cluster_i][:,None]*X_proj[index,:], 0) for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])]
@@ -351,25 +347,20 @@ class HYDRA(BaseML):
         return S, cluster_index
 
     def launch_svc(self, X, y, sample_weight, kernel) :
-        SVC_clsf = SVC(kernel='linear', C=self.C)
+        SVC_clsf = SVC(kernel=kernel, C=self.C)
 
-        if kernel=='rbf' :
-            X_rbf = sklearn.metrics.pairwise.pairwise_kernels(X, metric='rbf', gamma=1/(X.shape[1] * X.var()))
-            print(X_rbf.shape)
-            ## fit the different SVM/hyperplanes
-            SVC_clsf.fit(X_rbf, y, sample_weight=sample_weight)
+        # fit the different SVM/hyperplanes
+        SVC_clsf.fit(X, y, sample_weight=sample_weight)
+
+        if self.kernel == 'rbf':
+            X_support = X[SVC_clsf.support_]
+            y_support = y[SVC_clsf.support_]
+
+            SVM_coefficient = SVC_clsf.dual_coef_ @ np.einsum('i,ij->ij', y_support, X_support)
+            SVM_intercept = SVC_clsf.intercept_[0]
         else :
-            ## fit the different SVM/hyperplanes
-            SVC_clsf.fit(X, y, sample_weight=sample_weight)
-
-        SVM_coefficient = SVC_clsf.coef_
-        SVM_intercept = SVC_clsf.intercept_[0]
-
-        #X_support = X[SVC_clsf.support_]
-        #y_support = y[SVC_clsf.support_]
-
-        #SVM_coefficient = SVC_clsf.dual_coef_ @ np.einsum('i,ij->ij', y_support, X_support)
-        #SVM_intercept = SVC_clsf.intercept_[0]
+            SVM_coefficient = SVC_clsf.coef_
+            SVM_intercept = SVC_clsf.intercept_[0]
 
         return SVM_coefficient, SVM_intercept
 
