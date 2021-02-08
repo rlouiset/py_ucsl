@@ -367,6 +367,8 @@ class HYDRA(BaseML):
         return S, cluster_index
 
     def launch_svc(self, X, y, sample_weight, kernel) :
+        print(kernel)
+
         SVC_clsf = SVC(kernel=kernel, C=self.C)
 
         ## fit the different SVM/hyperplanes
@@ -379,10 +381,15 @@ class HYDRA(BaseML):
         a = _one_vs_one_coef(SVC_clsf.dual_coef_, SVC_clsf.n_support_, SVC_clsf.support_vectors_)
         #SVM_coefficient, SVM_intercept = a
 
+        X_support = X[SVC_clsf.support_]
+        y_support = y[SVC_clsf.support_]
+
+        SVM_coefficient = SVC_clsf.dual_coef_[0] @ np.einsum('i,ij->ij', y_support, X_support)
+        SVM_intercept = SVC_clsf.intercept_[0]
+
+        print(SVM_coefficient)
+
         print(a)
-        print(len(a))
-        print(a[0])
-        print(a[0].shape)
 
         return SVM_coefficient, SVM_intercept
 
