@@ -355,7 +355,7 @@ class HYDRA(BaseML):
         return S, cluster_index
 
     def launch_svc(self, X, y, sample_weight, kernel) :
-        SVC_clsf = SVC(kernel=kernel, C=self.C)
+        SVC_clsf = SVC(kernel=kernel, C=self.C, gamma='auto')
 
         # fit the different SVM/hyperplanes
         SVC_clsf.fit(X, y, sample_weight=sample_weight)
