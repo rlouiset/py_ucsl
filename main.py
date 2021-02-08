@@ -372,6 +372,10 @@ class HYDRA(BaseML):
         ## fit the different SVM/hyperplanes
         SVC_clsf.fit(X, y, sample_weight=sample_weight)
 
+        print(SVC_clsf._compute_kernel(X).shape)
+
+        print(SVC_clsf.dual_coef_.shape)
+
         a = _one_vs_one_coef(SVC_clsf.dual_coef_, SVC_clsf.n_support_, SVC_clsf.support_vectors_)
         #SVM_coefficient, SVM_intercept = a
 
