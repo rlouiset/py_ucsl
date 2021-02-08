@@ -285,12 +285,9 @@ class HYDRA(BaseML):
                     basis.append(w / np.linalg.norm(w))
             basis = np.array(basis)
 
-            print(basis.shape)
+            print(np.sum(np.abs(self.rvc[idx_outside_polytope][0].Phi_ - self.rvc[idx_outside_polytope][1].Phi_)))
 
-            print(self.rvc[idx_outside_polytope][0].Phi_.shape)
-            print(self.rvc[idx_outside_polytope][1].Phi_.shape)
-
-            X_proj = X @ basis.T
+            X_proj = self.rvc[idx_outside_polytope][0].Phi_ @ basis.T
 
             self.X_proj_list[idx_outside_polytope].append(X_proj.copy())
             centroids = [np.mean(S[index, cluster_i][:,None]*X_proj[index,:], 0) for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])]
