@@ -245,14 +245,16 @@ class HYDRA(BaseML):
         if self.clustering_strategy == 'k_means' :
             directions = [self.coefficients[idx_outside_polytope][cluster_i][0] for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])]
 
-            basis = []
-            norms = []
+            basis, norms = [], []
             for v in directions:
                 w = v - np.sum(np.dot(v, b) * b for b in basis)
                 if len(basis)<self.n_clusters_per_label[idx_outside_polytope] or (w > 1e-10).any():
                     basis.append(w / np.linalg.norm(w))
                     norms.append(np.linalg.norm(v))
-            basis = np.array(basis) #* np.array(norms)[:,None]
+
+            for b in basis :
+                norms.append(np.mean([np.linalg.norm(np.dot(v, b)*b) for v in directions]))
+            basis = np.array(basis) * np.array(norms)[:,None]
 
             X_proj = X @ basis.T
 
