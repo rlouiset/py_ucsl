@@ -260,11 +260,13 @@ class HYDRA(BaseML):
             directions = [self.coefficients[idx_outside_polytope][cluster_i][0] for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])]
 
             basis = []
+            norms = []
             for v in directions:
                 w = v - np.sum(np.dot(v, b) * b for b in basis)
                 if len(basis)<self.n_clusters_per_label[idx_outside_polytope] or (w > 1e-10).any():
                     basis.append(w / np.linalg.norm(w))
-            basis = np.array(basis)
+                    norms.append(np.linalg.norm(v))
+            basis = np.array(basis) * np.array(norms)
 
             if self.kernel == 'rbf' :
                 X_rbf = sklearn.metrics.pairwise.pairwise_kernels(X, metric='rbf', gamma=1 / (X.shape[1] * X.var()))
