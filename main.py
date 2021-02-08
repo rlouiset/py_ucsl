@@ -194,7 +194,7 @@ class HYDRA(BaseML):
                 S, cluster_index = self.update_S(X, y, S, index_positives, cluster_index, idx_outside_polytope)
                 self.S_lists[idx_outside_polytope][1+iter]=S.copy()
 
-                if self.clustering_strategy in ['original', 'k_means']:
+                if self.clustering_strategy in ['original']:
                     S[index_negatives, :] = 1/n_clusters
                 S[index_positives, :] = 0
                 S[index_positives, cluster_index[index_positives]] = 1
@@ -210,6 +210,8 @@ class HYDRA(BaseML):
                         #print("Cluster dropped, meaning that all Positive Labels has been assigned to one single hyperplane in iteration: %d" % ( iter - 1))
                         print("Re-initialization of the clustering...")
                         S, cluster_index = self.init_S(X, y_polytope, index_positives, index_negatives, self.n_clusters_per_label[idx_outside_polytope], idx_outside_polytope, initialization_type=self.initialization_type)
+                    if np.count_nonzero(S[index_negatives, cluster_i]) == 0 :
+                        S[index_negatives, cluster_i] += 1/n_clusters
 
                 for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope]):
                     cluster_i_weight = np.ascontiguousarray(S[:, cluster_i])
