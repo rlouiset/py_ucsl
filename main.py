@@ -336,6 +336,10 @@ class HYDRA(BaseML):
 
             S = cpu_sk(d, lambda_=1)
 
+        if initialization_type == "k_means":  ##
+            KM = KMeans(n_clusters=self.n_clusters_per_label[idx_outside_polytope])
+            S = one_hot_encode(KM.predict(X))
+
         cluster_index = np.argmax(S, axis=1)
 
         return S, cluster_index
