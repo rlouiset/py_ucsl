@@ -5,6 +5,7 @@ from sinkornknopp import *
 from sklearn.decomposition import PCA, FastICA
 from sklearn.metrics import accuracy_score
 from sklearn.svm import SVC
+from sklearn.svm._base import _one_vs_one_coef
 from sklearn.cluster import KMeans
 from sklearn.metrics import adjusted_rand_score as ARI
 from rvm import *
@@ -201,9 +202,14 @@ class HYDRA(BaseML):
 
                     self.coef_lists[idx_outside_polytope][cluster_i][0] = SVM_coefficient.copy()
                     self.intercept_lists[idx_outside_polytope][cluster_i][0] = SVM_intercept.copy()
+
                 elif self.clustering_strategy == "kernelized_k_means":
-                    rvc_clf_i = self.launch_rvc(X, y_polytope, cluster_i_weight)
-                    self.rvc[idx_outside_polytope][cluster_i] = rvc_clf_i
+                    SVM_coefficient, SVM_intercept = self.launch_svc(X, y_polytope, cluster_i_weight, kernel='rbf')
+                    self.coefficients[idx_outside_polytope][cluster_i] = SVM_coefficient
+                    self.intercepts[idx_outside_polytope][cluster_i] = SVM_intercept
+
+                    self.coef_lists[idx_outside_polytope][cluster_i][0] = SVM_coefficient.copy()
+                    self.intercept_lists[idx_outside_polytope][cluster_i][0] = SVM_intercept.copy()
 
             for iter in range(self.n_iterations):
                 ## decide the convergence of the polytope based on the toleration
@@ -362,11 +368,14 @@ class HYDRA(BaseML):
 
     def launch_svc(self, X, y, sample_weight, kernel) :
         SVC_clsf = SVC(kernel=kernel, C=self.C)
+
         ## fit the different SVM/hyperplanes
         SVC_clsf.fit(X, y, sample_weight=sample_weight)
 
-        SVM_coefficient = SVC_clsf.coef_
-        SVM_intercept = SVC_clsf.intercept_
+        a = _one_vs_one_coef(SVC_clsf.dual_coef_, SVC_clsf.n_support_, SVC_clsf.support_vectors_)
+        SVM_coefficient, SVM_intercept = a
+
+        print(a)
 
         return SVM_coefficient, SVM_intercept
 
