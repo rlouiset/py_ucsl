@@ -349,11 +349,10 @@ class HYDRA(BaseML):
                     np.multiply(X, np.divide(1, np.linalg.norm(X, axis=1))[:, np.newaxis]),
                     W[Widx[i], :].transpose())
 
-            l = np.minimum(prob - 1, 0)
             d = prob - 1
-            print(d[:10])
-            S = proportional_assign(l, d)
-        print(S[:10,:])
+            d = py_softmax(d, 1)
+
+            S = cpu_sk(d, lambda_=1)
 
         cluster_index = np.argmax(S, axis=1)
 
