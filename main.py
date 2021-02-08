@@ -373,15 +373,15 @@ class HYDRA(BaseML):
         SVC_clsf.fit(X, y, sample_weight=sample_weight)
 
         a = _one_vs_one_coef(SVC_clsf.dual_coef_, SVC_clsf.n_support_, SVC_clsf.support_vectors_)
-        SVM_coefficient, SVM_intercept = a
+        #SVM_coefficient, SVM_intercept = a
 
         print(a)
+        print(len(a))
+        print(a[0])
+        print(a[0].shape)
 
         return SVM_coefficient, SVM_intercept
 
-    def launch_rvc(self, X, y, sample_weight) :
-        clf = EMRVC(kernel='rbf', gamma='scale').fit(X, y, sample_weight=sample_weight)
-        return clf
 
     def apply_consensus(self, X, y_polytope, consensus_assignment, consensus_direction, consensus_intercepts, n_clusters, index_positives,
                         index_negatives, idx_outside_polytope):
