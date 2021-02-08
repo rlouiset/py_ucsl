@@ -252,7 +252,7 @@ class HYDRA(BaseML):
                 if len(basis)<self.n_clusters_per_label[idx_outside_polytope] or (w > 1e-10).any():
                     basis.append(w / np.linalg.norm(w))
                     norms.append(np.linalg.norm(v))
-            basis = np.array(basis) * np.array(norms)[:,None]
+            basis = np.array(basis) #* np.array(norms)[:,None]
 
             X_proj = X @ basis.T
 
@@ -277,9 +277,9 @@ class HYDRA(BaseML):
             X_proj = X @ basis.T
 
             self.X_proj_list[idx_outside_polytope].append(X_proj.copy())
-            dbscan = DBSCAN().fit(X_proj[index])
+            dbscan = DBSCAN().fit(X_proj)
 
-            labels = dbscan.labels_
+            labels = dbscan.labels_[index]
             self.n_clusters_per_label[idx_outside_polytope] = len(set(labels)) - (1 if -1 in labels else 0)
 
             Q = one_hot_encode(dbscan.predict(X_proj), n_classes=self.n_clusters_per_label[idx_outside_polytope])
