@@ -190,6 +190,8 @@ class HYDRA(BaseML):
         for consensus_i in range(n_consensus):
             ## depending on the weight initialization strategy, random hyperplanes were initialized with maximum diversity to constitute the convex polytope
             S, cluster_index = self.init_S(X, y_polytope, index_positives, index_negatives, n_clusters, idx_outside_polytope, initialization_type=self.initialization_type)
+            if self.clustering_strategy in ['k_means', 'original', 'nw_mean_hp']:
+                S[index_negatives, :] = 1 / n_clusters
             self.S_lists[idx_outside_polytope][0]=S.copy()
 
             for cluster_i in range(n_clusters):
@@ -208,7 +210,7 @@ class HYDRA(BaseML):
                 S, cluster_index = self.update_S(X, y, S, index_positives, cluster_index, idx_outside_polytope)
                 self.S_lists[idx_outside_polytope][1+iter]=S.copy()
 
-                if self.clustering_strategy in ['original', 'nw_mean_hp']:
+                if self.clustering_strategy in ['k_means', 'original', 'nw_mean_hp']:
                     S[index_negatives, :] = 1/n_clusters
                 S[index_positives, :] = 0
                 S[index_positives, cluster_index[index_positives]] = 1
