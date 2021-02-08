@@ -352,7 +352,7 @@ class HYDRA(BaseML):
         X_support = X[SVC_clsf.support_]
         y_support = y[SVC_clsf.support_]
 
-        SVM_coefficient = SVC_clsf.dual_coef_[0] @ np.einsum('i,ij->ij', y_support, X_support)
+        SVM_coefficient = SVC_clsf.dual_coef_ @ np.einsum('i,ij->ij', y_support, X_support)
         SVM_intercept = SVC_clsf.intercept_[0]
 
         return SVM_coefficient, SVM_intercept
