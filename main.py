@@ -9,6 +9,7 @@ from sklearn.svm._base import _one_vs_one_coef
 from sklearn.cluster import KMeans
 from sklearn.metrics import adjusted_rand_score as ARI
 from rvm import *
+import sklearn
 #from sklearn_rvm import EMRVC
 from sklearn.mixture import GaussianMixture
 from sklearn.metrics import balanced_accuracy_score
@@ -42,8 +43,6 @@ class HYDRA(BaseML):
 
         self.coefficients = {label:{cluster_i:None for cluster_i in range(n_clusters_per_label[label])} for label in self.labels}
         self.intercepts = {label:{cluster_i:None for cluster_i in range(n_clusters_per_label[label])} for label in self.labels}
-
-        self.rvc = {label:{cluster_i:None for cluster_i in range(n_clusters_per_label[label])} for label in self.labels}
 
         self.S_lists = {label:dict() for label in self.labels}
         self.X_proj_list = {label:[] for label in self.labels}
@@ -347,17 +346,22 @@ class HYDRA(BaseML):
     def launch_svc(self, X, y, sample_weight, kernel) :
         SVC_clsf = SVC(kernel=kernel, C=self.C)
 
-        ## fit the different SVM/hyperplanes
-        SVC_clsf.fit(X, y, sample_weight=sample_weight)
+        if kernel=='rbf' :
+            X_rbf = sklearn.metrics.pairwise.pairwise_kernels(X, metric='rbf', gamma='scale')
+            ## fit the different SVM/hyperplanes
+            SVC_clsf.fit(X_rbf, y, sample_weight=sample_weight)
+        else :
+            ## fit the different SVM/hyperplanes
+            SVC_clsf.fit(X, y, sample_weight=sample_weight)
 
-        #SVM_coefficient = SVC_clsf.coef_
-        #SVM_intercept = SVC_clsf.intercept_[0]
-
-        X_support = X[SVC_clsf.support_]
-        y_support = y[SVC_clsf.support_]
-
-        SVM_coefficient = SVC_clsf.dual_coef_ @ np.einsum('i,ij->ij', y_support, X_support)
+        SVM_coefficient = SVC_clsf.coef_
         SVM_intercept = SVC_clsf.intercept_[0]
+
+        #X_support = X[SVC_clsf.support_]
+        #y_support = y[SVC_clsf.support_]
+
+        #SVM_coefficient = SVC_clsf.dual_coef_ @ np.einsum('i,ij->ij', y_support, X_support)
+        #SVM_intercept = SVC_clsf.intercept_[0]
 
         return SVM_coefficient, SVM_intercept
 
