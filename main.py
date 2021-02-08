@@ -265,7 +265,12 @@ class HYDRA(BaseML):
                 if len(basis)<self.n_clusters_per_label[idx_outside_polytope] or (w > 1e-10).any():
                     basis.append(w / np.linalg.norm(w))
             basis = np.array(basis)
-            X_proj = X @ basis.T
+
+            if self.kernel == 'rbf' :
+                X_rbf = sklearn.metrics.pairwise.pairwise_kernels(X, metric='rbf', gamma=1 / (X.shape[1] * X.var()))
+                X_proj = X_rbf @ basis.T
+            else :
+                X_proj = X @ basis.T
 
             self.X_proj_list[idx_outside_polytope].append(X_proj.copy())
             centroids = [np.mean(S[index, cluster_i][:,None]*X_proj[index,:], 0) for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])]
@@ -347,7 +352,8 @@ class HYDRA(BaseML):
         SVC_clsf = SVC(kernel=kernel, C=self.C)
 
         if kernel=='rbf' :
-            X_rbf = sklearn.metrics.pairwise.pairwise_kernels(X, metric='rbf', gamma='scale')
+            X_rbf = sklearn.metrics.pairwise.pairwise_kernels(X, metric='rbf', gamma=1/(X.shape[1] * X.var()))
+            print(X_rbf.shape)
             ## fit the different SVM/hyperplanes
             SVC_clsf.fit(X_rbf, y, sample_weight=sample_weight)
         else :
