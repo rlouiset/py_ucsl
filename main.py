@@ -351,6 +351,7 @@ class HYDRA(BaseML):
 
             l = np.minimum(prob - 1, 0)
             d = prob - 1
+            print(d[:10])
             S = proportional_assign(l, d)
 
         cluster_index = np.argmax(S, axis=1)
