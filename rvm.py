@@ -637,6 +637,7 @@ class EMRVC(BaseRVM, ClassifierMixin):
 
             self.t = np.zeros(y.shape)
             self.t[y == self.classes_[1]] = 1
+            self.t = sample_weight*self.t
 
             n_samples = X.shape[0]
             self.Phi_ = self._get_kernel(X)
@@ -651,7 +652,7 @@ class EMRVC(BaseRVM, ClassifierMixin):
 
             M = self.Phi_.shape[1]
 
-            self.y = y
+            self.y = y*sample_weight
 
             if self.init_alpha == None:
                 self.init_alpha = 1 / M ** 2
