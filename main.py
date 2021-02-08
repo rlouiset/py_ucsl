@@ -225,6 +225,7 @@ class HYDRA(BaseML):
                         print("Re-initialization of the clustering...")
                         S, cluster_index = self.init_S(X, y_polytope, index_positives, index_negatives, n_clusters, idx_outside_polytope, initialization_type=self.initialization_type)
                     if np.count_nonzero(S[index_negatives, cluster_i]) < (len(index_negatives)/n_clusters**2) :
+                        print('indeed')
                         S[index_negatives, cluster_i] += (1/n_clusters**2)
 
                 for cluster_i in range(n_clusters):
