@@ -651,7 +651,7 @@ class EMRVC(BaseRVM, ClassifierMixin):
 
             M = self.Phi_.shape[1]
 
-            self.y = y*sample_weight
+            self.y = y
 
             if self.init_alpha == None:
                 self.init_alpha = 1 / M ** 2
@@ -684,7 +684,7 @@ class EMRVC(BaseRVM, ClassifierMixin):
                 self.alpha_ = np.clip(self.alpha_, 0, self.alpha_max)
 
                 if not self.beta_fixed:
-                    ed = np.sum((y - self.Phi_ @ self.mu_) ** 2)
+                    ed = np.sum((y*sample_weight - self.Phi_ @ self.mu_) ** 2)
                     self.beta_ = np.maximum((n_samples - np.sum(self.gamma_)),
                                             self.epsilon) / ed + self.epsilon
 

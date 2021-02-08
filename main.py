@@ -284,9 +284,6 @@ class HYDRA(BaseML):
                 if len(basis)<self.n_clusters_per_label[idx_outside_polytope] or (w > 1e-10).any():
                     basis.append(w / np.linalg.norm(w))
             basis = np.array(basis)
-
-            print(np.sum(np.abs(self.rvc[idx_outside_polytope][0].Phi_ - self.rvc[idx_outside_polytope][1].Phi_)))
-
             X_proj = self.rvc[idx_outside_polytope][0].Phi_ @ basis.T
 
             self.X_proj_list[idx_outside_polytope].append(X_proj.copy())
