@@ -201,7 +201,7 @@ class HYDRA(BaseML):
 
                 ## check the loss comparted to the tolorence for stopping criteria
                 cluster_consistency = ARI(np.argmax(S[index_positives],1), np.argmax(S_hold[index_positives],1))
-                print(cluster_consistency)
+
                 if cluster_consistency > 0.95 :
                     break
 
@@ -210,8 +210,8 @@ class HYDRA(BaseML):
                         #print("Cluster dropped, meaning that all Positive Labels has been assigned to one single hyperplane in iteration: %d" % ( iter - 1))
                         print("Re-initialization of the clustering...")
                         S, cluster_index = self.init_S(X, y_polytope, index_positives, index_negatives, self.n_clusters_per_label[idx_outside_polytope], idx_outside_polytope, initialization_type=self.initialization_type)
-                    if np.count_nonzero(S[index_negatives, cluster_i]) == 0 :
-                        S[index_negatives, cluster_i] += 1/n_clusters
+                    #if np.count_nonzero(S[index_negatives, cluster_i]) == 0 :
+                    #    S[index_negatives, cluster_i] += 1/n_clusters
 
                 for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope]):
                     cluster_i_weight = np.ascontiguousarray(S[:, cluster_i])
@@ -251,17 +251,14 @@ class HYDRA(BaseML):
             basis, norms = [], []
             for v in directions:
                 w = v - np.sum(np.dot(v, b) * b for b in basis)
-                if (np.abs(w) > 1e-3).any():
+                if (np.abs(w) > 1e-5).any():
                     basis.append(w / np.linalg.norm(w))
-                    print(w)
-                else :
-                    print(w)
 
             for b in basis :
                 norm_b = [np.linalg.norm(np.dot(v, b)*b) for v in directions]
                 norms.append(np.mean(norm_b))
 
-            basis = np.array(basis) #* np.array(norms)[:,None]
+            basis = np.array(basis)
 
             X_proj = X @ basis.T
 
