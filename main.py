@@ -210,8 +210,8 @@ class HYDRA(BaseML):
                         #print("Cluster dropped, meaning that all Positive Labels has been assigned to one single hyperplane in iteration: %d" % ( iter - 1))
                         print("Re-initialization of the clustering...")
                         S, cluster_index = self.init_S(X, y_polytope, index_positives, index_negatives, self.n_clusters_per_label[idx_outside_polytope], idx_outside_polytope, initialization_type=self.initialization_type)
-                    if np.count_nonzero(S[index_negatives, cluster_i]) < len(index_negatives)/self.n_clusters_per_label[idx_outside_polytope]**2 :
-                        print(iter, ' wrong')
+                    if np.count_nonzero(S[index_negatives, cluster_i]) == 0 :
+                        print('wrong')
                         S[index_negatives, cluster_i] = 1/self.n_clusters_per_label[idx_outside_polytope]
 
                 for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope]):
@@ -251,13 +251,15 @@ class HYDRA(BaseML):
 
             basis, norms = [], []
             mean_norm_dir = np.mean(np.linalg.norm(directions, 1))
+            print('mean norm : ', mean_norm_dir)
             for v in directions:
                 w = v - np.sum(np.dot(v, b) * b for b in basis)
                 #if (np.abs(w) > 1e-3).any() :
                 if (np.linalg.norm(w)/mean_norm_dir) > 1e-2 :
+                    print(np.linalg.norm(w))
                     basis.append(w / np.linalg.norm(w))
                 else :
-                    print(w)
+                    print('Rejected : ', np.linalg.norm(w))
             print('')
 
             for b in basis :
