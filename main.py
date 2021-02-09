@@ -211,7 +211,7 @@ class HYDRA(BaseML):
                         print("Re-initialization of the clustering...")
                         S, cluster_index = self.init_S(X, y_polytope, index_positives, index_negatives, self.n_clusters_per_label[idx_outside_polytope], idx_outside_polytope, initialization_type=self.initialization_type)
                     if np.count_nonzero(S[index_negatives, cluster_i]) == 0 :
-                        S[index_negatives, cluster_i] += 1/n_clusters
+                        S[index_negatives, cluster_i] += 1
 
                 for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope]):
                     cluster_i_weight = np.ascontiguousarray(S[:, cluster_i])
