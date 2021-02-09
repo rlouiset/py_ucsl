@@ -212,7 +212,7 @@ class HYDRA(BaseML):
                         S, cluster_index = self.init_S(X, y_polytope, index_positives, index_negatives, self.n_clusters_per_label[idx_outside_polytope], idx_outside_polytope, initialization_type=self.initialization_type)
                     if np.count_nonzero(S[index_negatives, cluster_i]) < len(index_negatives)/self.n_clusters_per_label[idx_outside_polytope]**2 :
                         print(iter, ' wrong')
-                        S[index_negatives, cluster_i] = 1 #/self.n_clusters_per_label[idx_outside_polytope]
+                        S[index_negatives, cluster_i] = 1/self.n_clusters_per_label[idx_outside_polytope]
 
                 for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope]):
                     cluster_i_weight = np.ascontiguousarray(S[:, cluster_i])
@@ -252,8 +252,8 @@ class HYDRA(BaseML):
             basis, norms = [], []
             for v in directions:
                 w = v - np.sum(np.dot(v, b) * b for b in basis)
-                if (np.abs(w) > 1e-3).any():
-                    print(w)
+                #if (np.abs(w) > 1e-3).any() :
+                if np.linalg.norm(w) > 1e-3 :
                     basis.append(w / np.linalg.norm(w))
                 else :
                     print(w)
