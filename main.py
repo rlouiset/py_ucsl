@@ -249,15 +249,11 @@ class HYDRA(BaseML):
             directions = [self.coefficients[idx_outside_polytope][cluster_i][0] for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])]
 
             basis, norms = [], []
-            mean_norm_dir = np.mean(np.linalg.norm(directions, 1))
             for v in directions:
                 w = v - np.sum(np.dot(v, b) * b for b in basis)
                 #if (np.abs(w) > 1e-3).any() :
                 if np.linalg.norm(w) > 0.2 :
                     basis.append(w / np.linalg.norm(w))
-                else :
-                    print('Rejected : ', np.linalg.norm(w))
-            print('')
 
             for b in basis :
                 norm_b = [np.linalg.norm(np.dot(v, b)*b) for v in directions]
