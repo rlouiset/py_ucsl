@@ -258,7 +258,7 @@ class HYDRA(BaseML):
                 norm_b = [np.linalg.norm(np.dot(v, b)*b) for v in directions]
                 norms.append(np.mean(norm_b))
 
-            basis = np.array(basis) * np.array(norms)[:,None]
+            basis = np.array(basis) #* np.array(norms)[:,None]
 
             X_proj = X @ basis.T
 
