@@ -251,8 +251,9 @@ class HYDRA(BaseML):
             basis, norms = [], []
             for v in directions:
                 w = v - np.sum(np.dot(v, b) * b for b in basis)
-                if (np.abs(w) > 1e-5).any():
+                if (np.abs(w) > 1e-3).any():
                     basis.append(w / np.linalg.norm(w))
+                    print(w)
                 else :
                     print(w)
 
