@@ -211,6 +211,7 @@ class HYDRA(BaseML):
                         print("Re-initialization of the clustering...")
                         S, cluster_index = self.init_S(X, y_polytope, index_positives, index_negatives, self.n_clusters_per_label[idx_outside_polytope], idx_outside_polytope, initialization_type=self.initialization_type)
                     if np.count_nonzero(S[index_negatives, cluster_i]) < len(index_negatives)/self.n_clusters_per_label[idx_outside_polytope]**2 :
+                        print(iter, ' wrong')
                         S[index_negatives, cluster_i] = 1 #/self.n_clusters_per_label[idx_outside_polytope]
 
                 for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope]):
@@ -252,6 +253,7 @@ class HYDRA(BaseML):
             for v in directions:
                 w = v - np.sum(np.dot(v, b) * b for b in basis)
                 if (np.abs(w) > 1e-3).any():
+                    print(w)
                     basis.append(w / np.linalg.norm(w))
                 else :
                     print(w)
