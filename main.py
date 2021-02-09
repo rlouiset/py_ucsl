@@ -251,7 +251,7 @@ class HYDRA(BaseML):
             basis, norms = [], []
             for v in directions:
                 w = v - np.sum(np.dot(v, b) * b for b in basis)
-                if len(basis)<self.n_clusters_per_label[idx_outside_polytope] or (w > 1e-10).any():
+                if (w > 1e-10).any():
                     basis.append(w / np.linalg.norm(w))
 
             for b in basis :
