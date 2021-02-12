@@ -1,317 +1,351 @@
-import numpy as np
-from base import BaseML
-from utils import *
-from sinkornknopp import *
-from sklearn.decomposition import PCA, FastICA
+from abc import ABCMeta, abstractmethod
+from sklearn.base import BaseEstimator, ClassifierMixin
+from utils.utils import *
 from sklearn.metrics import accuracy_score
 from sklearn.svm import SVC
-from sklearn.svm._base import _one_vs_one_coef
-from sklearn.cluster import KMeans, DBSCAN
+from sklearn.cluster import KMeans
 from sklearn.metrics import adjusted_rand_score as ARI
-from rvm import *
-import sklearn
-#from sklearn_rvm import EMRVC
-from sklearn.mixture import GaussianMixture
-from sklearn.metrics import balanced_accuracy_score
-import cvxpy as cp
 
-class HYDRA(BaseML):
-    """ Computes and stores the average and current value.
-    """
-    def __init__(self, C=1, n_consensus=5, n_iterations=5, n_clusters_per_label=None, training_label_mapping=None, initialization_type="DPP", kernel="linear",
-                 tolerance=0.05, clustering_strategy='original', consensus='original', name="HYDRA"):
-        super().__init__(name)
-        if n_clusters_per_label is None:
-            n_clusters_per_label = {0: 2, 1: 2}
 
+class BaseEM(BaseEstimator, metaclass=ABCMeta):
+    """Basic class for Relevance Vector Machine."""
+
+    @abstractmethod
+    def __init__(self, C, kernel, stability_threshold, noise_tolerance_threshold,
+                 n_consensus, n_iterations, n_labels, n_clusters_per_label,
+                 initialization, clustering, consensus, negative_weighting):
+
+        if stability_threshold < 0 or stability_threshold > 1:
+            msg = ("The stability_threshold value is invalid. It must be between 0 and 1.")
+            raise ValueError(msg)
+
+        # define numerical hyperparameters
         self.C = C
+        self.kernel = kernel
+        self.stability_threshold = stability_threshold
+        self.noise_tolerance_threshold = noise_tolerance_threshold
+
+        # define number of iterations or consensus to perform
         self.n_consensus = n_consensus
         self.n_iterations = n_iterations
-        self.tolerance = tolerance
-        self.initialization_type = initialization_type
-        self.clustering_strategy = clustering_strategy
+
+        # define n_labels and n_clusters per label
+        self.n_labels = n_labels
+        if n_clusters_per_label is None:
+            self.n_clusters_per_label = {label: 2 for label in range(n_labels)}
+
+        # define what type of initialization, clustering and consensus one wants to use
+        self.initialization = initialization
+        self.clustering = clustering
         self.consensus = consensus
-        self.kernel = kernel
+        self.negative_weighting = negative_weighting
 
-        self.training_label_mapping = training_label_mapping
-        if training_label_mapping is not None :
-            self.labels = np.unique(list(training_label_mapping.values()))
-        else :
-            self.labels = [0, 1]
-        self.barycenters = {label:None for label in self.labels}
-        self.n_clusters_per_label = n_clusters_per_label
 
-        self.coefficients = {label:{cluster_i:None for cluster_i in range(n_clusters_per_label[label])} for label in self.labels}
-        self.intercepts = {label:{cluster_i:None for cluster_i in range(n_clusters_per_label[label])} for label in self.labels}
+class HYDRA(BaseEM, ClassifierMixin):
+    """ ...
+    """
 
-        self.S_lists = {label:dict() for label in self.labels}
-        self.X_proj_list = {label:[] for label in self.labels}
-        self.coef_lists = {label:{cluster_i:dict() for cluster_i in range(n_clusters_per_label[label])} for label in self.labels}
-        self.intercept_lists = {label:{cluster_i:dict() for cluster_i in range(n_clusters_per_label[label])} for label in self.labels}
+    def __init__(self, C=1, kernel="linear", stability_threshold=0.9, noise_tolerance_threshold=5,
+                 n_consensus=5, n_iterations=5, n_labels=2, n_clusters_per_label=None,
+                 initialization="DPP", clustering='original', consensus='spectral_clustering', negative_weighting='all',
+                 training_label_mapping=None):
 
-        self.mean_direction={label:None for label in self.labels}
-        self.mean_intercept = {label:0 for label in self.labels}
-        self.intercept_bank = 0
+        super().__init__(C=C, kernel=kernel, stability_threshold=stability_threshold,
+                         noise_tolerance_threshold=noise_tolerance_threshold,
+                         n_consensus=n_consensus, n_iterations=n_iterations, n_labels=n_labels,
+                         n_clusters_per_label=n_clusters_per_label,
+                         initialization=initialization, clustering=clustering, consensus=consensus,
+                         negative_weighting=negative_weighting)
+
+        # define the mapping of labels before fitting the algorithm
+        # for example, one may want to merge 2 labels together before fitting to check if clustering separate them well
+        if training_label_mapping is not None:
+            self.training_label_mapping = {label: label for label in range(self.n_labels)}
+        else:
+            self.training_label_mapping = training_label_mapping
+
+        # define clustering parameters
+        self.barycenters = {label: None for label in range(self.n_labels)}
+        self.coefficients = {label: {cluster_i: None for cluster_i in range(n_clusters_per_label[label])} for label in
+                             range(self.n_labels)}
+        self.intercepts = {label: {cluster_i: None for cluster_i in range(n_clusters_per_label[label])} for label in
+                           range(self.n_labels)}
+
+        # TODO : Get rid of these visualization helps
+        self.S_lists = {label: dict() for label in range(self.n_labels)}
+        self.coef_lists = {label: {cluster_i: dict() for cluster_i in range(n_clusters_per_label[label])} for label in
+                           range(self.n_labels)}
+        self.intercept_lists = {label: {cluster_i: dict() for cluster_i in range(n_clusters_per_label[label])} for label
+                                in range(self.n_labels)}
+
+        # define bissector hyperplane parameter
+        self.mean_direction = {label: None for label in range(self.n_labels)}
+
+        # define k_means clustering method orthonormal basis and k_means
+        self.orthonormal_basis = {label: None for label in range(self.n_labels)}
+        self.k_means = {label: None for label in range(self.n_labels)}
 
     def fit(self, X_train, y_train):
-        if self.training_label_mapping is not None :
-            for original_label, new_label in self.training_label_mapping.items() :
-                y_train[y_train==original_label] = new_label
+        # apply label mapping (in our case we merged "BIPOLAR" and "SCHIZOPHRENIA" into "MENTAL DISEASE" for our xp)
+        for original_label, new_label in self.training_label_mapping.items():
+            y_train[y_train == original_label] = new_label
 
-        for label in self.labels :
-            self.run(X_train, y_train, idx_outside_polytope=label)
+        # cluster each label one by one and confine the other inside the polytope
+        for label in range(self.n_labels):
+            self.run(X_train, y_train, self.n_clusters_per_label[label], idx_outside_polytope=label)
 
     def predict(self, X):
-        if len(self.labels) == 2 :
-            y_pred = self.predict_binary_proba(X)[:,1]
-            y_pred[y_pred > 0.5] = 1
-            y_pred[y_pred < 0.5] = 0
-        else :
-            y_pred = self.predict_proba(X)
-            y_pred = np.argmax(y_pred, 1)
-        return y_pred
+        y_pred = self.predict_proba(X)
+        return np.argmax(y_pred, 1)
 
-    def score(self, X, y):
+    def clustering_score(self, X, y):
         y_pred = self.predict(X)
         return accuracy_score(y, y_pred)
 
-    def predict_binary_proba(self, X):
-        SVM_scores_dict = {label: np.zeros((len(X), self.n_clusters_per_label[label])) for label in self.labels}
+    def predict_proba(self, X):
         y_pred = np.zeros((len(X), 2))
-        for label in self.labels:
-            ## fullfill the SVM score matrix
-            for cluster_i in range(self.n_clusters_per_label[label]):
-                SVM_coefficient, SVM_intercept = self.coefficients[label][cluster_i], self.intercepts[label][cluster_i]
-                SVM_scores_dict[label][:, cluster_i] = (np.matmul(SVM_coefficient, X.transpose()) + SVM_intercept).transpose().squeeze()
 
-        ## fullfill each cluster score
-        for i in range(len(X)):
-            y_pred[i][1] = sigmoid(np.max(SVM_scores_dict[1][i, :]) - np.max(SVM_scores_dict[0][i, :]))
-            y_pred[i][0] = 1-y_pred[i][1]
+        # first compute points distances to hyperplane
+        SVM_distances = {label: np.zeros((len(X), self.n_clusters_per_label[label])) for label in range(self.n_labels)}
+
+        for label in range(self.n_labels):
+            # fullfill the SVM distances \w the original HYDRA formulation
+            for cluster_i in range(self.n_clusters_per_label[label]):
+                SVM_coefficient = self.coefficients[label][cluster_i]
+                SVM_intercept = self.intercepts[label][cluster_i]
+                SVM_distances[label][:, cluster_i] = 1 + X @ SVM_coefficient + SVM_intercept
+
+        if self.clustering in ['original']:
+            # merge each label distances and compute the probability \w sigmoid function
+            for i in range(len(X)):
+                y_pred[i][1] = sigmoid(np.max(SVM_distances[1][i, :]) - np.max(SVM_distances[0][i, :]))
+                y_pred[i][0] = 1 - y_pred[i][1]
+
+        else:
+            cluster_predictions = self.predict_clusters(X)
+            # compute the predictions \w.r.t cluster previously found
+            for i in range(len(X)):
+                y_pred[i][1] = sum([cluster_predictions[i, cluster] * SVM_distances[1][i, cluster] for cluster in
+                                    range(self.n_clusters_per_label[1])])
+                y_pred[i][1] -= sum([cluster_predictions[i, cluster] * SVM_distances[0][i, cluster] for cluster in
+                                     range(self.n_clusters_per_label[0])])
+                # compute probabilities \w sigmoid
+                y_pred[i][1] = sigmoid(y_pred[i][1] / np.max(y_pred[i][1]))
+                y_pred[i][0] = 1 - y_pred[i][1]
+
         return y_pred
 
-    def predict_proba(self, X):
-        ''' '''
-        ## predict cluster distance for each label
-        if len(self.labels) == 2 :
-            y_pred_proba = self.predict_binary_proba(X)
-        else :
-            return NotImplemented
-        return y_pred_proba
+    def predict_clusters(self, X):
+        cluster_predictions = {label: np.zeros((len(X), self.n_clusters_per_label[label])) for label in
+                               range(self.n_labels)}
 
+        if self.clustering in ['original']:
+            SVM_distances = {label: np.zeros((len(X), self.n_clusters_per_label[label])) for label in
+                             range(self.n_labels)}
 
-    def predict_distances(self, X):
-        cluster_predictions = {label: np.zeros((len(X), self.n_clusters_per_label[label] + 1)) for label in self.labels}
-
-        if self.clustering_strategy in ['original'] :
-            SVM_scores_dict = {label: np.zeros((len(X), self.n_clusters_per_label[label])) for label in self.labels}
-
-            for label in self.labels:
-                ## fullfill the SVM score matrix
+            for label in range(self.n_labels):
+                # fullfill the SVM score matrix
                 for cluster_i in range(self.n_clusters_per_label[label]):
-                    SVM_coefficient, SVM_intercept = self.coefficients[label][cluster_i], self.intercepts[label][cluster_i]
-                    SVM_scores_dict[label][:, cluster_i] = 1+(np.matmul(SVM_coefficient, X.transpose()) + SVM_intercept).transpose().squeeze()
+                    SVM_coefficient = self.coefficients[label][cluster_i]
+                    SVM_intercept = self.intercepts[label][cluster_i]
+                    SVM_distances[label][:, cluster_i] = 1 + X @ SVM_coefficient + SVM_intercept
 
-                ## fullfill each cluster score
+                # compute clustering conditional probabilities as in the original HYDRA paper : P(cluster=i|y=label)
                 for i in range(len(X)):
-                    if np.max(SVM_scores_dict[label][i, :]) <= 0:
-                        cluster_predictions[label][i, 0] = sigmoid(np.mean(SVM_scores_dict[label][i, :]))  # P(y=label)
-                    else:
-                        cluster_distance_vect = SVM_scores_dict[label][i, :]
-                        cluster_predictions[label][i, 0] = sigmoid(np.sum(cluster_distance_vect[cluster_distance_vect > 0]))
-
+                    for cluster in range(self.n_clusters_per_label[label]):
+                        SVM_distances[label][i, cluster] = max(SVM_distances[label][i, cluster], 0)
                     for cluster_i in range(self.n_clusters_per_label[label]):
-                        SVM_scores_dict[label][i, cluster_i] = max(SVM_scores_dict[label][i, cluster_i], 0)            # sigmoid(SVM_scores_dict[label][i, cluster_i])
-                    for cluster_i in range(self.n_clusters_per_label[label]):
-                        cluster_predictions[label][i, cluster_i + 1] = SVM_scores_dict[label][i, cluster_i] / (np.sum(SVM_scores_dict[label][i, :])+0.000001)                                      # P(cluster=i|y=label)
-            # norm_column = np.sum(np.concatenate([(cluster_predictions[label][:,0])[:,None] for label in self.labels], axis=1), 1)
-            # for label in self.labels:
-            #    cluster_predictions[label][:,0] /= norm_column
+                        cluster_predictions[label][i, cluster_i] = SVM_distances[label][i, cluster_i] / \
+                                                                   (np.sum(SVM_distances[label][i]) + 1e-5)
 
-        elif self.clustering_strategy in ['boundary_barycenter'] :
-            barycenters_scores_dict = {label : np.zeros((len(X), self.n_clusters_per_label[label])) for label in self.labels}
-            for label in self.labels:
-                for cluster_i in range(self.n_clusters_per_label[label]) :
-                    w_cluster_i = self.coefficients[label][cluster_i]
-                    b_cluster_i = self.intercepts[label][cluster_i]
-                    w_cluster_i_norm = w_cluster_i / np.linalg.norm(w_cluster_i)**2
-                    boundary_barycenter_i = self.barycenters[label][cluster_i] + (self.barycenters[label][cluster_i]@w_cluster_i[0]+b_cluster_i)*w_cluster_i_norm
-                    barycenters_scores_dict[label][:,cluster_i] = sigmoid(-np.linalg.norm(X-boundary_barycenter_i, axis=1))
-                for cluster_i in range(self.n_clusters_per_label[label]):
-                    cluster_predictions[label][:, cluster_i+1] = barycenters_scores_dict[label][:, cluster_i] / np.sum(barycenters_scores_dict[label], 1)     # P(cluster=i|y=label)
+        elif self.clustering in ['boundary_barycenter']:
+            barycenters_distances = {label: np.zeros((len(X), self.n_clusters_per_label[label])) for label in
+                                     range(self.n_labels)}
+            for label in range(self.n_labels):
+                for cluster in range(self.n_clusters_per_label[label]):
+                    # get directions, intercepts of SVMs
+                    w_cluster = self.coefficients[label][cluster]
+                    b_cluster = self.intercepts[label][cluster]
+                    w_cluster_normed = w_cluster / np.linalg.norm(w_cluster) ** 2
 
-        elif self.clustering_strategy in ['mean_hp']:
-            cluster_predictions = {label: np.zeros((len(X), self.n_clusters_per_label[label] + 1)) for label in self.labels}
-            mean_hp_scores = {label: np.zeros((len(X), self.n_clusters_per_label[label])) for label in self.labels}
-            for label in self.labels:
-                X_proj = (np.matmul(self.mean_direction[label][None,:], X.transpose()) + self.mean_intercept[label]).transpose().squeeze()
-                X_proj = sigmoid(X_proj[:, None]*5/np.max(X_proj))
+                    # project barycenter point on the boundary
+                    boundary_barycenter = self.barycenters[label][cluster] + (
+                                self.barycenters[label][cluster] @ w_cluster[0] + b_cluster) * w_cluster_normed
 
-                cluster_predictions[label][:, 1] = (1-X_proj)[:,0]
-                cluster_predictions[label][:, 2] = X_proj[:,0]
+                    # compute distance to barycenter and assign cluster to closest barycenter : P(cluster=i|y=label)
+                    barycenters_distances[label][:, cluster] = -np.linalg.norm(X - boundary_barycenter, axis=1)
+                    barycenters_distances[label][:, cluster] = sigmoid(
+                        barycenters_distances[label][:, cluster] / np.max(barycenters_distances[label][:, cluster]))
+
+                for cluster in range(self.n_clusters_per_label[label]):
+                    cluster_predictions[label][:, cluster] = barycenters_distances[label][:, cluster] / np.sum(
+                        barycenters_distances[label], 1)
+
+        elif self.clustering in ['bisector_hyperplane']:
+            for label in range(self.n_labels):
+                X_proj = X @ self.mean_direction[label][:, None]
+                y_proj_pred = sigmoid(X_proj[:, None] / np.max(X_proj))
+
+                cluster_predictions[label][:, 0] = (1 - y_proj_pred)
+                cluster_predictions[label][:, 1] = y_proj_pred
+
+        elif self.clustering in ['k_means']:
+            for label in range(self.n_labels):
+                X_proj = X @ self.orthonormal_basis[label].T
+                y_proj_pred = self.k_means[label].predict(X_proj)
+
+                cluster_predictions[label][:, 0] = (1 - y_proj_pred)
+                cluster_predictions[label][:, 1] = y_proj_pred
 
         return cluster_predictions
 
-
-    def predict_cluster_assignement(self, X):
-        cluster_predictions = self.predict_distances(X)
-        for key in cluster_predictions.keys() :
-            cluster_predictions[key] = cluster_predictions[key][:,1:]
-        return cluster_predictions
-
-    def run(self, X, y, idx_outside_polytope):
-        n_clusters = self.n_clusters_per_label[idx_outside_polytope]
+    def run(self, X, y, n_clusters, idx_outside_polytope):
         n_consensus = self.n_consensus if (self.n_clusters_per_label[idx_outside_polytope] > 1) else 1
-        ## put the label idx_center_polytope at the center of the polytope by setting it to positive labels
+
+        # set label idx_outside_polytope outside of the polytope by setting it to positive labels
         y_polytope = np.copy(y)
-        y_polytope[y_polytope!=idx_outside_polytope] = -1    ## if label is inside of the polytope, the distance is negative and the label is not divided into
-        y_polytope[y_polytope==idx_outside_polytope] = 1     ## if label is outside of the polytope, the distance is positive and the label is clustered
+        # if label is inside of the polytope, the distance is negative and the label is not divided into
+        y_polytope[y_polytope != idx_outside_polytope] = -1
+        # if label is outside of the polytope, the distance is positive and the label is clustered
+        y_polytope[y_polytope == idx_outside_polytope] = 1
 
         consensus_assignment = np.zeros((len(y_polytope), n_consensus))
-        consensus_direction = []
-        consensus_intercepts = []
 
-        index_positives = np.where(y_polytope == 1)[0]  # index for Positive Labels
-        index_negatives = np.where(y_polytope == -1)[0]  # index for Negative Labels
+        index_positives = np.where(y_polytope == 1)[0]  # index for Positive labels (outside polytope)
+        index_negatives = np.where(y_polytope == -1)[0]  # index for Negative labels (inside polytope)
 
         for consensus_i in range(n_consensus):
-            ## depending on the weight initialization strategy, random hyperplanes were initialized with maximum diversity to constitute the convex polytope
-            S, cluster_index = self.init_S(X, y_polytope, index_positives, index_negatives, self.n_clusters_per_label[idx_outside_polytope], idx_outside_polytope, initialization_type=self.initialization_type)
-            self.S_lists[idx_outside_polytope][0]=S.copy()
+            # first we initialize the clustering matrix S, with the initialization strategy set in self.initialization
+            S, cluster_index = self.initialize_clustering(X, y_polytope, index_positives, index_negatives,
+                                                          n_clusters, idx_outside_polytope)
 
-            for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope]):
-                cluster_i_weight = np.ascontiguousarray(S[:, cluster_i])
-                SVM_coefficient, SVM_intercept = self.launch_svc(X, y_polytope, cluster_i_weight, kernel=self.kernel)
-                self.coefficients[idx_outside_polytope][cluster_i] = SVM_coefficient
-                self.intercepts[idx_outside_polytope][cluster_i] = SVM_intercept
+            # TODO : Get rid of these visualization helps
+            self.S_lists[idx_outside_polytope][0] = S.copy()
 
-                self.coef_lists[idx_outside_polytope][cluster_i][0] = SVM_coefficient.copy()
-                self.intercept_lists[idx_outside_polytope][cluster_i][0] = SVM_intercept.copy()
+            for cluster in range(n_clusters):
+                cluster_assignment = np.ascontiguousarray(S[:, cluster])
+                SVM_coefficient, SVM_intercept = self.launch_svc(X, y_polytope, cluster_assignment)
+                self.coefficients[idx_outside_polytope][cluster] = SVM_coefficient
+                self.intercepts[idx_outside_polytope][cluster] = SVM_intercept
 
-            for iter in range(self.n_iterations):
-                ## decide the convergence of the polytope based on the toleration
+                # TODO: get rid of
+                self.coef_lists[idx_outside_polytope][cluster][0] = SVM_coefficient.copy()
+                self.intercept_lists[idx_outside_polytope][cluster][0] = SVM_intercept.copy()
+
+            for iteration in range(self.n_iterations):
+                # decide the convergence based on the clustering stability
                 S_hold = S.copy()
-                S, cluster_index = self.update_S(X, y, S, index_positives, cluster_index, idx_outside_polytope)
-                self.S_lists[idx_outside_polytope][1+iter]=S.copy()
+                S, cluster_index = self.update_clustering(X, S, index_positives, cluster_index, n_clusters,
+                                                          idx_outside_polytope)
 
-                if self.clustering_strategy in ['original']:
-                    S[index_negatives, :] = 1/n_clusters
-                S[index_positives, :] = 0
+                # TODO : get rid of
+                self.S_lists[idx_outside_polytope][iteration + 1] = S.copy()
+
+                # applying the negative weighting set as input
+                if self.negative_weighting == 'all':
+                    S[index_negatives] = 1 / n_clusters
+                elif self.negative_weighting == 'hard_clustering':
+                    S[index_negatives] = np.rint(S[index_negatives]).astype(np.float)
+
+                # always set positive clustering as hard
+                S[index_positives] = 0
                 S[index_positives, cluster_index[index_positives]] = 1
 
-                ## check the loss comparted to the tolorence for stopping criteria
-                cluster_consistency = ARI(np.argmax(S[index_positives],1), np.argmax(S_hold[index_positives],1))
+                # check the Clustering Stability \w Adjusted Rand Index for stopping criteria
+                cluster_consistency = ARI(np.argmax(S[index_positives], 1), np.argmax(S_hold[index_positives], 1))
 
-                if cluster_consistency > 0.95 :
+                if cluster_consistency > self.stability_threshold:
                     break
 
-                for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope]):
-                    if np.count_nonzero(S[index_positives, cluster_i]) == 0 :
-                        #print("Cluster dropped, meaning that all Positive Labels has been assigned to one single hyperplane in iteration: %d" % ( iter - 1))
+                # check for degenerate clustering for positive labels (warning) and negatives (might be normal)
+                for cluster in range(self.n_clusters_per_label[idx_outside_polytope]):
+                    if np.count_nonzero(S[index_positives, cluster]) == 0:
+                        print(
+                            "Cluster dropped, meaning that one cluster have no positive points anymore, in iteration: %d" % (
+                                    iteration - 1))
                         print("Re-initialization of the clustering...")
-                        S, cluster_index = self.init_S(X, y_polytope, index_positives, index_negatives, self.n_clusters_per_label[idx_outside_polytope], idx_outside_polytope, initialization_type=self.initialization_type)
-                    if np.count_nonzero(S[index_negatives, cluster_i]) == 0 :
-                        S[index_negatives, cluster_i] = 1/self.n_clusters_per_label[idx_outside_polytope]
+                        S, cluster_index = self.initialize_clustering(X, y_polytope, index_positives, index_negatives,
+                                                                      n_clusters, idx_outside_polytope)
 
-                for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope]):
-                    cluster_i_weight = np.ascontiguousarray(S[:, cluster_i])
-                    SVM_coefficient, SVM_intercept = self.launch_svc(X, y_polytope, cluster_i_weight, kernel=self.kernel)
-                    self.coefficients[idx_outside_polytope][cluster_i] = SVM_coefficient
-                    self.intercepts[idx_outside_polytope][cluster_i] = SVM_intercept
+                    if np.count_nonzero(S[index_negatives, cluster]) == 0:
+                        print(
+                            "Cluster too far, meaning that one cluster have no negative points anymore, in iteration: %d" % (
+                                    iteration - 1))
+                        print("Re-distribution of this cluster negative weight to 'all...'")
+                        S[index_negatives, cluster] = 1 / n_clusters
 
-                    self.coef_lists[idx_outside_polytope][cluster_i][iter+1] = SVM_coefficient.copy()
-                    self.intercept_lists[idx_outside_polytope][cluster_i][iter+1] = SVM_intercept.copy()
+                for cluster in range(n_clusters):
+                    cluster_assignment = np.ascontiguousarray(S[:, cluster])
+                    SVM_coefficient, SVM_intercept = self.launch_svc(X, y_polytope, cluster_assignment)
+                    self.coefficients[idx_outside_polytope][cluster] = SVM_coefficient
+                    self.intercepts[idx_outside_polytope][cluster] = SVM_intercept
 
-            ## update the cluster index for the consensus clustering
-            consensus_assignment[:, consensus_i] = cluster_index + 1
-            consensus_direction.append([self.coefficients[idx_outside_polytope][cluster_i][0] for cluster_i in range(len(self.coefficients[idx_outside_polytope]))])
-            consensus_intercepts.append(self.intercept_bank)
+                    # TODO: get rid of
+                    self.coef_lists[idx_outside_polytope][cluster][iteration + 1] = SVM_coefficient.copy()
+                    self.intercept_lists[idx_outside_polytope][cluster][iteration + 1] = SVM_intercept.copy()
 
-        if n_consensus > 1 :
-            self.apply_consensus(X, y_polytope, consensus_assignment, consensus_direction, consensus_intercepts, n_clusters, index_positives, index_negatives, idx_outside_polytope)
+            # update the cluster index for the consensus clustering
+            consensus_assignment[:, consensus_i] = cluster_index
 
-    def update_S(self, X, y, S, index, cluster_index, idx_outside_polytope, lambda_sigmoid=5) :
-        if self.n_clusters_per_label[idx_outside_polytope] == 1 :
+        if n_consensus > 1:
+            self.clustering_bagging(X, y_polytope, consensus_assignment, n_clusters, index_positives, idx_outside_polytope)
+
+    def update_clustering(self, X, S, index, cluster_index, n_clusters, idx_outside_polytope):
+        if n_clusters == 1:
             S[index] = 1
             cluster_index[index] = 0
             return S, cluster_index
 
         Q = S.copy()
-        if self.clustering_strategy == 'original':
+        if self.clustering == 'original':
             svm_scores = np.zeros(S.shape)
-            for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope]) :
-                 ## Apply the data again the trained model to get the final SVM scores
-                 svm_scores[:, cluster_i] = 1+(np.matmul(self.coefficients[idx_outside_polytope][cluster_i], X.transpose()) + self.intercepts[idx_outside_polytope][cluster_i]).transpose().squeeze()
+            for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope]):
+                # Apply the data again the trained model to get the final SVM scores
+                svm_scores[:, cluster_i] = 1 + (
+                        np.matmul(self.coefficients[idx_outside_polytope][cluster_i], X.transpose()) +
+                        self.intercepts[idx_outside_polytope][cluster_i]).transpose().squeeze()
             svm_scores[svm_scores < 0] = 0.000001
             Q = svm_scores / np.sum(svm_scores, 1)[:, None]
 
-        if self.clustering_strategy == 'k_means' :
-            directions = [self.coefficients[idx_outside_polytope][cluster_i][0] for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])]
+        if self.clustering == 'k_means':
+            directions = [self.coefficients[idx_outside_polytope][cluster_i][0] for cluster_i in
+                          range(self.n_clusters_per_label[idx_outside_polytope])]
 
             basis, norms = [], []
             for v in directions:
                 w = v - np.sum(np.dot(v, b) * b for b in basis)
-                #if (np.abs(w) > 1e-3).any() :
-                if np.linalg.norm(w) > 0.2 :
+                if np.linalg.norm(w) * self.noise_tolerance_threshold > 1:
                     basis.append(w / np.linalg.norm(w))
 
-            for b in basis :
-                norm_b = [np.linalg.norm(np.dot(v, b)*b) for v in directions]
+            for b in basis:
+                norm_b = [np.linalg.norm(np.dot(v, b) * b) for v in directions]
                 norms.append(np.mean(norm_b))
 
             basis = np.array(basis)
 
             X_proj = X @ basis.T
 
-            self.X_proj_list[idx_outside_polytope].append(X_proj.copy())
-            centroids = [np.mean(S[index, cluster_i][:,None]*X_proj[index,:], 0) for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])]
-            KM = KMeans(n_clusters=self.n_clusters_per_label[idx_outside_polytope], init=np.array(centroids), n_init=1).fit(X_proj[index])
+            centroids = [np.mean(S[index, cluster_i][:, None] * X_proj[index, :], 0) for cluster_i in
+                         range(self.n_clusters_per_label[idx_outside_polytope])]
+            KM = KMeans(n_clusters=self.n_clusters_per_label[idx_outside_polytope], init=np.array(centroids),
+                        n_init=1).fit(X_proj[index])
 
             Q = one_hot_encode(KM.predict(X_proj), n_classes=self.n_clusters_per_label[idx_outside_polytope])
 
-        if self.clustering_strategy == 'DBSCAN' :
-            directions = [self.coefficients[idx_outside_polytope][cluster_i][0] for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])]
+        elif self.clustering in ['bisector_hyperplane']:
+            directions = np.array([self.coefficients[idx_outside_polytope][cluster_i][0] for cluster_i in
+                                   range(self.n_clusters_per_label[idx_outside_polytope])])
 
-            basis = []
-            norms = []
-            for v in directions:
-                w = v - np.sum(np.dot(v, b) * b for b in basis)
-                if len(basis)<self.n_clusters_per_label[idx_outside_polytope] or (w > 1e-10).any():
-                    basis.append(w / np.linalg.norm(w))
-                    norms.append(np.linalg.norm(v))
-            basis = np.array(basis) * np.array(norms)[:,None]
+            directions[0] = directions[0] * np.linalg.norm(directions[1]) ** 2 / np.mean(
+                (np.linalg.norm(directions, axis=1) ** 2))
+            directions[1] = directions[1] * np.linalg.norm(directions[0]) ** 2 / np.mean(
+                (np.linalg.norm(directions, axis=1) ** 2))
 
-            X_proj = X @ basis.T
+            mean_direction = (directions[0] - directions[1]) / 2
+            mean_intercept = 0
 
-            self.X_proj_list[idx_outside_polytope].append(X_proj.copy())
-            dbscan = DBSCAN().fit(X_proj)
-
-            labels = dbscan.labels_[index]
-            self.n_clusters_per_label[idx_outside_polytope] = len(set(labels)) - (1 if -1 in labels else 0)
-
-            Q = one_hot_encode(dbscan.predict(X_proj), n_classes=self.n_clusters_per_label[idx_outside_polytope])
-
-        elif self.clustering_strategy in ['mean_hp']:
-            directions = np.array([self.coefficients[idx_outside_polytope][cluster_i][0] for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])])
-            intercepts = np.array([self.intercepts[idx_outside_polytope][cluster_i][0] for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])])
-
-            ###
-            X_0 = (np.matmul(directions[0][None,:], X.transpose()) + intercepts[0]).transpose().squeeze()
-            X_1 = (np.matmul(directions[1][None,:], X.transpose()) + intercepts[1]).transpose().squeeze()
-            min_indices = np.argpartition(np.abs(X_0)+np.abs(X_1), 10)
-            ###
-
-            directions[0] = directions[0]*np.linalg.norm(directions[1])**2 / np.mean((np.linalg.norm(directions, axis=1)**2))
-            directions[1] = directions[1]*np.linalg.norm(directions[0])**2 / np.mean((np.linalg.norm(directions, axis=1)**2))
-            mean_direction = (directions[0] - directions[1])/2
-
-            ###
-            mean_intercept = - np.mean(X[min_indices]@mean_direction)
-            self.intercept_bank = mean_intercept
-            ###
-
-            X_proj = (np.matmul(mean_direction[None,:], X.transpose()) + mean_intercept).transpose().squeeze()
-            X_proj = sigmoid(X_proj[:, None]*lambda_sigmoid/np.max(X_proj))
+            X_proj = (np.matmul(mean_direction[None, :], X.transpose()) + mean_intercept).transpose().squeeze()
+            X_proj = sigmoid(X_proj[:, None] / np.max(X_proj))
 
             Q = np.concatenate((1 - X_proj, X_proj), axis=1)
 
@@ -319,9 +353,8 @@ class HYDRA(BaseML):
         cluster_index[index] = np.argmax(Q[index], axis=1)
         return S, cluster_index
 
-
-    def init_S(self, X, y_polytope, index_positives, index_negatives, n_clusters, idx_outside_polytope, initialization_type="DPP") :
-        if n_clusters==1 :
+    def initialize_clustering(self, X, y_polytope, index_positives, index_negatives, n_clusters, idx_outside_polytope):
+        if n_clusters == 1:
             S = np.ones((len(y_polytope), n_clusters)) / n_clusters
             cluster_index = np.argmax(S, axis=1)
             self.barycenters[idx_outside_polytope] = np.mean(X, 0)[None, 1]
@@ -329,7 +362,7 @@ class HYDRA(BaseML):
 
         S = np.ones((len(y_polytope), n_clusters)) / n_clusters
 
-        if initialization_type == "DPP":  ##
+        if self.initialization == "DPP":
             num_subject = y_polytope.shape[0]
             W = np.zeros((num_subject, X.shape[1]))
             for j in range(num_subject):
@@ -353,146 +386,68 @@ class HYDRA(BaseML):
 
             S = cpu_sk(d, lambda_=1)
 
-        if initialization_type == "k_means":  ##
+        if self.initialization == "k_means":
             KM = KMeans(n_clusters=self.n_clusters_per_label[idx_outside_polytope]).fit(X[index_positives])
             S = one_hot_encode(KM.predict(X))
 
         cluster_index = np.argmax(S, axis=1)
-
         return S, cluster_index
 
-    def launch_svc(self, X, y, sample_weight, kernel) :
-        SVC_clsf = SVC(kernel=kernel, C=self.C, gamma='auto')
-
+    def launch_svc(self, X, y, sample_weight):
         # fit the different SVM/hyperplanes
-        SVC_clsf.fit(X, y, sample_weight=sample_weight)
+        SVM_classifier = SVC(kernel=self.kernel, C=self.C)
+        SVM_classifier.fit(X, y, sample_weight=sample_weight)
 
+        # get SVM intercept value
+        SVM_intercept = SVM_classifier.intercept_
+
+        # get SVM hyperplane coefficient
         if self.kernel == 'rbf':
-            X_support = X[SVC_clsf.support_]
-            y_support = y[SVC_clsf.support_]
-
-            SVM_coefficient = SVC_clsf.dual_coef_ @ np.einsum('i,ij->ij', y_support, X_support)
-            SVM_intercept = SVC_clsf.intercept_
-        else :
-            SVM_coefficient = SVC_clsf.coef_
-            SVM_intercept = SVC_clsf.intercept_
+            X_support = X[SVM_classifier.support_]
+            y_support = y[SVM_classifier.support_]
+            SVM_coefficient = SVM_classifier.dual_coef_ @ np.einsum('i,ij->ij', y_support, X_support)
+        else:
+            SVM_coefficient = SVM_classifier.coef_
 
         return SVM_coefficient, SVM_intercept
 
-
-    def apply_consensus(self, X, y_polytope, consensus_assignment, consensus_direction, consensus_intercepts, n_clusters, index_positives,
-                        index_negatives, idx_outside_polytope):
+    def clustering_bagging(self, X, y_polytope, consensus_assignment, n_clusters, index_positives, idx_outside_polytope):
+        # reinitialize clustering matrix
         S = np.ones((len(y_polytope), n_clusters)) / n_clusters
-        if self.consensus == 'original':
-            ## do censensus clustering
+
+        if self.consensus == 'spectral_clustering':
+            # perform consensus clustering
             consensus_scores = consensus_clustering(consensus_assignment[index_positives].astype(int), n_clusters)
-            ## change the weight of positivess to be 1, negatives to be 1/_clusters
-            # then set the positives' weight to be 1 for the assigned hyperplane
+            # change the weight of positives samples to 1, negatives to 1/n_clusters
             S[index_positives, :] *= 0
             S[index_positives, consensus_scores] = 1
 
-        if self.consensus in ['w_original', 'post_neg_w_original'] :
-            ## clustering relevancy
-            w_clusterings = np.zeros((consensus_assignment.shape[1], consensus_assignment.shape[1]))
-            for clustering_i in range(len(w_clusterings)) :
-                for clustering_j in range(len(w_clusterings)) :
-                    if clustering_j != clustering_i :
-                        w_clusterings[clustering_i][clustering_j] = ARI(consensus_assignment[index_positives,clustering_i], consensus_assignment[index_positives,clustering_j])
-            w_clusterings = np.sum(w_clusterings, 1)
-            w_clusterings[w_clusterings<0] = 0
-            w_clusterings = w_clusterings / np.sum(w_clusterings)
+        if self.consensus == 'weighted_spectral_clustering':
+            # compute clustering relevancy to weight the spectral clustering
+            clustering_weights = np.zeros((consensus_assignment.shape[1], consensus_assignment.shape[1]))
+            for clustering_i in range(len(clustering_weights)):
+                for clustering_j in range(len(clustering_weights)):
+                    if clustering_j != clustering_i:
+                        clustering_weights[clustering_i][clustering_j] = ARI(
+                            consensus_assignment[index_positives, clustering_i],
+                            consensus_assignment[index_positives, clustering_j])
+            clustering_weights = np.sum(clustering_weights, 1)
+            clustering_weights[clustering_weights < 0] = 0
+            clustering_weights = clustering_weights / np.sum(clustering_weights)
 
-            ## do censensus clustering
-            consensus_scores = consensus_clustering(consensus_assignment[index_positives].astype(int), n_clusters, cluster_weight=w_clusterings)
-            ## change the weight of positivess to be 1, negatives to be 1/_clusters
-            # then set the positives' weight to be 1 for the assigned hyperplane
+            # do consensus clustering
+            consensus_scores = consensus_clustering(consensus_assignment[index_positives], n_clusters,
+                                                    cluster_weight=clustering_weights)
+            # change the weight of positives samples to be 1, negatives to be 1/n_clusters
             S[index_positives, :] *= 0
             S[index_positives, consensus_scores] = 1
 
-        if self.consensus == 'neg_w_original':
-            ## clustering relevancy
-            w_clusterings = np.zeros((consensus_assignment.shape[1], consensus_assignment.shape[1]))
-            for clustering_i in range(len(w_clusterings)) :
-                for clustering_j in range(len(w_clusterings)) :
-                    if clustering_j != clustering_i :
-                        w_clusterings[clustering_i][clustering_j] = ARI(consensus_assignment[index_positives,clustering_i], consensus_assignment[index_positives,clustering_j])
-            w_clusterings = np.sum(w_clusterings, 1)
-            w_clusterings[w_clusterings<0] = 0
-            w_clusterings = w_clusterings / np.sum(w_clusterings)
+        for cluster in range(n_clusters):
+            cluster_weight = np.ascontiguousarray(S[:, cluster])
+            SVM_coefficient, SVM_intercept = self.launch_svc(X, y_polytope, cluster_weight)
+            self.coefficients[idx_outside_polytope][cluster] = SVM_coefficient
+            self.intercepts[idx_outside_polytope][cluster] = SVM_intercept
 
-            ## do censensus clustering
-            consensus_scores = consensus_clustering_neg(consensus_assignment.astype(int), n_clusters, cluster_weight=w_clusterings)
-            ## change the weight of positivess to be 1, negatives to be 1/_clusters
-            # then set the positives' weight to be 1 for the assigned hyperplane
-            S = consensus_scores.copy()
-
-
-        elif self.consensus == 'best_hp':
-            ## clustering relevancy
-            w_clusterings = np.zeros((consensus_assignment.shape[1], consensus_assignment.shape[1]))
-            for clustering_i in range(len(w_clusterings)) :
-                for clustering_j in range(len(w_clusterings)) :
-                    if clustering_j != clustering_i :
-                        w_clusterings[clustering_i][clustering_j] = ARI(consensus_assignment[index_positives,clustering_i], consensus_assignment[index_positives,clustering_j])
-            w_clusterings = np.sum(w_clusterings, 1)
-            w_clusterings[w_clusterings<0] = 0
-            w_clusterings = w_clusterings / np.sum(w_clusterings)
-
-            ## do censensus clustering
-            y_clustering_positives = consensus_clustering(consensus_assignment[index_positives].astype(int), n_clusters, cluster_weight=w_clusterings)
-            X_positives = X[index_positives]
-
-            max_ARI = 0
-            for consensus_i in range(self.n_consensus) :
-                directions_i = consensus_direction[consensus_i]
-                intercept_i = consensus_intercepts[consensus_i]
-
-                directions_i = directions_i / (np.linalg.norm(directions_i, axis=1)**2)[:, None]
-
-                mean_direction_i = directions_i[0,:]-directions_i[1,:]
-                mean_direction_i /= 2
-
-                distances_positives_i = X_positives @ mean_direction_i + intercept_i
-                pred_positives_i = np.rint(sigmoid(distances_positives_i)).astype(np.int)
-
-                ARI_i = ARI(pred_positives_i, y_clustering_positives)
-
-                if ARI_i > max_ARI :
-                    max_ARI = ARI_i
-                    self.mean_direction[idx_outside_polytope] = mean_direction_i
-                    self.mean_intercept[idx_outside_polytope] = intercept_i
-
-            X_proj = X@self.mean_direction[idx_outside_polytope] + self.mean_intercept[idx_outside_polytope]
-            X_proj = sigmoid(X_proj * 5 / np.max(X_proj))
-
-            S = np.concatenate(((1-X_proj)[:,None], X_proj[:,None]), axis=1)
-
-            # then set the positives' weight to be 1 for the assigned hyperplane
-            S[index_positives, :] *= 0
-            S[index_positives, np.rint(X_proj[index_positives]).astype(np.int)] = 1
-
-            self.S_lists[idx_outside_polytope][-1] = S.copy()
-
-
-        for cluster_i in range(n_clusters):
-            cluster_weight = np.ascontiguousarray(S[:, cluster_i])
-            SVM_coefficient, SVM_intercept = self.launch_svc(X, y_polytope, cluster_weight, self.kernel)
-            self.coefficients[idx_outside_polytope][cluster_i] = SVM_coefficient
-            self.intercepts[idx_outside_polytope][cluster_i] = SVM_intercept
-
-            self.coef_lists[idx_outside_polytope][cluster_i][-1] = SVM_coefficient.copy()
-            self.intercept_lists[idx_outside_polytope][cluster_i][-1] = SVM_intercept.copy()
-
-        if self.consensus in ['best_hp'] :
-            directions = np.array([self.coefficients[idx_outside_polytope][cluster_i][0] for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])])
-            intercepts = np.array([self.intercepts[idx_outside_polytope][cluster_i][0] for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope])])
-
-            X_0 = (np.matmul(directions[0][None,:], X.transpose()) + intercepts[0]).transpose().squeeze()
-            X_1 = (np.matmul(directions[1][None,:], X.transpose()) + intercepts[1]).transpose().squeeze()
-            min_indices = np.argpartition(np.abs(X_0)+np.abs(X_1), 10)
-
-            directions[0] = directions[0]*np.linalg.norm(directions[1])**2 / np.mean((np.linalg.norm(directions, axis=1)**2))
-            directions[1] = directions[1]*np.linalg.norm(directions[0])**2 / np.mean((np.linalg.norm(directions, axis=1)**2))
-            self.mean_direction[idx_outside_polytope] = (directions[0] - directions[1])/2
-            self.mean_intercept[idx_outside_polytope] = - np.mean(X[min_indices]@self.mean_direction[idx_outside_polytope])
-
+            # TODO: get rid of
+            self.coef_lists[idx_outside_polytope][cluster][-1] = SVM_coefficient.copy()
+            self.intercept_lists[idx_outside_polytope][cluster][-1] = SVM_intercept.copy()
