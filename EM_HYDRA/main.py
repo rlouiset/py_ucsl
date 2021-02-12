@@ -3,11 +3,10 @@ from abc import ABCMeta, abstractmethod
 
 from sklearn.metrics import adjusted_rand_score as ARI
 from sklearn.metrics import accuracy_score
-from sklearn.cluster import KMeans
-from utils.sinkornknopp import *
-from utils.DPP_utils import *
+from EM_HYDRA.sinkornknopp import *
+from EM_HYDRA.DPP_utils import *
 from sklearn.svm import SVC
-from utils.utils import *
+from EM_HYDRA.utils import *
 
 
 class BaseEM(BaseEstimator, metaclass=ABCMeta):
