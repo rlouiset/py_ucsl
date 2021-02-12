@@ -286,6 +286,7 @@ class HYDRA(BaseEM, ClassifierMixin):
                 for cluster in range(n_clusters):
                     cluster_assignment = np.ascontiguousarray(S[:, cluster])
                     SVM_coefficient, SVM_intercept = self.launch_svc(X, y_polytope, cluster_assignment)
+                    print(SVM_coefficient.shape)
                     self.coefficients[idx_outside_polytope][cluster] = SVM_coefficient
                     self.intercepts[idx_outside_polytope][cluster] = SVM_intercept
 
@@ -489,8 +490,10 @@ class HYDRA(BaseEM, ClassifierMixin):
             for cluster in range(n_clusters):
                 self.coefficients[idx_outside_polytope][cluster] = np.sum(dual_coef_[:, cluster][:,None] * y_polytope[:,None] * X, 0)[:,
                                                                    None]
+                print(self.coefficients[idx_outside_polytope][cluster].shape)
                 self.intercepts[idx_outside_polytope][cluster] = np.mean(y_polytope) - np.mean(X, 0) @ \
                                                                  self.coefficients[idx_outside_polytope][cluster]
+                print(self.coefficients[idx_outside_polytope][cluster].shape)
 
                 # TODO: get rid of
                 self.coef_lists[idx_outside_polytope][cluster][-1] = self.coefficients[idx_outside_polytope][cluster].copy()
@@ -505,6 +508,8 @@ class HYDRA(BaseEM, ClassifierMixin):
                 # TODO: get rid of
                 self.coef_lists[idx_outside_polytope][cluster][-1] = SVM_coefficient.copy()
                 self.intercept_lists[idx_outside_polytope][cluster][-1] = SVM_intercept.copy()
+
+        print()
 
         # update clustering one last time for methods such as k_means or bisector_hyperplane
         _, _ = self.update_clustering(X, S, index_positives, np.argmax(S, 1), n_clusters, idx_outside_polytope)
