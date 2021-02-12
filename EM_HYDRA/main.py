@@ -2,7 +2,7 @@ from sklearn.base import BaseEstimator, ClassifierMixin
 from abc import ABCMeta, abstractmethod
 
 from sklearn.metrics import adjusted_rand_score as ARI
-from sklearn.metrics import silhouette_score
+from sklearn.metrics import calinski_harabasz_score
 from EM_HYDRA.sinkornknopp import *
 from EM_HYDRA.DPP_utils import *
 from EM_HYDRA.utils import *
@@ -109,7 +109,7 @@ class HYDRA(BaseEM, ClassifierMixin):
         y_pred_clusters = self.predict_clusters(X)
         for label in range(self.n_labels):
             X_proj = X @ self.orthonormal_basis[label].T
-            silhouette_score_per_label[label] = max(silhouette_score(X_proj, np.argmax(y_pred_clusters[label],1)), 0)
+            silhouette_score_per_label[label] = max(calinski_harabasz_score(X_proj, np.argmax(y_pred_clusters[label],1)), 0)
         return silhouette_score_per_label
 
     def predict_proba(self, X):
