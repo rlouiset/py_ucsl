@@ -109,7 +109,7 @@ class HYDRA(BaseEM, ClassifierMixin):
         y_pred_clusters = self.predict_clusters(X)
         for label in range(self.n_labels):
             X_proj = X @ self.orthonormal_basis[label]
-            silhouette_score_per_label[label] = max(silhouette_score(X_proj, y_pred_clusters[label]), 0)
+            silhouette_score_per_label[label] = max(silhouette_score(X_proj, np.argmax(y_pred_clusters[label],1)), 0)
         return silhouette_score_per_label
 
     def predict_proba(self, X):
