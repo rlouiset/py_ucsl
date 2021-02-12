@@ -445,7 +445,7 @@ class HYDRA(BaseEM, ClassifierMixin):
 
         # we run the problem minimizer
         prob = cp.Problem(cp.Minimize(obj), const)
-        prob.solve(verbose = True, solver = cp.ECOS)
+        prob.solve(solver = cp.ECOS)
         return lambda_dual_matrix.value
 
     def clustering_bagging(self, X, y_polytope, consensus_assignment, n_clusters, index_positives,
@@ -490,11 +490,8 @@ class HYDRA(BaseEM, ClassifierMixin):
             dual_coef_ = self.optimize_HYDRA_dual(X, y_polytope, S)
             for cluster in range(n_clusters):
                 self.coefficients[idx_outside_polytope][cluster] = np.sum(dual_coef_[:, cluster][:,None] * y_polytope[:,None] * X, 0)[None]
-                print(self.coefficients[idx_outside_polytope][cluster].shape)
-                print((np.mean(X, 0)[None,:] @ self.coefficients[idx_outside_polytope][cluster][0]).shape)
                 self.intercepts[idx_outside_polytope][cluster] = np.mean(y_polytope) - (np.mean(X, 0)[None,:] @ \
                                                                  self.coefficients[idx_outside_polytope][cluster][0])
-                print(self.intercepts[idx_outside_polytope][cluster].shape)
 
                 # TODO: get rid of
                 self.coef_lists[idx_outside_polytope][cluster][-1] = self.coefficients[idx_outside_polytope][cluster].copy()
