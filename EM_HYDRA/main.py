@@ -36,7 +36,7 @@ class BaseEM(BaseEstimator, metaclass=ABCMeta):
         self.n_labels = n_labels
         if n_clusters_per_label is None:
             self.n_clusters_per_label = {label: 2 for label in range(n_labels)}
-        else :
+        else:
             self.n_clusters_per_label = n_clusters_per_label
 
             # define what type of initialization, clustering and consensus one wants to use
@@ -104,11 +104,11 @@ class HYDRA(BaseEM, ClassifierMixin):
         y_pred = self.predict_proba(X)
         return np.argmax(y_pred, 1)
 
-    def clustering_score(self, X, y=None) :
-        silhouette_score_per_label = {label:0 for label in range(self.n_labels)}
+    def clustering_score(self, X, y=None):
+        silhouette_score_per_label = {label: 0 for label in range(self.n_labels)}
         y_pred_clusters = self.predict_clusters(X)
-        for label in range(self.n_labels) :
-            X_proj = X@self.orthonormal_basis[label]
+        for label in range(self.n_labels):
+            X_proj = X @ self.orthonormal_basis[label]
             silhouette_score_per_label[label] = max(silhouette_score(X_proj, y_pred_clusters[label]), 0)
         return silhouette_score_per_label
 
@@ -180,7 +180,7 @@ class HYDRA(BaseEM, ClassifierMixin):
 
                     # project barycenter point on the boundary
                     boundary_barycenter = self.barycenters[label][cluster] + (
-                                self.barycenters[label][cluster] @ w_cluster[0] + b_cluster) * w_cluster_normed
+                            self.barycenters[label][cluster] @ w_cluster[0] + b_cluster) * w_cluster_normed
 
                     # compute distance to barycenter and assign cluster to closest barycenter : P(cluster=i|y=label)
                     barycenters_distances[label][:, cluster] = -np.linalg.norm(X - boundary_barycenter, axis=1)
@@ -298,7 +298,8 @@ class HYDRA(BaseEM, ClassifierMixin):
             consensus_assignment[:, consensus_i] = cluster_index
 
         if n_consensus > 1:
-            self.clustering_bagging(X, y_polytope, consensus_assignment, n_clusters, index_positives, idx_outside_polytope)
+            self.clustering_bagging(X, y_polytope, consensus_assignment, n_clusters, index_positives,
+                                    idx_outside_polytope)
 
     def update_clustering(self, X, S, index, cluster_index, n_clusters, idx_outside_polytope):
         if n_clusters == 1:
@@ -321,26 +322,23 @@ class HYDRA(BaseEM, ClassifierMixin):
             directions = [self.coefficients[idx_outside_polytope][cluster_i][0] for cluster_i in
                           range(self.n_clusters_per_label[idx_outside_polytope])]
 
-            basis, norms = [], []
+            basis = []
             for v in directions:
                 w = v - np.sum(np.dot(v, b) * b for b in basis)
                 if np.linalg.norm(w) * self.noise_tolerance_threshold > 1:
                     basis.append(w / np.linalg.norm(w))
 
-            for b in basis:
-                norm_b = [np.linalg.norm(np.dot(v, b) * b) for v in directions]
-                norms.append(np.mean(norm_b))
-
-            basis = np.array(basis)
-
-            X_proj = X @ basis.T
+            self.orthonormal_basis[idx_outside_polytope] = np.array(basis)
+            X_proj = X @ self.orthonormal_basis[idx_outside_polytope].T
 
             centroids = [np.mean(S[index, cluster_i][:, None] * X_proj[index, :], 0) for cluster_i in
                          range(self.n_clusters_per_label[idx_outside_polytope])]
-            KM = KMeans(n_clusters=self.n_clusters_per_label[idx_outside_polytope], init=np.array(centroids),
-                        n_init=1).fit(X_proj[index])
+            self.k_means[idx_outside_polytope] = KMeans(n_clusters=self.n_clusters_per_label[idx_outside_polytope],
+                                                        init=np.array(centroids),
+                                                        n_init=1).fit(X_proj[index])
 
-            Q = one_hot_encode(KM.predict(X_proj), n_classes=self.n_clusters_per_label[idx_outside_polytope])
+            Q = one_hot_encode(self.k_means[idx_outside_polytope].predict(X_proj),
+                               n_classes=self.n_clusters_per_label[idx_outside_polytope])
 
         elif self.clustering in ['bisector_hyperplane']:
             directions = np.array([self.coefficients[idx_outside_polytope][cluster_i][0] for cluster_i in
@@ -436,21 +434,22 @@ class HYDRA(BaseEM, ClassifierMixin):
 
         # we define the objective function
         obj = - cp.sum(lambda_dual_matrix)
-        for k in range(n_clusters) :
-            lambda_column = lambda_dual_matrix[:,k][:, None]
+        for k in range(n_clusters):
+            lambda_column = lambda_dual_matrix[:, k][:, None]
             obj += cp.quad_form(lambda_column, K_parameter)
 
         # We set the constraints
-        const = [ cp.multiply(y_polytope_parameter, lambda_dual_matrix) >= np.zeros((n_samples, n_clusters)),
-                  lambda_dual_matrix >= np.zeros(lambda_dual_matrix.shape),
-                  self.C*S_parameter >= lambda_dual_matrix ]
+        const = [cp.multiply(y_polytope_parameter, lambda_dual_matrix) >= np.zeros((n_samples, n_clusters)),
+                 lambda_dual_matrix >= np.zeros(lambda_dual_matrix.shape),
+                 self.C * S_parameter >= lambda_dual_matrix]
 
         # we run the problem minimizer
         prob = cp.Problem(cp.Minimize(obj), const)
         prob.solve()
         return lambda_dual_matrix.value
 
-    def clustering_bagging(self, X, y_polytope, consensus_assignment, n_clusters, index_positives, idx_outside_polytope):
+    def clustering_bagging(self, X, y_polytope, consensus_assignment, n_clusters, index_positives,
+                           idx_outside_polytope):
         # initialize the consensus clustering vector
         consensus_scores = np.zeros(index_positives.shape)
 
@@ -478,19 +477,21 @@ class HYDRA(BaseEM, ClassifierMixin):
         # reinitialize clustering matrix
         if self.dual_consensus:
             S = np.ones((len(y_polytope), n_clusters))
-        else :
+        else:
             S = np.ones((len(y_polytope), n_clusters)) / n_clusters
         # change the weight of positives samples to 1, negatives to 1/n_clusters
         S[index_positives, :] *= 0
         S[index_positives, consensus_scores] = 1
 
         # compute again linear SVM on final consensus clustering, either \w alternate optimization or direct optimization
-        if self.dual_consensus :
+        if self.dual_consensus:
             dual_coef_ = self.optimize_HYDRA_dual(X, y_polytope, S)
             for cluster in range(n_clusters):
-                self.coefficients[idx_outside_polytope][cluster] = np.sum(dual_coef_[:,cluster]*y_polytope*X, 0)[:, None]
-                self.intercepts[idx_outside_polytope][cluster] = np.mean(y_polytope) - np.mean(X, 0)@self.coefficients[idx_outside_polytope][cluster]
-        else :
+                self.coefficients[idx_outside_polytope][cluster] = np.sum(dual_coef_[:, cluster] * y_polytope * X, 0)[:,
+                                                                   None]
+                self.intercepts[idx_outside_polytope][cluster] = np.mean(y_polytope) - np.mean(X, 0) @ \
+                                                                 self.coefficients[idx_outside_polytope][cluster]
+        else:
             for cluster in range(n_clusters):
                 cluster_weight = np.ascontiguousarray(S[:, cluster])
                 SVM_coefficient, SVM_intercept = self.launch_svc(X, y_polytope, cluster_weight)
