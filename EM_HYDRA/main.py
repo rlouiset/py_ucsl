@@ -59,7 +59,7 @@ class HYDRA(BaseEM, ClassifierMixin):
 
         # define the mapping of labels before fitting the algorithm
         # for example, one may want to merge 2 labels together before fitting to check if clustering separate them well
-        if training_label_mapping is not None:
+        if training_label_mapping is None:
             self.training_label_mapping = {label: label for label in range(self.n_labels)}
         else:
             self.training_label_mapping = training_label_mapping
