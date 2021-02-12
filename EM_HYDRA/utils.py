@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.special import logsumexp
+import scipy
 from sklearn.cluster import KMeans
 
 
