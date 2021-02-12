@@ -1,10 +1,13 @@
-from abc import ABCMeta, abstractmethod
 from sklearn.base import BaseEstimator, ClassifierMixin
-from utils.utils import *
-from sklearn.metrics import accuracy_score
-from sklearn.svm import SVC
-from sklearn.cluster import KMeans
+from abc import ABCMeta, abstractmethod
+
 from sklearn.metrics import adjusted_rand_score as ARI
+from sklearn.metrics import accuracy_score
+from sklearn.cluster import KMeans
+from utils.sinkornknopp import *
+from utils.DPP_utils import *
+from sklearn.svm import SVC
+from utils.utils import *
 
 
 class BaseEM(BaseEstimator, metaclass=ABCMeta):
