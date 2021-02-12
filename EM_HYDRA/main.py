@@ -286,7 +286,6 @@ class HYDRA(BaseEM, ClassifierMixin):
                 for cluster in range(n_clusters):
                     cluster_assignment = np.ascontiguousarray(S[:, cluster])
                     SVM_coefficient, SVM_intercept = self.launch_svc(X, y_polytope, cluster_assignment)
-                    print(SVM_coefficient.shape)
                     self.coefficients[idx_outside_polytope][cluster] = SVM_coefficient
                     self.intercepts[idx_outside_polytope][cluster] = SVM_intercept
 
@@ -488,12 +487,9 @@ class HYDRA(BaseEM, ClassifierMixin):
         if self.dual_consensus:
             dual_coef_ = self.optimize_HYDRA_dual(X, y_polytope, S)
             for cluster in range(n_clusters):
-                self.coefficients[idx_outside_polytope][cluster] = np.sum(dual_coef_[:, cluster][:,None] * y_polytope[:,None] * X, 0)[:,
-                                                                   None]
-                print(self.coefficients[idx_outside_polytope][cluster].shape)
+                self.coefficients[idx_outside_polytope][cluster] = np.sum(dual_coef_[:, cluster][:,None] * y_polytope[:,None] * X, 0)[None]
                 self.intercepts[idx_outside_polytope][cluster] = np.mean(y_polytope) - np.mean(X, 0) @ \
                                                                  self.coefficients[idx_outside_polytope][cluster]
-                print(self.coefficients[idx_outside_polytope][cluster].shape)
 
                 # TODO: get rid of
                 self.coef_lists[idx_outside_polytope][cluster][-1] = self.coefficients[idx_outside_polytope][cluster].copy()
