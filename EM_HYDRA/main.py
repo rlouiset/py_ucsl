@@ -35,8 +35,10 @@ class BaseEM(BaseEstimator, metaclass=ABCMeta):
         self.n_labels = n_labels
         if n_clusters_per_label is None:
             self.n_clusters_per_label = {label: 2 for label in range(n_labels)}
+        else :
+            self.n_clusters_per_label = self.n_clusters_per_label
 
-        # define what type of initialization, clustering and consensus one wants to use
+            # define what type of initialization, clustering and consensus one wants to use
         self.initialization = initialization
         self.clustering = clustering
         self.consensus = consensus
