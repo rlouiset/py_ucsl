@@ -492,6 +492,10 @@ class HYDRA(BaseEM, ClassifierMixin):
                                                                    None]
                 self.intercepts[idx_outside_polytope][cluster] = np.mean(y_polytope) - np.mean(X, 0) @ \
                                                                  self.coefficients[idx_outside_polytope][cluster]
+
+                # TODO: get rid of
+                self.coef_lists[idx_outside_polytope][cluster][-1] = self.coefficients[idx_outside_polytope][cluster].copy()
+                self.intercept_lists[idx_outside_polytope][cluster][-1] = self.intercepts[idx_outside_polytope][cluster].copy()
         else:
             for cluster in range(n_clusters):
                 cluster_weight = np.ascontiguousarray(S[:, cluster])
