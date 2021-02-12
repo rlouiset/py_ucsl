@@ -487,7 +487,7 @@ class HYDRA(BaseEM, ClassifierMixin):
         if self.dual_consensus:
             dual_coef_ = self.optimize_HYDRA_dual(X, y_polytope, S)
             for cluster in range(n_clusters):
-                self.coefficients[idx_outside_polytope][cluster] = np.sum(dual_coef_[:, cluster] * y_polytope * X, 0)[:,
+                self.coefficients[idx_outside_polytope][cluster] = np.sum(dual_coef_[:, cluster][:,None] * y_polytope[:,None] * X, 0)[:,
                                                                    None]
                 self.intercepts[idx_outside_polytope][cluster] = np.mean(y_polytope) - np.mean(X, 0) @ \
                                                                  self.coefficients[idx_outside_polytope][cluster]
