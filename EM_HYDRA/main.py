@@ -423,7 +423,7 @@ class HYDRA(BaseEM, ClassifierMixin):
         n_samples = X.shape[0]
         n_clusters = S.shape[1]
         diag_y = np.eye(n_samples, n_samples) * y_polytope[:, None]
-        y_polytope_repeat = np.repeat(y_polytope[:,None], 2, axis=1)
+        y_polytope_repeat = np.repeat(y_polytope[:,None], S.shape[1], axis=1)
 
         # then we define the Variables and Parameters
         lambda_dual_matrix = cp.Variable(shape=S.shape, nonneg=True)
