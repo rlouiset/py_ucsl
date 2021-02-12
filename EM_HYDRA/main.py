@@ -445,7 +445,7 @@ class HYDRA(BaseEM, ClassifierMixin):
 
         # we run the problem minimizer
         prob = cp.Problem(cp.Minimize(obj), const)
-        prob.solve()
+        prob.solve(verbose = True, solver = cp.ECOS)
         return lambda_dual_matrix.value
 
     def clustering_bagging(self, X, y_polytope, consensus_assignment, n_clusters, index_positives,
