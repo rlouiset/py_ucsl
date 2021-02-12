@@ -488,8 +488,11 @@ class HYDRA(BaseEM, ClassifierMixin):
             dual_coef_ = self.optimize_HYDRA_dual(X, y_polytope, S)
             for cluster in range(n_clusters):
                 self.coefficients[idx_outside_polytope][cluster] = np.sum(dual_coef_[:, cluster][:,None] * y_polytope[:,None] * X, 0)[None]
-                self.intercepts[idx_outside_polytope][cluster] = np.mean(y_polytope) - np.mean(X, 0) @ \
-                                                                 self.coefficients[idx_outside_polytope][cluster]
+                print(self.coefficients[idx_outside_polytope][cluster].shape)
+                print((np.mean(X, 0)[None,:] @ self.coefficients[idx_outside_polytope][cluster]).shape)
+                self.intercepts[idx_outside_polytope][cluster] = np.mean(y_polytope) - (np.mean(X, 0)[None,:] @ \
+                                                                 self.coefficients[idx_outside_polytope][cluster])
+                print(self.intercepts[idx_outside_polytope][cluster].shape)
 
                 # TODO: get rid of
                 self.coef_lists[idx_outside_polytope][cluster][-1] = self.coefficients[idx_outside_polytope][cluster].copy()
