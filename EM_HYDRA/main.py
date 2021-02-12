@@ -2,11 +2,12 @@ from sklearn.base import BaseEstimator, ClassifierMixin
 from abc import ABCMeta, abstractmethod
 
 from sklearn.metrics import adjusted_rand_score as ARI
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import silhouette_score
 from EM_HYDRA.sinkornknopp import *
 from EM_HYDRA.DPP_utils import *
-from sklearn.svm import SVC
 from EM_HYDRA.utils import *
+from sklearn.svm import SVC
+import cvxpy as cp
 
 
 class BaseEM(BaseEstimator, metaclass=ABCMeta):
@@ -63,6 +64,7 @@ class HYDRA(BaseEM, ClassifierMixin):
 
         # define the mapping of labels before fitting the algorithm
         # for example, one may want to merge 2 labels together before fitting to check if clustering separate them well
+        self.dual_consensus = True
         if training_label_mapping is None:
             self.training_label_mapping = {label: label for label in range(self.n_labels)}
         else:
@@ -102,9 +104,13 @@ class HYDRA(BaseEM, ClassifierMixin):
         y_pred = self.predict_proba(X)
         return np.argmax(y_pred, 1)
 
-    def clustering_score(self, X, y):
-        y_pred = self.predict(X)
-        return accuracy_score(y, y_pred)
+    def clustering_score(self, X, y=None) :
+        silhouette_score_per_label = {label:0 for label in range(self.n_labels)}
+        y_pred_clusters = self.predict_clusters(X)
+        for label in range(self.n_labels) :
+            X_proj = X@self.orthonormal_basis[label]
+            silhouette_score_per_label[label] = max(silhouette_score(X_proj, y_pred_clusters[label]), 0)
+        return silhouette_score_per_label
 
     def predict_proba(self, X):
         y_pred = np.zeros((len(X), 2))
@@ -415,16 +421,42 @@ class HYDRA(BaseEM, ClassifierMixin):
 
         return SVM_coefficient, SVM_intercept
 
+    def optimize_HYDRA_dual(self, X, y_polytope, S):
+        # first we define number of samples, number of clusters etc...
+        n_samples = X.shape[0]
+        n_clusters = S.shape[1]
+        diag_y = np.eye(n_samples, n_samples) * y_polytope[:, None]
+
+        # then we define the Variables and Parameters
+        lambda_dual_matrix = cp.Variable(shape=S.shape, nonneg=True)
+        S_parameter = cp.Parameter(shape=S.shape, value=S, nonneg=True)
+        y_polytope_parameter = cp.Parameter(shape=y_polytope[:, None].shape, value=y_polytope[:, None])
+        K = diag_y @ X @ X.T @ diag_y
+        K_parameter = cp.Parameter(shape=K.shape, PSD=True, value=K)
+
+        # we define the objective function
+        obj = - cp.sum(lambda_dual_matrix)
+        for k in range(n_clusters) :
+            lambda_column = lambda_dual_matrix[:,k][:, None]
+            obj += cp.quad_form(lambda_column, K_parameter)
+
+        # We set the constraints
+        const = [ cp.multiply(y_polytope_parameter, lambda_dual_matrix) >= np.zeros((n_samples, n_clusters)),
+                  lambda_dual_matrix >= np.zeros(lambda_dual_matrix.shape),
+                  self.C*S_parameter >= lambda_dual_matrix ]
+
+        # we run the problem minimizer
+        prob = cp.Problem(cp.Minimize(obj), const)
+        prob.solve()
+        return lambda_dual_matrix.value
+
     def clustering_bagging(self, X, y_polytope, consensus_assignment, n_clusters, index_positives, idx_outside_polytope):
-        # reinitialize clustering matrix
-        S = np.ones((len(y_polytope), n_clusters)) / n_clusters
+        # initialize the consensus clustering vector
+        consensus_scores = np.zeros(index_positives.shape)
 
         if self.consensus == 'spectral_clustering':
             # perform consensus clustering
             consensus_scores = consensus_clustering(consensus_assignment[index_positives].astype(int), n_clusters)
-            # change the weight of positives samples to 1, negatives to 1/n_clusters
-            S[index_positives, :] *= 0
-            S[index_positives, consensus_scores] = 1
 
         if self.consensus == 'weighted_spectral_clustering':
             # compute clustering relevancy to weight the spectral clustering
@@ -442,16 +474,32 @@ class HYDRA(BaseEM, ClassifierMixin):
             # do consensus clustering
             consensus_scores = consensus_clustering(consensus_assignment[index_positives], n_clusters,
                                                     cluster_weight=clustering_weights)
-            # change the weight of positives samples to be 1, negatives to be 1/n_clusters
-            S[index_positives, :] *= 0
-            S[index_positives, consensus_scores] = 1
 
-        for cluster in range(n_clusters):
-            cluster_weight = np.ascontiguousarray(S[:, cluster])
-            SVM_coefficient, SVM_intercept = self.launch_svc(X, y_polytope, cluster_weight)
-            self.coefficients[idx_outside_polytope][cluster] = SVM_coefficient
-            self.intercepts[idx_outside_polytope][cluster] = SVM_intercept
+        # reinitialize clustering matrix
+        if self.dual_consensus:
+            S = np.ones((len(y_polytope), n_clusters))
+        else :
+            S = np.ones((len(y_polytope), n_clusters)) / n_clusters
+        # change the weight of positives samples to 1, negatives to 1/n_clusters
+        S[index_positives, :] *= 0
+        S[index_positives, consensus_scores] = 1
 
-            # TODO: get rid of
-            self.coef_lists[idx_outside_polytope][cluster][-1] = SVM_coefficient.copy()
-            self.intercept_lists[idx_outside_polytope][cluster][-1] = SVM_intercept.copy()
+        # compute again linear SVM on final consensus clustering, either \w alternate optimization or direct optimization
+        if self.dual_consensus :
+            dual_coef_ = self.optimize_HYDRA_dual(X, y_polytope, S)
+            for cluster in range(n_clusters):
+                self.coefficients[idx_outside_polytope][cluster] = np.sum(dual_coef_[:,cluster]*y_polytope*X, 0)[:, None]
+                self.intercepts[idx_outside_polytope][cluster] = np.mean(y_polytope) - np.mean(X, 0)@self.coefficients[idx_outside_polytope][cluster]
+        else :
+            for cluster in range(n_clusters):
+                cluster_weight = np.ascontiguousarray(S[:, cluster])
+                SVM_coefficient, SVM_intercept = self.launch_svc(X, y_polytope, cluster_weight)
+                self.coefficients[idx_outside_polytope][cluster] = SVM_coefficient
+                self.intercepts[idx_outside_polytope][cluster] = SVM_intercept
+
+                # TODO: get rid of
+                self.coef_lists[idx_outside_polytope][cluster][-1] = SVM_coefficient.copy()
+                self.intercept_lists[idx_outside_polytope][cluster][-1] = SVM_intercept.copy()
+
+        # update clustering one last time for methods such as k_means or bisector_hyperplane
+        _, _ = self.update_clustering(X, S, index_positives, np.argmax(S, 1), n_clusters, idx_outside_polytope)
