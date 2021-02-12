@@ -16,7 +16,7 @@ class BaseEM(BaseEstimator, metaclass=ABCMeta):
     @abstractmethod
     def __init__(self, C, kernel, stability_threshold, noise_tolerance_threshold,
                  n_consensus, n_iterations, n_labels, n_clusters_per_label,
-                 initialization, clustering, consensus, negative_weighting):
+                 initialization, clustering, consensus, negative_weighting, dual_consensus):
 
         if stability_threshold < 0 or stability_threshold > 1:
             msg = ("The stability_threshold value is invalid. It must be between 0 and 1.")
@@ -44,6 +44,7 @@ class BaseEM(BaseEstimator, metaclass=ABCMeta):
         self.clustering = clustering
         self.consensus = consensus
         self.negative_weighting = negative_weighting
+        self.dual_consensus = dual_consensus
 
 
 class HYDRA(BaseEM, ClassifierMixin):
@@ -53,18 +54,17 @@ class HYDRA(BaseEM, ClassifierMixin):
     def __init__(self, C=1, kernel="linear", stability_threshold=0.9, noise_tolerance_threshold=5,
                  n_consensus=5, n_iterations=5, n_labels=2, n_clusters_per_label=None,
                  initialization="DPP", clustering='original', consensus='spectral_clustering', negative_weighting='all',
-                 training_label_mapping=None):
+                 training_label_mapping=None, dual_consensus=False):
 
         super().__init__(C=C, kernel=kernel, stability_threshold=stability_threshold,
                          noise_tolerance_threshold=noise_tolerance_threshold,
                          n_consensus=n_consensus, n_iterations=n_iterations, n_labels=n_labels,
                          n_clusters_per_label=n_clusters_per_label,
                          initialization=initialization, clustering=clustering, consensus=consensus,
-                         negative_weighting=negative_weighting)
+                         negative_weighting=negative_weighting, dual_consensus=dual_consensus)
 
         # define the mapping of labels before fitting the algorithm
         # for example, one may want to merge 2 labels together before fitting to check if clustering separate them well
-        self.dual_consensus = True
         if training_label_mapping is None:
             self.training_label_mapping = {label: label for label in range(self.n_labels)}
         else:
@@ -424,11 +424,12 @@ class HYDRA(BaseEM, ClassifierMixin):
         n_samples = X.shape[0]
         n_clusters = S.shape[1]
         diag_y = np.eye(n_samples, n_samples) * y_polytope[:, None]
+        y_polytope_repeat = np.repeat(y_polytope[:,None], 2, axis=1)
 
         # then we define the Variables and Parameters
         lambda_dual_matrix = cp.Variable(shape=S.shape, nonneg=True)
         S_parameter = cp.Parameter(shape=S.shape, value=S, nonneg=True)
-        y_polytope_parameter = cp.Parameter(shape=y_polytope[:, None].shape, value=y_polytope[:, None])
+        y_polytope_parameter = cp.Parameter(shape=y_polytope_repeat.shape, value=y_polytope_repeat)
         K = diag_y @ X @ X.T @ diag_y
         K_parameter = cp.Parameter(shape=K.shape, PSD=True, value=K)
 
