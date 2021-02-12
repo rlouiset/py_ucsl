@@ -146,7 +146,7 @@ class HYDRA(BaseEM, ClassifierMixin):
         return y_pred
 
     def predict_clusters(self, X):
-        cluster_predictions = {label: np.zeros((len(X), self.n_clusters_per_label[label])) for label in
+        cluster_predictions = {label: np.zeros((len(X), 1)) for label in
                                range(self.n_labels)}
 
         if self.clustering in ['original']:
@@ -204,8 +204,7 @@ class HYDRA(BaseEM, ClassifierMixin):
                 X_proj = X @ self.orthonormal_basis[label].T
                 y_proj_pred = self.k_means[label].predict(X_proj)
 
-                cluster_predictions[label][:, 0] = (1 - y_proj_pred)
-                cluster_predictions[label][:, 1] = y_proj_pred
+                cluster_predictions[label] = one_hot_encode(y_proj_pred, n_classes=self.n_clusters_per_label[label])
 
         return cluster_predictions
 
