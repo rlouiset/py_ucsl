@@ -139,7 +139,7 @@ class HYDRA(BaseEM, ClassifierMixin):
         return y_pred
 
     def predict_clusters(self, X):
-        cluster_predictions = {label: np.zeros((len(X), 2)) for label in
+        cluster_predictions = {label: np.zeros((len(X), self.n_clusters_per_label[label])) for label in
                                range(self.n_labels)}
 
         if self.clustering in ['original']:
@@ -465,39 +465,3 @@ class HYDRA(BaseEM, ClassifierMixin):
         _, _ = self.update_clustering(X, S, index_positives, np.argmax(S, 1), n_clusters, idx_outside_polytope)
 
 
-class MultiClassHYDRA(HYDRA, ClassifierMixin):
-    """ ...
-    """
-
-    def __init__(self, C=1, kernel="linear", stability_threshold=0.9, noise_tolerance_threshold=5,
-                 n_consensus=5, n_iterations=5, n_labels=2, n_clusters_per_label=None,
-                 initialization="DPP", clustering='original', consensus='spectral_clustering',
-                 negative_weighting='all', dual_consensus=False):
-        super().__init__(C=C, kernel=kernel, stability_threshold=stability_threshold,
-                         noise_tolerance_threshold=noise_tolerance_threshold,
-                         n_consensus=n_consensus, n_iterations=n_iterations, n_labels=n_labels,
-                         n_clusters_per_label=n_clusters_per_label,
-                         initialization=initialization, clustering=clustering, consensus=consensus,
-                         negative_weighting=negative_weighting, dual_consensus=dual_consensus)
-
-        # define clustering parameters
-        self.barycenters = {label: None for label in range(self.n_labels)}
-        self.coefficients = {label: {cluster_i: None for cluster_i in range(n_clusters_per_label[label])} for label in
-                             range(self.n_labels)}
-        self.intercepts = {label: {cluster_i: None for cluster_i in range(n_clusters_per_label[label])} for label in
-                           range(self.n_labels)}
-
-        # TODO : Get rid of these visualization helps
-        self.S_lists = {label: dict() for label in range(self.n_labels)}
-        self.coef_lists = {label: {cluster_i: dict() for cluster_i in range(n_clusters_per_label[label])} for label in
-                           range(self.n_labels)}
-        self.intercept_lists = {label: {cluster_i: dict() for cluster_i in range(n_clusters_per_label[label])} for label
-                                in range(self.n_labels)}
-
-        # define bissector hyperplane parameter
-        self.mean_direction = {label: None for label in range(self.n_labels)}
-
-        # define k_means clustering method orthonormal basis and k_means
-        self.orthonormal_basis = {label: None for label in range(self.n_labels)}
-        self.k_means = {label: None for label in range(self.n_labels)}
-        self.gaussian_mixture = {label: None for label in range(self.n_labels)}
