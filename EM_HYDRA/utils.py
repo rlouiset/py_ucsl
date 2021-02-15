@@ -15,7 +15,7 @@ def one_hot_encode(y, n_classes=None):
 
 
 def sigmoid(x, lambda_=5):
-    return 1 / (1 + np.exp(-lambda_*x))
+    return 1 / (1 + np.exp(-lambda_ * x))
 
 
 def py_softmax(x, axis=None):
@@ -66,7 +66,8 @@ def sample_dpp(evalue, evector, k=None):
 
     k = v.shape[0]
     v = v.astype(int)
-    v = [i - 1 for i in v.tolist()]  # due to the index difference between matlab & python, here, the element of v is for matlab
+    v = [i - 1 for i in
+         v.tolist()]  # due to the index difference between matlab & python, here, the element of v is for matlab
     V = evector[:, v]
 
     ## iterate
@@ -154,7 +155,8 @@ def elem_sym_poly(lambda_value, k):
     return E
 
 
-def consensus_clustering(clustering_results, n_clusters, index_positives, negative_weighting='all', cluster_weight=None):
+def consensus_clustering(clustering_results, n_clusters, index_positives, negative_weighting='all',
+                         cluster_weight=None):
     S = np.ones((clustering_results.shape[0], n_clusters)) / n_clusters
     co_occurrence_matrix = np.zeros((clustering_results.shape[0], clustering_results.shape[0]))
 
@@ -187,13 +189,13 @@ def consensus_clustering(clustering_results, n_clusters, index_positives, negati
     spectral_features = e_vector.real[:, 0:n_clusters]
 
     # apply clustering method according to negative weighting
-    if negative_weighting in ['all'] :
+    if negative_weighting in ['all']:
         k_means = KMeans(n_clusters=n_clusters).fit(spectral_features[index_positives])
         S[index_positives] = one_hot_encode(k_means.labels_.astype(np.int), n_classes=n_clusters)
-    elif negative_weighting in ['soft_clustering'] :
+    elif negative_weighting in ['soft_clustering']:
         gaussian_mixture = GaussianMixture(n_components=n_clusters).fit(spectral_features)
         S = gaussian_mixture.predict_proba(spectral_features)
-    elif negative_weighting in ['hard_clustering'] :
+    elif negative_weighting in ['hard_clustering']:
         k_means = KMeans(n_clusters=n_clusters).fit(spectral_features)
         S = one_hot_encode(k_means.labels_.astype(np.int), n_classes=n_clusters)
 
