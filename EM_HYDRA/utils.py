@@ -154,12 +154,12 @@ def elem_sym_poly(lambda_value, k):
     return E
 
 
-def consensus_clustering(clustering_results, k, index_positives, negative_weighting='all', cluster_weight=None):
-    num_pt = clustering_results.shape[0]
-    cooccurence_matrix = np.zeros((num_pt, num_pt))
+def consensus_clustering(clustering_results, n_clusters, index_positives, negative_weighting='all', cluster_weight=None):
+    S = np.ones((clustering_results.shape[0], n_clusters)) / n_clusters
+    cooccurence_matrix = np.zeros((clustering_results.shape[0], clustering_results.shape[0]))
 
-    for i in range(num_pt - 1):
-        for j in range(i + 1, num_pt):
+    for i in range(clustering_results.shape[0] - 1):
+        for j in range(i + 1, clustering_results.shape[0]):
             if cluster_weight is None:
                 cooccurence_matrix[i, j] = sum(clustering_results[i, :] == clustering_results[j, :])
             else:
@@ -170,7 +170,7 @@ def consensus_clustering(clustering_results, k, index_positives, negative_weight
     # here is to compute the Laplacian matrix
     Laplacian = np.subtract(np.diag(np.sum(cooccurence_matrix, axis=1)), cooccurence_matrix)
 
-    Laplacian_norm = np.subtract(np.eye(num_pt), np.matmul(
+    Laplacian_norm = np.subtract(np.eye(clustering_results.shape[0]), np.matmul(
         np.matmul(np.diag(1 / np.sqrt(np.sum(cooccurence_matrix, axis=1))), cooccurence_matrix),
         np.diag(1 / np.sqrt(np.sum(cooccurence_matrix, axis=1)))))
     # replace the nan with 0
@@ -184,10 +184,24 @@ def consensus_clustering(clustering_results, k, index_positives, negative_weight
         evalue, evector = scipy.linalg.eigh(Laplacian)
 
     # create the kmeans algorithm with sklearn
-    kmeans = KMeans(n_clusters=k, n_init=20).fit(evector.real[:, 0: k])
+    kmeans = KMeans(n_clusters=n_clusters, n_init=20).fit(evector.real[:, 0:n_clusters])
     final_predict = kmeans.labels_
 
-    return final_predict
+    # train Spectral Clustering algorithm and make predictions
+    spectral_features = evector.real[:, 0:n_clusters]
+
+    # apply clustering method according to negative weighting
+    if negative_weighting in ['all'] :
+        kmeans = KMeans(n_clusters=n_clusters).fit_predict(spectral_features[index_positives])
+        S[index_positives] = one_hot_encode(kmeans.labels_.astype(np.int), n_classes=n_clusters)
+    elif negative_weighting in ['soft_clustering'] :
+        gaussian_mixture = GaussianMixture(n_components=n_clusters).fit(spectral_features)
+        S = gaussian_mixture.predict_proba(spectral_features)
+    elif negative_weighting in ['hard_clustering'] :
+        kmeans = KMeans(n_clusters=n_clusters).fit_predict(spectral_features)
+        S = one_hot_encode(kmeans.labels_.astype(np.int), n_classes=n_clusters)
+
+    return S
 
 def consensus_clustering_(clustering_results, n_clusters, index_positives, negative_weighting='all', cluster_weight=None):
     ''' '''
