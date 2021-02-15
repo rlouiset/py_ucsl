@@ -430,7 +430,6 @@ class HYDRA(BaseEM, ClassifierMixin):
             # perform consensus clustering
             S = consensus_clustering(consensus_assignment.astype(int), n_clusters, index_positives,
                                      negative_weighting=self.negative_weighting)
-        print(S[:5])
 
         if self.consensus == 'weighted_spectral_clustering':
             # compute clustering relevancy to weight the spectral clustering
