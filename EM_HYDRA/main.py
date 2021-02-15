@@ -114,7 +114,7 @@ class HYDRA(BaseEM, ClassifierMixin):
             for cluster_i in range(self.n_clusters_per_label[label]):
                 SVM_coefficient = self.coefficients[label][cluster_i]
                 SVM_intercept = self.intercepts[label][cluster_i]
-                SVM_distances[label][:, cluster_i] = 1 + X @ SVM_coefficient + SVM_intercept
+                SVM_distances[label][:, cluster_i] = 1 + X @ SVM_coefficient[0] + SVM_intercept[0]
 
         if self.clustering in ['original']:
             # merge each label distances and compute the probability \w sigmoid function
