@@ -109,7 +109,8 @@ class HYDRA(BaseEM, ClassifierMixin):
         y_pred_clusters = self.predict_clusters(X)
         for label in range(self.n_labels):
             X_proj = X @ self.orthonormal_basis[label].T
-            silhouette_score_per_label[label] = max(calinski_harabasz_score(X_proj, np.argmax(y_pred_clusters[label],1)), 0)
+            silhouette_score_per_label[label] = max(
+                calinski_harabasz_score(X_proj, np.argmax(y_pred_clusters[label], 1)), 0)
         return silhouette_score_per_label
 
     def predict_proba(self, X):
@@ -423,7 +424,7 @@ class HYDRA(BaseEM, ClassifierMixin):
         n_samples = X.shape[0]
         n_clusters = S.shape[1]
         diag_y = np.eye(n_samples, n_samples) * y_polytope[:, None]
-        y_polytope_repeat = np.repeat(y_polytope[:,None], S.shape[1], axis=1)
+        y_polytope_repeat = np.repeat(y_polytope[:, None], S.shape[1], axis=1)
 
         # then we define the Variables and Parameters
         lambda_dual_matrix = cp.Variable(shape=S.shape, nonneg=True)
@@ -455,7 +456,8 @@ class HYDRA(BaseEM, ClassifierMixin):
 
         if self.consensus == 'spectral_clustering':
             # perform consensus clustering
-            S = consensus_clustering_(consensus_assignment.astype(int), n_clusters, index_positives, negative_weighting=self.negative_weighting)
+            S = consensus_clustering_(consensus_assignment.astype(int), n_clusters, index_positives,
+                                      negative_weighting=self.negative_weighting)
 
         if self.consensus == 'weighted_spectral_clustering':
             # compute clustering relevancy to weight the spectral clustering
@@ -472,8 +474,9 @@ class HYDRA(BaseEM, ClassifierMixin):
 
             # do consensus clustering
             S = consensus_clustering_(consensus_assignment, n_clusters, index_positives,
-                                                    negative_weighting=self.negative_weighting,
-                                                    cluster_weight=clustering_weights)
+                                      negative_weighting=self.negative_weighting,
+                                      cluster_weight=clustering_weights)
+        print(S[:10])
 
         # reinitialize clustering matrix
         '''
@@ -492,13 +495,18 @@ class HYDRA(BaseEM, ClassifierMixin):
         if self.dual_consensus:
             dual_coef_ = self.optimize_HYDRA_dual(X, y_polytope, S)
             for cluster in range(n_clusters):
-                self.coefficients[idx_outside_polytope][cluster] = np.sum(dual_coef_[:, cluster][:,None] * y_polytope[:,None] * X, 0)[None]
-                self.intercepts[idx_outside_polytope][cluster] = np.mean(y_polytope) - (np.mean(X, 0)[None,:] @ \
-                                                                 self.coefficients[idx_outside_polytope][cluster][0])
+                self.coefficients[idx_outside_polytope][cluster] = \
+                np.sum(dual_coef_[:, cluster][:, None] * y_polytope[:, None] * X, 0)[None]
+                self.intercepts[idx_outside_polytope][cluster] = np.mean(y_polytope) - (np.mean(X, 0)[None, :] @ \
+                                                                                        self.coefficients[
+                                                                                            idx_outside_polytope][
+                                                                                            cluster][0])
 
                 # TODO: get rid of
-                self.coef_lists[idx_outside_polytope][cluster][-1] = self.coefficients[idx_outside_polytope][cluster].copy()
-                self.intercept_lists[idx_outside_polytope][cluster][-1] = self.intercepts[idx_outside_polytope][cluster].copy()
+                self.coef_lists[idx_outside_polytope][cluster][-1] = self.coefficients[idx_outside_polytope][
+                    cluster].copy()
+                self.intercept_lists[idx_outside_polytope][cluster][-1] = self.intercepts[idx_outside_polytope][
+                    cluster].copy()
         else:
             for cluster in range(n_clusters):
                 cluster_weight = np.ascontiguousarray(S[:, cluster])
@@ -509,7 +517,6 @@ class HYDRA(BaseEM, ClassifierMixin):
                 # TODO: get rid of
                 self.coef_lists[idx_outside_polytope][cluster][-1] = SVM_coefficient.copy()
                 self.intercept_lists[idx_outside_polytope][cluster][-1] = SVM_intercept.copy()
-
 
         # update clustering one last time for methods such as k_means or bisector_hyperplane
         _, _ = self.update_clustering(X, S, index_positives, np.argmax(S, 1), n_clusters, idx_outside_polytope)
