@@ -195,7 +195,7 @@ def consensus_clustering_(clustering_results, n_clusters, index_positives, negat
     cooccurence_matrix = np.zeros((clustering_results.shape[0], clustering_results.shape[0]))
 
     for i in range(clustering_results.shape[0] - 1):
-        for j in range(i, clustering_results.shape[0]):
+        for j in range(i+1, clustering_results.shape[0]):
             if cluster_weight is None:
                 cooccurence_matrix[i, j] = sum(clustering_results[i, :] == clustering_results[j, :])
             else:
@@ -204,8 +204,6 @@ def consensus_clustering_(clustering_results, n_clusters, index_positives, negat
 
     # symmetrize the similarity matrix
     cooccurence_matrix = np.add(cooccurence_matrix, cooccurence_matrix.transpose())
-    cooccurence_matrix[cooccurence_matrix==np.max(cooccurence_matrix)] = np.max(cooccurence_matrix)/2
-    cooccurence_matrix /= np.max(cooccurence_matrix)
 
     # train Spectral Clustering algorithm and make predictions
     y_consensus_pred = SpectralClustering(n_clusters=n_clusters, affinity='precomputed').fit_predict(cooccurence_matrix)
