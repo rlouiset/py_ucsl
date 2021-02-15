@@ -195,7 +195,7 @@ def consensus_clustering_(clustering_results, n_clusters, index_positives, negat
     cooccurence_matrix = np.zeros((clustering_results.shape[0], clustering_results.shape[0]))
 
     for i in range(clustering_results.shape[0] - 1):
-        for j in range(i + 1, clustering_results.shape[0]):
+        for j in range(i, clustering_results.shape[0]):
             if cluster_weight is None:
                 cooccurence_matrix[i, j] = sum(clustering_results[i, :] == clustering_results[j, :])
             else:
