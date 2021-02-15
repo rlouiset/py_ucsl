@@ -2,12 +2,10 @@ from sklearn.base import BaseEstimator, ClassifierMixin
 from abc import ABCMeta, abstractmethod
 
 from sklearn.metrics import adjusted_rand_score as ARI
-from sklearn.metrics import calinski_harabasz_score
 from EM_HYDRA.sinkornknopp import *
 from EM_HYDRA.DPP_utils import *
 from EM_HYDRA.utils import *
 from sklearn.svm import SVC
-import cvxpy as cp
 
 
 class BaseEM(BaseEstimator, metaclass=ABCMeta):
@@ -19,7 +17,7 @@ class BaseEM(BaseEstimator, metaclass=ABCMeta):
                  initialization, clustering, consensus, negative_weighting, dual_consensus):
 
         if stability_threshold < 0 or stability_threshold > 1:
-            msg = ("The stability_threshold value is invalid. It must be between 0 and 1.")
+            msg = "The stability_threshold value is invalid. It must be between 0 and 1."
             raise ValueError(msg)
 
         # define numerical hyperparameters
@@ -463,5 +461,3 @@ class HYDRA(BaseEM, ClassifierMixin):
 
         # update clustering one last time for methods such as k_means or bisector_hyperplane
         _, _ = self.update_clustering(X, S, index_positives, np.argmax(S, 1), n_clusters, idx_outside_polytope)
-
-

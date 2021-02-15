@@ -156,50 +156,46 @@ def elem_sym_poly(lambda_value, k):
 
 def consensus_clustering(clustering_results, n_clusters, index_positives, negative_weighting='all', cluster_weight=None):
     S = np.ones((clustering_results.shape[0], n_clusters)) / n_clusters
-    cooccurence_matrix = np.zeros((clustering_results.shape[0], clustering_results.shape[0]))
+    co_occurrence_matrix = np.zeros((clustering_results.shape[0], clustering_results.shape[0]))
 
     for i in range(clustering_results.shape[0] - 1):
         for j in range(i + 1, clustering_results.shape[0]):
             if cluster_weight is None:
-                cooccurence_matrix[i, j] = sum(clustering_results[i, :] == clustering_results[j, :])
+                co_occurrence_matrix[i, j] = sum(clustering_results[i, :] == clustering_results[j, :])
             else:
-                cooccurence_matrix[i, j] = sum(
+                co_occurrence_matrix[i, j] = sum(
                     cluster_weight * (clustering_results[i, :] == clustering_results[j, :]).astype(np.int))
 
-    cooccurence_matrix = np.add(cooccurence_matrix, cooccurence_matrix.transpose())
+    co_occurrence_matrix = np.add(co_occurrence_matrix, co_occurrence_matrix.transpose())
     # here is to compute the Laplacian matrix
-    Laplacian = np.subtract(np.diag(np.sum(cooccurence_matrix, axis=1)), cooccurence_matrix)
+    Laplacian = np.subtract(np.diag(np.sum(co_occurrence_matrix, axis=1)), co_occurrence_matrix)
 
     Laplacian_norm = np.subtract(np.eye(clustering_results.shape[0]), np.matmul(
-        np.matmul(np.diag(1 / np.sqrt(np.sum(cooccurence_matrix, axis=1))), cooccurence_matrix),
-        np.diag(1 / np.sqrt(np.sum(cooccurence_matrix, axis=1)))))
+        np.matmul(np.diag(1 / np.sqrt(np.sum(co_occurrence_matrix, axis=1))), co_occurrence_matrix),
+        np.diag(1 / np.sqrt(np.sum(co_occurrence_matrix, axis=1)))))
     # replace the nan with 0
     Laplacian_norm = np.nan_to_num(Laplacian_norm)
 
     # check if the Laplacian norm is symmetric or not, because matlab eig function will automatically check this, but not in numpy or scipy
-    evalue, evector = scipy.linalg.eigh(Laplacian_norm)
+    e_value, e_vector = scipy.linalg.eigh(Laplacian_norm)
 
     # check if the eigen vector is complex
-    if np.any(np.iscomplex(evector)):
-        evalue, evector = scipy.linalg.eigh(Laplacian)
-
-    # create the kmeans algorithm with sklearn
-    kmeans = KMeans(n_clusters=n_clusters, n_init=20).fit(evector.real[:, 0:n_clusters])
-    final_predict = kmeans.labels_
+    if np.any(np.iscomplex(e_vector)):
+        e_value, e_vector = scipy.linalg.eigh(Laplacian)
 
     # train Spectral Clustering algorithm and make predictions
-    spectral_features = evector.real[:, 0:n_clusters]
+    spectral_features = e_vector.real[:, 0:n_clusters]
 
     # apply clustering method according to negative weighting
     if negative_weighting in ['all'] :
-        KMeans(n_clusters=n_clusters).fit(spectral_features[index_positives])
-        S[index_positives] = one_hot_encode(kmeans.labels_.astype(np.int), n_classes=n_clusters)
+        k_means = KMeans(n_clusters=n_clusters).fit(spectral_features[index_positives])
+        S[index_positives] = one_hot_encode(k_means.labels_.astype(np.int), n_classes=n_clusters)
     elif negative_weighting in ['soft_clustering'] :
         gaussian_mixture = GaussianMixture(n_components=n_clusters).fit(spectral_features)
         S = gaussian_mixture.predict_proba(spectral_features)
     elif negative_weighting in ['hard_clustering'] :
-        KMeans(n_clusters=n_clusters).fit(spectral_features)
-        S = one_hot_encode(kmeans.labels_.astype(np.int), n_classes=n_clusters)
+        k_means = KMeans(n_clusters=n_clusters).fit(spectral_features)
+        S = one_hot_encode(k_means.labels_.astype(np.int), n_classes=n_clusters)
 
     return S
 
