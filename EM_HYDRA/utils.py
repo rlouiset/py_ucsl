@@ -207,22 +207,13 @@ def consensus_clustering_(clustering_results, n_clusters, index_positives, negat
     cooccurence_matrix[cooccurence_matrix==np.max(cooccurence_matrix)] = np.max(cooccurence_matrix)/2
     cooccurence_matrix /= np.max(cooccurence_matrix)
 
-    print(cooccurence_matrix[:5])
-
     # train Spectral Clustering algorithm and make predictions
-    X_cooccurence_red = SpectralClustering(n_clusters=n_clusters, affinity='precomputed').fit_predict(cooccurence_matrix)
-    print(X_cooccurence_red.shape)
-    print(X_cooccurence_red[:10])
+    y_consensus_pred = SpectralClustering(n_clusters=n_clusters, affinity='precomputed').fit_predict(cooccurence_matrix)
 
     if negative_weighting in ['all'] :
-        kmeans = KMeans(n_clusters=n_clusters)
-        S[index_positives] = one_hot_encode(kmeans.fit_predict(X_cooccurence_red[index_positives]))
-    elif negative_weighting in ['hard_clustering'] :
-        kmeans = KMeans(n_clusters=n_clusters)
-        S = kmeans.fit_predict(X_cooccurence_red)
-    elif negative_weighting in ['soft_clustering'] :
-        gaussian_mixture = GaussianMixture(n_components=n_clusters).fit(cooccurence_matrix)
-        S = gaussian_mixture.predict(cooccurence_matrix)
+        S[index_positives] = one_hot_encode(y_consensus_pred[index_positives].astype(np.int), n_classes=n_clusters)
+    elif negative_weighting in ['hard_clustering', 'soft_clustering'] :
+        S = one_hot_encode(y_consensus_pred.astype(np.int), n_classes=n_clusters)
 
     return S
 
