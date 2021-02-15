@@ -2,7 +2,7 @@ import numpy as np
 from scipy.special import logsumexp
 import scipy
 from sklearn.cluster import KMeans
-from sklearn.cluster import SpectralClustering
+import cvxpy as cp
 from sklearn.mixture import GaussianMixture
 
 
@@ -203,33 +203,33 @@ def consensus_clustering(clustering_results, n_clusters, index_positives, negati
 
     return S
 
-def consensus_clustering_(clustering_results, n_clusters, index_positives, negative_weighting='all', cluster_weight=None):
-    ''' '''
-    S = np.ones((clustering_results.shape[0], n_clusters)) / n_clusters
-    cooccurence_matrix = np.zeros((clustering_results.shape[0], clustering_results.shape[0]))
 
-    for i in range(clustering_results.shape[0] - 1):
-        for j in range(i+1, clustering_results.shape[0]):
-            if cluster_weight is None:
-                cooccurence_matrix[i, j] = sum(clustering_results[i, :] == clustering_results[j, :])
-            else:
-                cooccurence_matrix[i, j] = sum(
-                    cluster_weight * (clustering_results[i, :] == clustering_results[j, :]))
+def optimize_HYDRA_dual(self, X, y_polytope, S):
+    # first we define number of samples, number of clusters etc...
+    n_samples = X.shape[0]
+    n_clusters = S.shape[1]
+    diag_y = np.eye(n_samples, n_samples) * y_polytope[:, None]
+    y_polytope_repeat = np.repeat(y_polytope[:, None], S.shape[1], axis=1)
 
-    # symmetrize the similarity matrix
-    cooccurence_matrix = np.add(cooccurence_matrix, cooccurence_matrix.transpose())
+    # then we define the Variables and Parameters
+    lambda_dual_matrix = cp.Variable(shape=S.shape, nonneg=True)
+    S_parameter = cp.Parameter(shape=S.shape, value=S, nonneg=True)
+    y_polytope_parameter = cp.Parameter(shape=y_polytope_repeat.shape, value=y_polytope_repeat)
+    K = diag_y @ X @ X.T @ diag_y
+    K_parameter = cp.Parameter(shape=K.shape, PSD=True, value=K)
 
-    # train Spectral Clustering algorithm and make predictions
-    y_consensus_pred = SpectralClustering(n_clusters=n_clusters, affinity='precomputed').fit_predict(cooccurence_matrix)
+    # we define the objective function
+    obj = - cp.sum(lambda_dual_matrix)
+    for k in range(n_clusters):
+        lambda_column = lambda_dual_matrix[:, k][:, None]
+        obj += cp.quad_form(lambda_column, K_parameter)
 
-    if negative_weighting in ['all'] :
-        S[index_positives] = one_hot_encode(y_consensus_pred[index_positives].astype(np.int), n_classes=n_clusters)
-    elif negative_weighting in ['hard_clustering', 'soft_clustering'] :
-        S = one_hot_encode(y_consensus_pred.astype(np.int), n_classes=n_clusters)
+    # We set the constraints
+    const = [cp.multiply(y_polytope_parameter, lambda_dual_matrix) >= np.zeros((n_samples, n_clusters)),
+             lambda_dual_matrix >= np.zeros(lambda_dual_matrix.shape),
+             self.C * S_parameter >= lambda_dual_matrix]
 
-    return S
-
-
-
-
-
+    # we run the problem minimizer
+    prob = cp.Problem(cp.Minimize(obj), const)
+    prob.solve(solver=cp.ECOS)
+    return lambda_dual_matrix.value

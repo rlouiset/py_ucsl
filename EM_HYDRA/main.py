@@ -90,6 +90,7 @@ class HYDRA(BaseEM, ClassifierMixin):
         # define k_means clustering method orthonormal basis and k_means
         self.orthonormal_basis = {label: None for label in range(self.n_labels)}
         self.k_means = {label: None for label in range(self.n_labels)}
+        self.gaussian_mixture = {label: None for label in range(self.n_labels)}
 
     def fit(self, X_train, y_train):
         # apply label mapping (in our case we merged "BIPOLAR" and "SCHIZOPHRENIA" into "MENTAL DISEASE" for our xp)
@@ -103,15 +104,6 @@ class HYDRA(BaseEM, ClassifierMixin):
     def predict(self, X):
         y_pred = self.predict_proba(X)
         return np.argmax(y_pred, 1)
-
-    def clustering_score(self, X, y=None):
-        silhouette_score_per_label = {label: 0 for label in range(self.n_labels)}
-        y_pred_clusters = self.predict_clusters(X)
-        for label in range(self.n_labels):
-            X_proj = X @ self.orthonormal_basis[label].T
-            silhouette_score_per_label[label] = max(
-                calinski_harabasz_score(X_proj, np.argmax(y_pred_clusters[label], 1)), 0)
-        return silhouette_score_per_label
 
     def predict_proba(self, X):
         y_pred = np.zeros((len(X), 2))
@@ -204,6 +196,13 @@ class HYDRA(BaseEM, ClassifierMixin):
             for label in range(self.n_labels):
                 X_proj = X @ self.orthonormal_basis[label].T
                 y_proj_pred = self.k_means[label].predict(X_proj)
+
+                cluster_predictions[label] = one_hot_encode(y_proj_pred, n_classes=self.n_clusters_per_label[label])
+
+        elif self.clustering in ['gaussian_mixture']:
+            for label in range(self.n_labels):
+                X_proj = X @ self.orthonormal_basis[label].T
+                y_proj_pred = self.gaussian_mixture[label].predict(X_proj)
 
                 cluster_predictions[label] = one_hot_encode(y_proj_pred, n_classes=self.n_clusters_per_label[label])
 
@@ -318,7 +317,7 @@ class HYDRA(BaseEM, ClassifierMixin):
             svm_scores[svm_scores < 0] = 0.000001
             Q = svm_scores / np.sum(svm_scores, 1)[:, None]
 
-        if self.clustering == 'k_means':
+        if self.clustering in ['k_means', 'gaussian_mixture']:
             directions = [self.coefficients[idx_outside_polytope][cluster_i][0] for cluster_i in
                           range(self.n_clusters_per_label[idx_outside_polytope])]
 
@@ -333,12 +332,17 @@ class HYDRA(BaseEM, ClassifierMixin):
 
             centroids = [np.mean(S[index, cluster_i][:, None] * X_proj[index, :], 0) for cluster_i in
                          range(self.n_clusters_per_label[idx_outside_polytope])]
-            self.k_means[idx_outside_polytope] = KMeans(n_clusters=self.n_clusters_per_label[idx_outside_polytope],
-                                                        init=np.array(centroids),
-                                                        n_init=1).fit(X_proj[index])
 
-            Q = one_hot_encode(self.k_means[idx_outside_polytope].predict(X_proj),
-                               n_classes=self.n_clusters_per_label[idx_outside_polytope])
+            if self.clustering == 'k_means':
+                self.k_means[idx_outside_polytope] = KMeans(n_clusters=self.n_clusters_per_label[idx_outside_polytope],
+                                                            init=np.array(centroids), n_init=1).fit(X_proj[index])
+                Q = one_hot_encode(self.k_means[idx_outside_polytope].predict(X_proj),
+                                   n_classes=self.n_clusters_per_label[idx_outside_polytope])
+
+            if self.clustering == 'gaussian_mixture':
+                self.gaussian_mixture[idx_outside_polytope] = GaussianMixture(
+                    n_clusters=self.n_clusters_per_label[idx_outside_polytope]).fit(X_proj[index])
+                Q = self.gaussian_mixture[idx_outside_polytope].predict_proba(X_proj)
 
         elif self.clustering in ['bisector_hyperplane']:
             directions = np.array([self.coefficients[idx_outside_polytope][cluster_i][0] for cluster_i in
@@ -419,36 +423,6 @@ class HYDRA(BaseEM, ClassifierMixin):
 
         return SVM_coefficient, SVM_intercept
 
-    def optimize_HYDRA_dual(self, X, y_polytope, S):
-        # first we define number of samples, number of clusters etc...
-        n_samples = X.shape[0]
-        n_clusters = S.shape[1]
-        diag_y = np.eye(n_samples, n_samples) * y_polytope[:, None]
-        y_polytope_repeat = np.repeat(y_polytope[:, None], S.shape[1], axis=1)
-
-        # then we define the Variables and Parameters
-        lambda_dual_matrix = cp.Variable(shape=S.shape, nonneg=True)
-        S_parameter = cp.Parameter(shape=S.shape, value=S, nonneg=True)
-        y_polytope_parameter = cp.Parameter(shape=y_polytope_repeat.shape, value=y_polytope_repeat)
-        K = diag_y @ X @ X.T @ diag_y
-        K_parameter = cp.Parameter(shape=K.shape, PSD=True, value=K)
-
-        # we define the objective function
-        obj = - cp.sum(lambda_dual_matrix)
-        for k in range(n_clusters):
-            lambda_column = lambda_dual_matrix[:, k][:, None]
-            obj += cp.quad_form(lambda_column, K_parameter)
-
-        # We set the constraints
-        const = [cp.multiply(y_polytope_parameter, lambda_dual_matrix) >= np.zeros((n_samples, n_clusters)),
-                 lambda_dual_matrix >= np.zeros(lambda_dual_matrix.shape),
-                 self.C * S_parameter >= lambda_dual_matrix]
-
-        # we run the problem minimizer
-        prob = cp.Problem(cp.Minimize(obj), const)
-        prob.solve(solver=cp.ECOS)
-        return lambda_dual_matrix.value
-
     def clustering_bagging(self, X, y_polytope, consensus_assignment, n_clusters, index_positives,
                            idx_outside_polytope):
         # initialize the consensus clustering vector
@@ -456,8 +430,8 @@ class HYDRA(BaseEM, ClassifierMixin):
 
         if self.consensus == 'spectral_clustering':
             # perform consensus clustering
-            S = consensus_clustering_(consensus_assignment.astype(int), n_clusters, index_positives,
-                                      negative_weighting=self.negative_weighting)
+            S = consensus_clustering(consensus_assignment.astype(int), n_clusters, index_positives,
+                                     negative_weighting=self.negative_weighting)
 
         if self.consensus == 'weighted_spectral_clustering':
             # compute clustering relevancy to weight the spectral clustering
@@ -473,50 +447,57 @@ class HYDRA(BaseEM, ClassifierMixin):
             clustering_weights = clustering_weights / np.sum(clustering_weights)
 
             # do consensus clustering
-            S = consensus_clustering_(consensus_assignment, n_clusters, index_positives,
-                                      negative_weighting=self.negative_weighting,
-                                      cluster_weight=clustering_weights)
-        print(S[:10])
+            S = consensus_clustering(consensus_assignment, n_clusters, index_positives,
+                                     negative_weighting=self.negative_weighting,
+                                     cluster_weight=clustering_weights)
 
-        # reinitialize clustering matrix
-        '''
-        if self.dual_consensus:
-            S = np.ones((len(y_polytope), n_clusters))
-        elif self.negative_weighting == 'all':
-            S = np.ones((len(y_polytope), n_clusters)) / n_clusters
-        elif self.negative_weighting == 'hard_clustering':
-            S = np.ones((len(y_polytope), n_clusters)) / n_clusters
-        # change the weight of positives samples to 1, negatives to 1/n_clusters
-        S[index_positives, :] *= 0
-        S[index_positives, consensus_scores] = 1
-        '''
+        for cluster in range(n_clusters):
+            cluster_weight = np.ascontiguousarray(S[:, cluster])
+            SVM_coefficient, SVM_intercept = self.launch_svc(X, y_polytope, cluster_weight)
+            self.coefficients[idx_outside_polytope][cluster] = SVM_coefficient
+            self.intercepts[idx_outside_polytope][cluster] = SVM_intercept
 
-        # compute again linear SVM on final consensus clustering, either \w alternate optimization or direct optimization
-        if self.dual_consensus:
-            dual_coef_ = self.optimize_HYDRA_dual(X, y_polytope, S)
-            for cluster in range(n_clusters):
-                self.coefficients[idx_outside_polytope][cluster] = \
-                np.sum(dual_coef_[:, cluster][:, None] * y_polytope[:, None] * X, 0)[None]
-                self.intercepts[idx_outside_polytope][cluster] = np.mean(y_polytope) - (np.mean(X, 0)[None, :] @ \
-                                                                                        self.coefficients[
-                                                                                            idx_outside_polytope][
-                                                                                            cluster][0])
-
-                # TODO: get rid of
-                self.coef_lists[idx_outside_polytope][cluster][-1] = self.coefficients[idx_outside_polytope][
-                    cluster].copy()
-                self.intercept_lists[idx_outside_polytope][cluster][-1] = self.intercepts[idx_outside_polytope][
-                    cluster].copy()
-        else:
-            for cluster in range(n_clusters):
-                cluster_weight = np.ascontiguousarray(S[:, cluster])
-                SVM_coefficient, SVM_intercept = self.launch_svc(X, y_polytope, cluster_weight)
-                self.coefficients[idx_outside_polytope][cluster] = SVM_coefficient
-                self.intercepts[idx_outside_polytope][cluster] = SVM_intercept
-
-                # TODO: get rid of
-                self.coef_lists[idx_outside_polytope][cluster][-1] = SVM_coefficient.copy()
-                self.intercept_lists[idx_outside_polytope][cluster][-1] = SVM_intercept.copy()
+            # TODO: get rid of
+            self.coef_lists[idx_outside_polytope][cluster][-1] = SVM_coefficient.copy()
+            self.intercept_lists[idx_outside_polytope][cluster][-1] = SVM_intercept.copy()
 
         # update clustering one last time for methods such as k_means or bisector_hyperplane
         _, _ = self.update_clustering(X, S, index_positives, np.argmax(S, 1), n_clusters, idx_outside_polytope)
+
+
+class MultiClassHYDRA(HYDRA, ClassifierMixin):
+    """ ...
+    """
+
+    def __init__(self, C=1, kernel="linear", stability_threshold=0.9, noise_tolerance_threshold=5,
+                 n_consensus=5, n_iterations=5, n_labels=2, n_clusters_per_label=None,
+                 initialization="DPP", clustering='original', consensus='spectral_clustering',
+                 negative_weighting='all', dual_consensus=False):
+        super().__init__(C=C, kernel=kernel, stability_threshold=stability_threshold,
+                         noise_tolerance_threshold=noise_tolerance_threshold,
+                         n_consensus=n_consensus, n_iterations=n_iterations, n_labels=n_labels,
+                         n_clusters_per_label=n_clusters_per_label,
+                         initialization=initialization, clustering=clustering, consensus=consensus,
+                         negative_weighting=negative_weighting, dual_consensus=dual_consensus)
+
+        # define clustering parameters
+        self.barycenters = {label: None for label in range(self.n_labels)}
+        self.coefficients = {label: {cluster_i: None for cluster_i in range(n_clusters_per_label[label])} for label in
+                             range(self.n_labels)}
+        self.intercepts = {label: {cluster_i: None for cluster_i in range(n_clusters_per_label[label])} for label in
+                           range(self.n_labels)}
+
+        # TODO : Get rid of these visualization helps
+        self.S_lists = {label: dict() for label in range(self.n_labels)}
+        self.coef_lists = {label: {cluster_i: dict() for cluster_i in range(n_clusters_per_label[label])} for label in
+                           range(self.n_labels)}
+        self.intercept_lists = {label: {cluster_i: dict() for cluster_i in range(n_clusters_per_label[label])} for label
+                                in range(self.n_labels)}
+
+        # define bissector hyperplane parameter
+        self.mean_direction = {label: None for label in range(self.n_labels)}
+
+        # define k_means clustering method orthonormal basis and k_means
+        self.orthonormal_basis = {label: None for label in range(self.n_labels)}
+        self.k_means = {label: None for label in range(self.n_labels)}
+        self.gaussian_mixture = {label: None for label in range(self.n_labels)}
