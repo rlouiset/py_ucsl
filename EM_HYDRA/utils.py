@@ -210,7 +210,7 @@ def consensus_clustering_(clustering_results, n_clusters, index_positives, negat
     print(cooccurence_matrix[:5])
 
     # train Spectral Clustering algorithm and make predictions
-    X_cooccurence_red = SpectralClustering(n_clusters=n_clusters, affinity='precomputed').fit_predict(cooccurence_matrix[index_positives])
+    X_cooccurence_red = SpectralClustering(n_clusters=n_clusters, affinity='precomputed').fit_predict(cooccurence_matrix)
     print(X_cooccurence_red.shape)
 
     if negative_weighting in ['all'] :
