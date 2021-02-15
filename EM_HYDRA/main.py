@@ -151,6 +151,8 @@ class HYDRA(BaseEM, ClassifierMixin):
                 for cluster_i in range(self.n_clusters_per_label[label]):
                     SVM_coefficient = self.coefficients[label][cluster_i]
                     SVM_intercept = self.intercepts[label][cluster_i]
+                    print(SVM_coefficient.shape)
+                    print(SVM_intercept.shape)
                     SVM_distances[label][:, cluster_i] = 1 + X @ SVM_coefficient + SVM_intercept
 
                 # compute clustering conditional probabilities as in the original HYDRA paper : P(cluster=i|y=label)
