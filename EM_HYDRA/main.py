@@ -139,7 +139,7 @@ class HYDRA(BaseEM, ClassifierMixin):
         return y_pred
 
     def predict_clusters(self, X):
-        cluster_predictions = {label: np.zeros((len(X), 1)) for label in
+        cluster_predictions = {label: np.zeros((len(X), 2)) for label in
                                range(self.n_labels)}
 
         if self.clustering in ['original']:
@@ -148,18 +148,18 @@ class HYDRA(BaseEM, ClassifierMixin):
 
             for label in range(self.n_labels):
                 # fullfill the SVM score matrix
-                for cluster_i in range(self.n_clusters_per_label[label]):
-                    SVM_coefficient = self.coefficients[label][cluster_i]
-                    SVM_intercept = self.intercepts[label][cluster_i]
-                    SVM_distances[label][:, cluster_i] = 1 + X @ SVM_coefficient[0] + SVM_intercept[0]
+                for cluster in range(self.n_clusters_per_label[label]):
+                    SVM_coefficient = self.coefficients[label][cluster]
+                    SVM_intercept = self.intercepts[label][cluster]
+                    SVM_distances[label][:, cluster] = 1 + X @ SVM_coefficient[0] + SVM_intercept[0]
 
                 # compute clustering conditional probabilities as in the original HYDRA paper : P(cluster=i|y=label)
                 for i in range(len(X)):
                     for cluster in range(self.n_clusters_per_label[label]):
                         SVM_distances[label][i, cluster] = max(SVM_distances[label][i, cluster], 0)
-                    for cluster_i in range(self.n_clusters_per_label[label]):
-                        cluster_predictions[label][i, cluster_i] = SVM_distances[label][i, cluster_i] / \
-                                                                   (np.sum(SVM_distances[label][i]) + 1e-5)
+                    for cluster in range(self.n_clusters_per_label[label]):
+                        cluster_predictions[label][i, cluster] = SVM_distances[label][i, cluster] / \
+                                                                   (np.sum(SVM_distances[label][i, :]) + 1e-5)
 
         elif self.clustering in ['boundary_barycenter']:
             barycenters_distances = {label: np.zeros((len(X), self.n_clusters_per_label[label])) for label in
