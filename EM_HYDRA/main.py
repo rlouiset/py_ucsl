@@ -445,17 +445,17 @@ class HYDRA(BaseEM, ClassifierMixin):
 
         # we run the problem minimizer
         prob = cp.Problem(cp.Minimize(obj), const)
-        prob.solve(solver = cp.ECOS)
+        prob.solve(solver=cp.ECOS)
         return lambda_dual_matrix.value
 
     def clustering_bagging(self, X, y_polytope, consensus_assignment, n_clusters, index_positives,
                            idx_outside_polytope):
         # initialize the consensus clustering vector
-        consensus_scores = np.zeros(index_positives.shape)
+        S = np.zeros(index_positives.shape)
 
         if self.consensus == 'spectral_clustering':
             # perform consensus clustering
-            consensus_scores = consensus_clustering(consensus_assignment[index_positives].astype(int), n_clusters)
+            S = consensus_clustering_(consensus_assignment.astype(int), n_clusters, index_positives, negative_weighting=self.negative_weighting)
 
         if self.consensus == 'weighted_spectral_clustering':
             # compute clustering relevancy to weight the spectral clustering
@@ -471,10 +471,12 @@ class HYDRA(BaseEM, ClassifierMixin):
             clustering_weights = clustering_weights / np.sum(clustering_weights)
 
             # do consensus clustering
-            consensus_scores = consensus_clustering(consensus_assignment[index_positives], n_clusters,
+            S = consensus_clustering_(consensus_assignment, n_clusters, index_positives,
+                                                    negative_weighting=self.negative_weighting,
                                                     cluster_weight=clustering_weights)
 
         # reinitialize clustering matrix
+        '''
         if self.dual_consensus:
             S = np.ones((len(y_polytope), n_clusters))
         elif self.negative_weighting == 'all':
@@ -484,6 +486,7 @@ class HYDRA(BaseEM, ClassifierMixin):
         # change the weight of positives samples to 1, negatives to 1/n_clusters
         S[index_positives, :] *= 0
         S[index_positives, consensus_scores] = 1
+        '''
 
         # compute again linear SVM on final consensus clustering, either \w alternate optimization or direct optimization
         if self.dual_consensus:

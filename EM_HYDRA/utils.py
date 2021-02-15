@@ -2,6 +2,8 @@ import numpy as np
 from scipy.special import logsumexp
 import scipy
 from sklearn.cluster import KMeans
+from sklearn.cluster import SpectralClustering
+from sklearn.mixture import GaussianMixture
 
 
 def one_hot_encode(y, n_classes=None):
@@ -70,7 +72,7 @@ def sample_dpp(evalue, evector, k=None):
     ## iterate
     y = np.zeros(k)
     for i in range(k, 0, -1):
-        ## compute probabilities for each item
+        # compute probabilities for each item
         P = np.sum(np.square(V), axis=1)
         P = P / np.sum(P)
 
@@ -83,7 +85,7 @@ def sample_dpp(evalue, evector, k=None):
         Vj = V[:, j]
         V = np.delete(V, j, 1)
 
-        ## Update V
+        # Update V
         if V.size == 0:
             pass
         else:
@@ -110,10 +112,10 @@ def sample_k(lambda_value, k):
     :return:
     """
 
-    ## compute elementary symmetric polynomials
+    # compute elementary symmetric polynomials
     E = elem_sym_poly(lambda_value, k)
 
-    ## ietrate over the lambda value
+    # iterate over the lambda value
     num = lambda_value.shape[0]
     remaining = k
     S = np.zeros(k)
@@ -152,7 +154,7 @@ def elem_sym_poly(lambda_value, k):
     return E
 
 
-def consensus_clustering(clustering_results, k, cluster_weight=None):
+def consensus_clustering(clustering_results, k, index_positives, negative_weighting='all', cluster_weight=None):
     num_pt = clustering_results.shape[0]
     cooccurence_matrix = np.zeros((num_pt, num_pt))
 
@@ -181,8 +183,48 @@ def consensus_clustering(clustering_results, k, cluster_weight=None):
     if np.any(np.iscomplex(evector)):
         evalue, evector = scipy.linalg.eigh(Laplacian)
 
-    # create the kmean algorithm with sklearn
+    # create the kmeans algorithm with sklearn
     kmeans = KMeans(n_clusters=k, n_init=20).fit(evector.real[:, 0: k])
     final_predict = kmeans.labels_
 
     return final_predict
+
+def consensus_clustering_(clustering_results, n_clusters, index_positives, negative_weighting='all', cluster_weight=None):
+    ''' '''
+    S = np.ones((clustering_results.shape[0], n_clusters)) / n_clusters
+    cooccurence_matrix = np.zeros((clustering_results.shape[0], clustering_results.shape[0]))
+
+    for i in range(clustering_results.shape[0] - 1):
+        for j in range(i + 1, clustering_results.shape[0]):
+            if cluster_weight is None:
+                cooccurence_matrix[i, j] = sum(clustering_results[i, :] == clustering_results[j, :])
+            else:
+                cooccurence_matrix[i, j] = sum(
+                    cluster_weight * (clustering_results[i, :] == clustering_results[j, :]))
+
+    # symmetrize the similarity matrix
+    cooccurence_matrix = np.add(cooccurence_matrix, cooccurence_matrix.transpose())
+    cooccurence_matrix[cooccurence_matrix==np.max(cooccurence_matrix)] = np.max(cooccurence_matrix)/2
+    cooccurence_matrix /= np.max(cooccurence_matrix)
+
+    print(cooccurence_matrix[:5])
+
+    # train Spectral Clustering algorithm and make predictions
+    X_cooccurence_red = SpectralClustering(n_clusters=n_clusters).fit_predict(cooccurence_matrix[index_positives])
+
+    if negative_weighting in ['all'] :
+        kmeans = KMeans(n_clusters=n_clusters)
+        S[index_positives] = one_hot_encode(kmeans.fit_predict(X_cooccurence_red[index_positives]))
+    elif negative_weighting in ['hard_clustering'] :
+        kmeans = KMeans(n_clusters=n_clusters)
+        S = kmeans.fit_predict(X_cooccurence_red)
+    elif negative_weighting in ['soft_clustering'] :
+        gaussian_mixture = GaussianMixture(n_components=n_clusters).fit(cooccurence_matrix)
+        S = gaussian_mixture.predict(cooccurence_matrix)
+
+    return S
+
+
+
+
+
