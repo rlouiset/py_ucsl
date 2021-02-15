@@ -341,7 +341,7 @@ class HYDRA(BaseEM, ClassifierMixin):
 
             if self.clustering == 'gaussian_mixture':
                 self.gaussian_mixture[idx_outside_polytope] = GaussianMixture(
-                    n_clusters=self.n_clusters_per_label[idx_outside_polytope]).fit(X_proj[index])
+                    n_components=self.n_clusters_per_label[idx_outside_polytope]).fit(X_proj[index])
                 Q = self.gaussian_mixture[idx_outside_polytope].predict_proba(X_proj)
 
         elif self.clustering in ['bisector_hyperplane']:
