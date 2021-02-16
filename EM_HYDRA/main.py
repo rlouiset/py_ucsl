@@ -9,7 +9,7 @@ from sklearn.svm import SVC
 
 
 class BaseEM(BaseEstimator, metaclass=ABCMeta):
-    """Basic class for Relevance Vector Machine."""
+    """Basic class for our Machine Learning Expectation-Maximization framework."""
 
     @abstractmethod
     def __init__(self, C, kernel, stability_threshold, noise_tolerance_threshold,
@@ -46,7 +46,34 @@ class BaseEM(BaseEstimator, metaclass=ABCMeta):
 
 
 class HYDRA(BaseEM, ClassifierMixin):
-    """ ...
+    """Relevance Vector Classifier.
+    Implementation of Mike Tipping"s Relevance Vector Machine for
+    classification using the scikit-learn API.
+
+    Parameters
+    ----------
+    C : float, optional (default=1)
+        SVM tolerance parameter (Maximization step), if too tiny, risk of overfit.
+        If none is given, 1 will be used.
+    kernel : string, optional (default="linear")
+        Specifies the kernel type to be used in the algorithm.
+        It must be one of "linear", "poly", "rbf", "sigmoid" or ‘precomputed’.
+        If none is given, "linear" will be used.
+    initialization : string, optional (default="DPP")
+        Initialization of each consensus run,
+        If not specified, "Determinental Point Process" will be used.
+    clustering : string, optional (default="original")
+        Clustering method for the Expectation step,
+        It must be one of "original", "boundary_barycenter", "k_means", "gaussian_mixture" or "bissector_hyperplane".
+        If not specified, HYDRA original "Max Margin Distance" will be used.
+    consensus : string, optional (default="spectral_clustering")
+        Consensus method for the Clustering bagging method,
+        If not specified, HYDRA original "Spectral Clustering" will be used.
+    negative_weighting : string, optional (default="spectral_clustering")
+        negative_weighting method during the whole algorithm processing,
+        It must be one of "all", "soft_clustering", "hard_clustering".
+        ie : the importance of non-clustered label in the SVM computation
+        If not specified, HYDRA original "all" will be used.
     """
 
     def __init__(self, C=1, kernel="linear", stability_threshold=0.9, noise_tolerance_threshold=5,
@@ -91,6 +118,17 @@ class HYDRA(BaseEM, ClassifierMixin):
         self.gaussian_mixture = {label: None for label in range(self.n_labels)}
 
     def fit(self, X_train, y_train):
+        """Fit the HYDRA model according to the given training data.
+        Parameters
+        ----------
+        X : array-like, shape (n_samples, n_features)
+            Training vectors.
+        y : array-like, shape (n_samples,)
+            Target values.
+        Returns
+        -------
+        self
+        """
         # apply label mapping (in our case we merged "BIPOLAR" and "SCHIZOPHRENIA" into "MENTAL DISEASE" for our xp)
         for original_label, new_label in self.training_label_mapping.items():
             y_train[y_train == original_label] = new_label
@@ -99,7 +137,19 @@ class HYDRA(BaseEM, ClassifierMixin):
         for label in range(self.n_labels):
             self.run(X_train, y_train, self.n_clusters_per_label[label], idx_outside_polytope=label)
 
+        return self
+
     def predict(self, X):
+        """Predict using the HYDRA model.
+        Parameters
+        ----------
+        X : array-like, shape (n_samples, n_features)
+            Query points to be evaluate.
+        Returns
+        -------
+        y_pred : array, shape (n_samples,)
+            Predictions of the labels of the query points
+        """
         y_pred = self.predict_proba(X)
         return np.argmax(y_pred, 1)
 
@@ -137,6 +187,16 @@ class HYDRA(BaseEM, ClassifierMixin):
         return y_pred
 
     def predict_clusters(self, X):
+        """Predict clustering for each label in a hierarchical manner.
+        Parameters
+        ----------
+        X : array-like, shape (n_samples, n_features)
+            Training vectors.
+        Returns
+        -------
+        cluster_predictions : dict of arrays, length (n_labels) , shape per key:(n_samples, n_clusters[key])
+            Dict containing clustering predictions for each label, the dictionary keys are the labels
+        """
         cluster_predictions = {label: np.zeros((len(X), self.n_clusters_per_label[label])) for label in
                                range(self.n_labels)}
 
@@ -296,7 +356,9 @@ class HYDRA(BaseEM, ClassifierMixin):
 
         if n_consensus > 1:
             self.clustering_bagging(X, y_polytope, consensus_assignment, n_clusters, index_positives,
-                                    idx_outside_polytope)
+                                           idx_outside_polytope)
+
+        return self
 
     def update_clustering(self, X, S, index, cluster_index, n_clusters, idx_outside_polytope):
         if n_clusters == 1:
@@ -322,8 +384,10 @@ class HYDRA(BaseEM, ClassifierMixin):
             basis = []
             for v in directions:
                 w = v - np.sum(np.dot(v, b) * b for b in basis)
+                print(np.linalg.norm(w))
                 if np.linalg.norm(w) * self.noise_tolerance_threshold > 1:
                     basis.append(w / np.linalg.norm(w))
+            print('')
 
             self.orthonormal_basis[idx_outside_polytope] = np.array(basis)
             X_proj = X @ self.orthonormal_basis[idx_outside_polytope].T
@@ -404,6 +468,22 @@ class HYDRA(BaseEM, ClassifierMixin):
         return S, cluster_index
 
     def launch_svc(self, X, y, sample_weight):
+        """Fit the classification SVMs according to the given training data.
+        Parameters
+        ----------
+        X : array-like, shape (n_samples, n_features)
+            Training vectors.
+        y : array-like, shape (n_samples,)
+            Target values.
+        sample_weight : array-like, shape (n_samples,)
+            Training sample weights.
+        Returns
+        -------
+        SVM_coefficient : array-like, shape (1, n_features)
+            The coefficient of the resulting SVM.
+        SVM_intercept : array-like, shape (1,)
+            The intercept of the resulting SVM.
+        """
         # fit the different SVM/hyperplanes
         SVM_classifier = SVC(kernel=self.kernel, C=self.C)
         SVM_classifier.fit(X, y, sample_weight=sample_weight)
@@ -423,6 +503,25 @@ class HYDRA(BaseEM, ClassifierMixin):
 
     def clustering_bagging(self, X, y_polytope, consensus_assignment, n_clusters, index_positives,
                            idx_outside_polytope):
+        """Fit the classification SVMs according to the given training data.
+        Parameters
+        ----------
+        X : array-like, shape (n_samples, n_features)
+            Training vectors.
+        y_polytope : array-like, shape (n_samples,)
+            Target values.
+        consensus_assignment : array-like, shape (n_samples, n_consensus)
+            Clustering predicted for each consensus run.
+        n_clusters : int
+            number of clusters to be set.
+        index_positives : array-like, shape (n_positives_samples,)
+            indexes of the positive labels being clustered
+        idx_outside_polytope : int
+            label that is being clustered
+        Returns
+        -------
+        None
+        """
         # initialize the consensus clustering vector
         S = np.zeros(index_positives.shape)
 
@@ -461,3 +560,4 @@ class HYDRA(BaseEM, ClassifierMixin):
 
         # update clustering one last time for methods such as k_means or bisector_hyperplane
         _, _ = self.update_clustering(X, S, index_positives, np.argmax(S, 1), n_clusters, idx_outside_polytope)
+
