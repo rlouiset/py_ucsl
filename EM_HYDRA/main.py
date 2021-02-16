@@ -261,6 +261,8 @@ class HYDRA(BaseEM, ClassifierMixin):
 
                 cluster_predictions[label] = one_hot_encode(y_proj_pred, n_classes=self.n_clusters_per_label[label])
 
+        print(cluster_predictions)
+
         return cluster_predictions
 
     def run(self, X, y, n_clusters, idx_outside_polytope):
