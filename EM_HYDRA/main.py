@@ -209,10 +209,16 @@ class HYDRA(BaseEM, ClassifierMixin):
                 for cluster in range(self.n_clusters_per_label[label]):
                     SVM_coefficient = self.coefficients[label][cluster]
                     SVM_intercept = self.intercepts[label][cluster]
-                    SVM_distances[label][:, cluster] = 1 + X @ SVM_coefficient[0] + SVM_intercept[0]
+                    SVM_distances[label][:, cluster] = X @ SVM_coefficient[0] + SVM_intercept[0]
 
                 # compute clustering conditional probabilities as in the original HYDRA paper : P(cluster=i|y=label)
-                SVM_distances[label] = py_softmax(SVM_distances[label], 1)
+                for i in range(len(X)):
+                    for cluster in range(self.n_clusters_per_label[label]):
+                        SVM_distances[label][:, cluster] -= np.min(SVM_distances[label][:, cluster])
+                        SVM_distances[label][:, cluster] += 1e-3
+                    for cluster in range(self.n_clusters_per_label[label]):
+                        cluster_predictions[label][i, cluster] = SVM_distances[label][i, cluster] / \
+                                                                 (np.sum(SVM_distances[label][i, :]) + 1e-5)
 
         elif self.clustering in ['boundary_barycenter']:
             barycenters_distances = {label: np.zeros((len(X), self.n_clusters_per_label[label])) for label in
@@ -348,7 +354,7 @@ class HYDRA(BaseEM, ClassifierMixin):
                     self.intercept_lists[idx_outside_polytope][cluster][iteration + 1] = SVM_intercept.copy()
 
             # update the cluster index for the consensus clustering
-            consensus_assignment[:, consensus_i] = cluster_index
+            consensus_assignment[:, consensus_i] = cluster_index + 1
 
         if n_consensus > 1:
             self.clustering_bagging(X, y_polytope, consensus_assignment, n_clusters, index_positives,
@@ -442,17 +448,16 @@ class HYDRA(BaseEM, ClassifierMixin):
             KW = np.divide(KW, np.sqrt(np.multiply(np.diag(KW)[:, np.newaxis], np.diag(KW)[:, np.newaxis].transpose())))
             evalue, evector = np.linalg.eig(KW)
             Widx = sample_dpp(np.real(evalue), np.real(evector), n_clusters)
-            prob = np.zeros((len(X), n_clusters))  # only consider the PTs
+            prob = np.zeros((len(index_positives), n_clusters))  # only consider the PTs
 
             for i in range(n_clusters):
                 prob[:, i] = np.matmul(
-                    np.multiply(X, np.divide(1, np.linalg.norm(X, axis=1))[:, np.newaxis]),
+                    np.multiply(X[index_positives, :], np.divide(1, np.linalg.norm(X[index_positives, :], axis=1))[:, np.newaxis]),
                     W[Widx[i], :].transpose())
 
+            l = np.minimum(prob - 1, 0)
             d = prob - 1
-            d = py_softmax(d, 1)
-
-            S = cpu_sk(d, lambda_=1)
+            S[index_positives] = proportional_assign(l, d)
 
         if self.initialization == "k_means":
             KM = KMeans(n_clusters=self.n_clusters_per_label[idx_outside_polytope]).fit(X[index_positives])
