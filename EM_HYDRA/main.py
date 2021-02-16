@@ -212,12 +212,7 @@ class HYDRA(BaseEM, ClassifierMixin):
                     SVM_distances[label][:, cluster] = 1 + X @ SVM_coefficient[0] + SVM_intercept[0]
 
                 # compute clustering conditional probabilities as in the original HYDRA paper : P(cluster=i|y=label)
-                for i in range(len(X)):
-                    for cluster in range(self.n_clusters_per_label[label]):
-                        SVM_distances[label][i, cluster] = max(SVM_distances[label][i, cluster], 0)
-                    for cluster in range(self.n_clusters_per_label[label]):
-                        cluster_predictions[label][i, cluster] = SVM_distances[label][i, cluster] / \
-                                                                 (np.sum(SVM_distances[label][i, :]) + 1e-5)
+                SVM_distances[label] = py_softmax(SVM_distances[label], 1)
 
         elif self.clustering in ['boundary_barycenter']:
             barycenters_distances = {label: np.zeros((len(X), self.n_clusters_per_label[label])) for label in
@@ -267,6 +262,7 @@ class HYDRA(BaseEM, ClassifierMixin):
         return cluster_predictions
 
     def run(self, X, y, n_clusters, idx_outside_polytope):
+        print(idx_outside_polytope)
         n_consensus = self.n_consensus if (self.n_clusters_per_label[idx_outside_polytope] > 1) else 1
 
         # set label idx_outside_polytope outside of the polytope by setting it to positive labels
@@ -384,10 +380,8 @@ class HYDRA(BaseEM, ClassifierMixin):
             basis = []
             for v in directions:
                 w = v - np.sum(np.dot(v, b) * b for b in basis)
-                print(np.linalg.norm(w))
                 if np.linalg.norm(w) * self.noise_tolerance_threshold > 1:
                     basis.append(w / np.linalg.norm(w))
-            print('')
 
             self.orthonormal_basis[idx_outside_polytope] = np.array(basis)
             X_proj = X @ self.orthonormal_basis[idx_outside_polytope].T
