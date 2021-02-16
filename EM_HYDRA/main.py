@@ -164,7 +164,7 @@ class HYDRA(BaseEM, ClassifierMixin):
             for cluster_i in range(self.n_clusters_per_label[label]):
                 SVM_coefficient = self.coefficients[label][cluster_i]
                 SVM_intercept = self.intercepts[label][cluster_i]
-                SVM_distances[label][:, cluster_i] = 1 + X @ SVM_coefficient[0] + SVM_intercept[0]
+                SVM_distances[label][:, cluster_i] = X @ SVM_coefficient[0] + SVM_intercept[0]
 
         if self.clustering in ['original']:
             # merge each label distances and compute the probability \w sigmoid function
@@ -212,13 +212,9 @@ class HYDRA(BaseEM, ClassifierMixin):
                     SVM_distances[label][:, cluster] = X @ SVM_coefficient[0] + SVM_intercept[0]
 
                 # compute clustering conditional probabilities as in the original HYDRA paper : P(cluster=i|y=label)
-                for i in range(len(X)):
-                    for cluster in range(self.n_clusters_per_label[label]):
-                        SVM_distances[label][:, cluster] -= np.min(SVM_distances[label][:, cluster])
-                        SVM_distances[label][:, cluster] += 1e-3
-                    for cluster in range(self.n_clusters_per_label[label]):
-                        cluster_predictions[label][i, cluster] = SVM_distances[label][i, cluster] / \
-                                                                 (np.sum(SVM_distances[label][i, :]) + 1e-5)
+                SVM_distances[label] -= np.min(SVM_distances[label])
+                SVM_distances[label] += 1e-3
+                SVM_distances[label] = SVM_distances[label] / np.sum(SVM_distances[label], 1)[:, None]
 
         elif self.clustering in ['boundary_barycenter']:
             barycenters_distances = {label: np.zeros((len(X), self.n_clusters_per_label[label])) for label in
@@ -265,10 +261,12 @@ class HYDRA(BaseEM, ClassifierMixin):
 
                 cluster_predictions[label] = one_hot_encode(y_proj_pred, n_classes=self.n_clusters_per_label[label])
 
+        for label in range(self.n_labels):
+            cluster_predictions[label] = np.argmax(cluster_predictions[label])
+
         return cluster_predictions
 
     def run(self, X, y, n_clusters, idx_outside_polytope):
-        print(idx_outside_polytope)
         n_consensus = self.n_consensus if (self.n_clusters_per_label[idx_outside_polytope] > 1) else 1
 
         # set label idx_outside_polytope outside of the polytope by setting it to positive labels
@@ -322,6 +320,7 @@ class HYDRA(BaseEM, ClassifierMixin):
 
                 # check the Clustering Stability \w Adjusted Rand Index for stopping criteria
                 cluster_consistency = ARI(np.argmax(S[index_positives], 1), np.argmax(S_hold[index_positives], 1))
+                print(cluster_consistency)
 
                 if cluster_consistency > self.stability_threshold:
                     break
@@ -352,13 +351,13 @@ class HYDRA(BaseEM, ClassifierMixin):
                     # TODO: get rid of
                     self.coef_lists[idx_outside_polytope][cluster][iteration + 1] = SVM_coefficient.copy()
                     self.intercept_lists[idx_outside_polytope][cluster][iteration + 1] = SVM_intercept.copy()
+            print('')
 
             # update the cluster index for the consensus clustering
             consensus_assignment[:, consensus_i] = cluster_index + 1
 
         if n_consensus > 1:
-            self.clustering_bagging(X, y_polytope, consensus_assignment, n_clusters, index_positives,
-                                           idx_outside_polytope)
+            self.clustering_bagging(X, y_polytope, consensus_assignment, n_clusters, index_positives, idx_outside_polytope)
 
         return self
 
@@ -370,14 +369,15 @@ class HYDRA(BaseEM, ClassifierMixin):
 
         Q = S.copy()
         if self.clustering == 'original':
-            svm_scores = np.zeros(S.shape)
-            for cluster_i in range(self.n_clusters_per_label[idx_outside_polytope]):
+            SVM_distances = np.zeros(S.shape)
+            for cluster in range(self.n_clusters_per_label[idx_outside_polytope]):
                 # Apply the data again the trained model to get the final SVM scores
-                svm_scores[:, cluster_i] = 1 + (
-                        np.matmul(self.coefficients[idx_outside_polytope][cluster_i], X.transpose()) +
-                        self.intercepts[idx_outside_polytope][cluster_i]).transpose().squeeze()
-            svm_scores[svm_scores < 0] = 0.000001
-            Q = svm_scores / np.sum(svm_scores, 1)[:, None]
+                SVM_distances[:, cluster] = 1 + (
+                        np.matmul(self.coefficients[idx_outside_polytope][cluster], X.transpose()) +
+                        self.intercepts[idx_outside_polytope][cluster]).transpose().squeeze()
+            SVM_distances -= np.min(SVM_distances)
+            SVM_distances += 1e-3
+            Q = SVM_distances / np.sum(SVM_distances, 1)[:,None]
 
         if self.clustering in ['k_means', 'gaussian_mixture']:
             directions = [self.coefficients[idx_outside_polytope][cluster_i][0] for cluster_i in

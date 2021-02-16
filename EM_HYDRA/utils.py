@@ -191,7 +191,7 @@ def consensus_clustering(clustering_results, n_clusters, index_positives, negati
 
     # apply clustering method according to negative weighting
     if negative_weighting in ['all']:
-        k_means = KMeans(n_clusters=n_clusters).fit(spectral_features[index_positives])
+        k_means = KMeans(n_clusters=n_clusters, n_init=20).fit(spectral_features[index_positives])
         S[index_positives] = one_hot_encode(k_means.labels_.astype(np.int), n_classes=n_clusters)
     elif negative_weighting in ['soft_clustering']: # , 'hard_clustering'
         gaussian_mixture = GaussianMixture(n_components=n_clusters).fit(spectral_features)
