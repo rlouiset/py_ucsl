@@ -37,7 +37,7 @@ class BaseEM(BaseEstimator, metaclass=ABCMeta):
         else:
             self.n_clusters_per_label = n_clusters_per_label
 
-            # define what type of initialization, clustering and consensus one wants to use
+        # define what type of initialization, clustering and consensus one wants to use
         self.initialization = initialization
         self.clustering = clustering
         self.consensus = consensus
@@ -76,7 +76,7 @@ class HYDRA(BaseEM, ClassifierMixin):
         If not specified, HYDRA original "all" will be used.
     """
 
-    def __init__(self, C=1, kernel="linear", stability_threshold=0.9, noise_tolerance_threshold=5,
+    def __init__(self, C=1, kernel="linear", stability_threshold=0.99, noise_tolerance_threshold=5,
                  n_consensus=5, n_iterations=5, n_labels=2, n_clusters_per_label=None,
                  initialization="DPP", clustering='original', consensus='spectral_clustering', negative_weighting='all',
                  training_label_mapping=None, dual_consensus=False):
@@ -319,7 +319,6 @@ class HYDRA(BaseEM, ClassifierMixin):
 
                 # check the Clustering Stability \w Adjusted Rand Index for stopping criteria
                 cluster_consistency = ARI(np.argmax(S[index_positives], 1), np.argmax(S_hold[index_positives], 1))
-                print(cluster_consistency)
 
                 if cluster_consistency > self.stability_threshold:
                     break
