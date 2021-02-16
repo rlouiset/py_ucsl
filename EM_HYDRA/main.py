@@ -214,7 +214,9 @@ class HYDRA(BaseEM, ClassifierMixin):
                 # compute clustering conditional probabilities as in the original HYDRA paper : P(cluster=i|y=label)
                 SVM_distances[label] -= np.min(SVM_distances[label])
                 SVM_distances[label] += 1e-3
-                SVM_distances[label] = SVM_distances[label] / np.sum(SVM_distances[label], 1)[:, None]
+
+            for label in range(self.n_labels):
+                cluster_predictions[label] = SVM_distances[label] / np.sum(SVM_distances[label], 1)[:, None]
 
         elif self.clustering in ['boundary_barycenter']:
             barycenters_distances = {label: np.zeros((len(X), self.n_clusters_per_label[label])) for label in
@@ -260,8 +262,6 @@ class HYDRA(BaseEM, ClassifierMixin):
                 y_proj_pred = self.gaussian_mixture[label].predict(X_proj)
 
                 cluster_predictions[label] = one_hot_encode(y_proj_pred, n_classes=self.n_clusters_per_label[label])
-
-        print(cluster_predictions)
 
         return cluster_predictions
 
