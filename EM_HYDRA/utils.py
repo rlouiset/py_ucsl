@@ -7,6 +7,7 @@ import cvxpy as cp
 from sklearn.mixture import GaussianMixture
 
 
+
 def one_hot_encode(y, n_classes=None):
     ''' utils function in order to turn a label vector into a one hot encoded matrix '''
     if n_classes is None:
@@ -187,18 +188,11 @@ def consensus_clustering(clustering_results, n_clusters, index_positives, negati
         e_value, e_vector = scipy.linalg.eigh(Laplacian)
 
     # train Spectral Clustering algorithm and make predictions
-    spectral_features = e_vector.real[:, 0:n_clusters]
+    spectral_features = e_vector.real[:, :n_clusters]
 
-    # apply clustering method according to negative weighting
-    if negative_weighting in ['all']:
-        k_means = KMeans(n_clusters=n_clusters, n_init=20).fit(spectral_features[index_positives])
-        S[index_positives] = one_hot_encode(k_means.labels_.astype(np.int), n_classes=n_clusters)
-    elif negative_weighting in ['soft_clustering']: # , 'hard_clustering'
-        gaussian_mixture = GaussianMixture(n_components=n_clusters).fit(spectral_features)
-        S = gaussian_mixture.predict_proba(spectral_features)
-    elif negative_weighting in ['hard_clustering']:
-        k_means = KMeans(n_clusters=n_clusters).fit(spectral_features)
-        S = one_hot_encode(k_means.labels_.astype(np.int), n_classes=n_clusters)
+    # apply clustering method
+    k_means = KMeans(n_clusters=n_clusters, n_init=10, init="k-means++").fit(spectral_features[index_positives])
+    S[index_positives] = one_hot_encode(k_means.labels_.astype(np.int), n_classes=n_clusters)
 
     return S
 

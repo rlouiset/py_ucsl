@@ -1,6 +1,6 @@
+from sklearn.cluster import KMeans
 import numpy as np
 import scipy
-from sklearn.cluster import KMeans
 
 
 def proportional_assign(l, d):
