@@ -133,7 +133,6 @@ class HYDRA(BaseEM, ClassifierMixin):
         y_train_copy = y_train.copy()
         for original_label, new_label in self.training_label_mapping.items():
             y_train_copy[y_train == original_label] = new_label
-        print(y_train_copy)
 
         # cluster each label one by one and confine the other inside the polytope
         for label in range(self.n_labels):
@@ -296,8 +295,8 @@ class HYDRA(BaseEM, ClassifierMixin):
         elif self.clustering in ['gaussian_mixture', 'bisector_gaussian_mixture']:
             for label in range(self.n_labels):
                 X_proj = X @ self.orthonormal_basis[label].T
-                if self.k_means[label] is not None :
-                    y_proj_pred = self.k_means[label].predict(X_proj)
+                if self.gaussian_mixture[label] is not None :
+                    y_proj_pred = self.gaussian_mixture[label].predict(X_proj)
                 else :
                     y_proj_pred = np.zeros(len(X)).astype(np.int)
 
