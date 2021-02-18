@@ -130,9 +130,10 @@ class HYDRA(BaseEM, ClassifierMixin):
         self
         """
         # apply label mapping (in our case we merged "BIPOLAR" and "SCHIZOPHRENIA" into "MENTAL DISEASE" for our xp)
+        y_train_copy = y_train.copy()
         for original_label, new_label in self.training_label_mapping.items():
-            y_train_copy = y_train.copy()
-            y_train_copy[y_train_copy == original_label] = new_label
+            y_train_copy[y_train == original_label] = new_label
+        print(y_train_copy)
 
         # cluster each label one by one and confine the other inside the polytope
         for label in range(self.n_labels):
