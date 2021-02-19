@@ -595,20 +595,28 @@ class HYDRA(BaseEM, ClassifierMixin):
 
 
     def predict_clusters_proba_for_new_points(self, X, idx_outside_polytope, n_clusters):
-        clustering_assignments = np.zeros((len(X), self.n_consensus))
+        X_clustering_assignments = np.zeros((len(X), self.n_consensus))
         for consensus in range(self.n_consensus) :
             X_proj = X @ self.orthonormal_basis[idx_outside_polytope][consensus].T
             if self.clustering == 'k_means' :
-                clustering_assignments[:,consensus] = self.k_means[idx_outside_polytope][consensus].predict(X_proj)
+                X_clustering_assignments[:,consensus] = self.k_means[idx_outside_polytope][consensus].predict(X_proj)
             elif self.clustering == 'gaussian_mixture' :
-                clustering_assignments[:,consensus] = self.gaussian_mixture[idx_outside_polytope][consensus].predict(X_proj)
-        similarity_matrix = compute_similarity_matrix(self.clustering_assignments[idx_outside_polytope], clustering_assignments_to_pred=clustering_assignments)
+                X_clustering_assignments[:,consensus] = self.gaussian_mixture[idx_outside_polytope][consensus].predict(X_proj)
+        print(X.shape)
+        print(X_clustering_assignments.shape)
+        print('X_clustering : ', X_clustering_assignments[:10])
+        print('')
+        similarity_matrix = compute_similarity_matrix(self.clustering_assignments[idx_outside_polytope], clustering_assignments_to_pred=X_clustering_assignments)
+        print(similarity_matrix.shape)
+        print('similarity mat : ', similarity_matrix[:10])
+        print('')
 
         Q = np.zeros((len(X), n_clusters))
         y_clusters_train_ = self.y_clusters_pred[idx_outside_polytope]
         for cluster in range(n_clusters) :
             Q[:, cluster] = np.mean(similarity_matrix[y_clusters_train_==cluster], 0)
-        print(Q)
+        print('Q : ', Q[:5])
+        print('')
         return Q
 
 
@@ -634,6 +642,7 @@ class HYDRA(BaseEM, ClassifierMixin):
         None
         """
         # initialize the consensus clustering vector
+        print('positive index : ', len(index_positives))
         S = np.ones(index_positives.shape) / n_clusters
 
         # perform consensus clustering
