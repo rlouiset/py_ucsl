@@ -321,7 +321,7 @@ class HYDRA(BaseEM, ClassifierMixin):
         # define the clustering assignment matrix (each column correspond to one consensus run)
         self.clustering_assignments[idx_outside_polytope] = np.zeros((len(index_positives), self.n_consensus))
 
-        for consensus_i in range(self.n_consensus):
+        for consensus in range(self.n_consensus):
             # first we initialize the clustering matrix S, with the initialization strategy set in self.initialization
             S, cluster_index = self.initialize_clustering(X, y_polytope, index_positives, index_negatives,
                                                           n_clusters, idx_outside_polytope)
@@ -595,7 +595,7 @@ class HYDRA(BaseEM, ClassifierMixin):
 
 
     def predict_clusters_proba_for_new_points(self, X, idx_outside_polytope):
-        clustering_assignments = np.zeros(len(X), self.n_consensus)
+        clustering_assignments = np.zeros((len(X), self.n_consensus))
         for consensus in range(self.n_consensus) :
             X_proj = X @ self.k_means[idx_outside_polytope].T
             if self.clustering == 'k_means' :
