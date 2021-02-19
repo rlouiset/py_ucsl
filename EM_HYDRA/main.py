@@ -522,7 +522,7 @@ class HYDRA(BaseEM, ClassifierMixin):
     def initialize_clustering(self, X, y_polytope, index_positives, index_negatives, n_clusters, idx_outside_polytope):
         if n_clusters == 1:
             S = np.ones((len(y_polytope), n_clusters)) / n_clusters
-            cluster_index = np.argmax(S, axis=1)
+            cluster_index = np.argmax(S[index_positives], axis=1)
             self.barycenters[idx_outside_polytope][0] = np.mean(X, 0)
             return S, cluster_index
 
@@ -556,7 +556,7 @@ class HYDRA(BaseEM, ClassifierMixin):
             KM = KMeans(n_clusters=self.n_clusters_per_label[idx_outside_polytope]).fit(X[index_positives])
             S = one_hot_encode(KM.predict(X))
 
-        cluster_index = np.argmax(S, axis=1)
+        cluster_index = np.argmax(S[index_positives], axis=1)
         return S, cluster_index
 
     def launch_svc(self, X, y, sample_weight):
