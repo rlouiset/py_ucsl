@@ -636,7 +636,6 @@ class HYDRA(BaseEM, ClassifierMixin):
         S[index_positives, consensus_cluster_index] = 1
 
         print(S[index_positives])
-        print(S)
         print('-----------')
 
         # check for degenerate clustering for positive labels (warning) and negatives (might be normal)
