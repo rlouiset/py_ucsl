@@ -287,11 +287,15 @@ class HYDRA(BaseEM, ClassifierMixin):
 
         elif self.clustering in ['k_means', 'gaussian_mixture']:
             for label in range(self.n_labels):
-                cluster_predictions[label] = self.predict_clusters_proba_for_new_points(X, label, self.n_clusters_per_label[label])
-
+                if self.n_clusters_per_label[label] > 1:
+                    cluster_predictions[label] = self.predict_clusters_proba_for_new_points(X, label, self.n_clusters_per_label[label])
+                else :
+                    cluster_predictions[label] = np.zeros(len(X))
         return cluster_predictions
 
     def run(self, X, y, n_clusters, idx_outside_polytope):
+        n_consensus = self.n_consensus if n_clusters > 1 else 1
+
         # set label idx_outside_polytope outside of the polytope by setting it to positive labels
         y_polytope = np.copy(y)
         # if label is inside of the polytope, the distance is negative and the label is not divided into
@@ -303,9 +307,9 @@ class HYDRA(BaseEM, ClassifierMixin):
         index_negatives = np.where(y_polytope == -1)[0]  # index for Negative labels (inside polytope)
 
         # define the clustering assignment matrix (each column correspond to one consensus run)
-        self.clustering_assignments[idx_outside_polytope] = np.zeros((len(index_positives), self.n_consensus))
+        self.clustering_assignments[idx_outside_polytope] = np.zeros((len(index_positives), n_consensus))
 
-        for consensus in range(self.n_consensus):
+        for consensus in range(n_consensus):
             # first we initialize the clustering matrix S, with the initialization strategy set in self.initialization
             S, cluster_index = self.initialize_clustering(X, y_polytope, index_positives, index_negatives,
                                                           n_clusters, idx_outside_polytope)
@@ -383,9 +387,8 @@ class HYDRA(BaseEM, ClassifierMixin):
             # update the cluster index for the consensus clustering
             self.clustering_assignments[idx_outside_polytope][:, consensus] = cluster_index + 1
 
-            print(self.gaussian_mixture[idx_outside_polytope])
-
-        self.clustering_bagging(X, y_polytope, n_clusters, index_positives, idx_outside_polytope)
+        if n_clusters > 1 :
+            self.clustering_bagging(X, y_polytope, n_clusters, index_positives, idx_outside_polytope)
 
         return self
 
