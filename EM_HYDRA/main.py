@@ -139,6 +139,7 @@ class HYDRA(BaseEM, ClassifierMixin):
 
         # cluster each label one by one and confine the other inside the polytope
         for label in range(self.n_labels):
+            print(label)
             self.run(X_train, y_train_copy, self.n_clusters_per_label[label], idx_outside_polytope=label)
 
         return self
@@ -407,7 +408,6 @@ class HYDRA(BaseEM, ClassifierMixin):
         if n_clusters == 1:
             self.orthonormal_basis[idx_outside_polytope] = np.eye(X.shape[1])
             S[index] = 1
-            cluster_index[index] = 0
             return S, cluster_index
 
         Q = S.copy()
@@ -516,7 +516,7 @@ class HYDRA(BaseEM, ClassifierMixin):
             Q = Q / np.sum(Q, 1)[:, None]
 
         S = Q.copy()
-        cluster_index[index] = np.argmax(Q[index], axis=1)
+        cluster_index = np.argmax(Q[index], axis=1)
         return S, cluster_index
 
     def initialize_clustering(self, X, y_polytope, index_positives, index_negatives, n_clusters, idx_outside_polytope):
