@@ -357,7 +357,7 @@ class HYDRA(BaseEM, ClassifierMixin):
 
                 # always set positive clustering as hard
                 S[index_positives] = 0
-                S[index_positives, cluster_index[index_positives]] = 1
+                S[index_positives, cluster_index] = 1
 
                 # update barycenters
                 for cluster_i in range(n_clusters):
@@ -645,7 +645,8 @@ class HYDRA(BaseEM, ClassifierMixin):
         elif self.negative_weighting in ['hard_clustering']:
             S = np.rint(self.predict_clusters_proba_for_new_points(X, idx_outside_polytope, n_clusters))
 
-        S[index_positives, consensus_cluster_index[index_positives]] = 1
+        S[index_positives] *= 0
+        S[index_positives, consensus_cluster_index] = 1
 
         for cluster in range(n_clusters):
             cluster_weight = np.ascontiguousarray(S[:, cluster])
