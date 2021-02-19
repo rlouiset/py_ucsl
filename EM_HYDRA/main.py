@@ -622,7 +622,6 @@ class HYDRA(BaseEM, ClassifierMixin):
         """
         # initialize the consensus clustering vector
         S = np.ones((len(X), n_clusters)) / n_clusters
-        print(S.shape)
 
         # perform consensus clustering
         consensus_cluster_index = compute_spectral_clustering_consensus(self.clustering_assignments[idx_outside_polytope], n_clusters)
@@ -630,15 +629,15 @@ class HYDRA(BaseEM, ClassifierMixin):
 
         if self.negative_weighting in ['soft_clustering']:
             S = self.predict_clusters_proba_for_new_points(X, idx_outside_polytope, n_clusters)
-            print(S.shape)
         elif self.negative_weighting in ['hard_clustering']:
             S = np.rint(self.predict_clusters_proba_for_new_points(X, idx_outside_polytope, n_clusters))
 
         S[index_positives] *= 0
         S[index_positives, consensus_cluster_index] = 1
 
-        print(consensus_cluster_index)
-        print('')
+        print(S[index_positives])
+        print(S)
+        print('-----------')
 
         for cluster in range(n_clusters):
             cluster_weight = np.ascontiguousarray(S[:, cluster])
