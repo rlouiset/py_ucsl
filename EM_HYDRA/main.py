@@ -592,7 +592,7 @@ class HYDRA(BaseEM, ClassifierMixin):
         y_clusters_train_ = self.y_clusters_pred[idx_outside_polytope]
         for cluster in range(n_clusters) :
             Q[:, cluster] = np.mean(similarity_matrix[y_clusters_train_==cluster], 0)
-        Q /= np.sum(Q, 1)
+        Q /= np.sum(Q, 1)[:, None]
         return Q
 
 
@@ -618,7 +618,6 @@ class HYDRA(BaseEM, ClassifierMixin):
         None
         """
         # initialize the consensus clustering vector
-        print('positive index : ', len(index_positives))
         S = np.ones(index_positives.shape) / n_clusters
 
         # perform consensus clustering
