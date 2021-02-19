@@ -596,7 +596,7 @@ class HYDRA(BaseEM, ClassifierMixin):
 
     def predict_clusters_proba_for_new_points(self, X, idx_outside_polytope):
         clustering_assignments = np.zeros(len(X), self.n_consensus)
-        for consensus in self.n_consensus() :
+        for consensus in range(self.n_consensus) :
             X_proj = X @ self.k_means[idx_outside_polytope].T
             if self.clustering == 'k_means' :
                 clustering_assignments[:,consensus] = self.k_means[idx_outside_polytope].predict(X_proj)
