@@ -594,7 +594,7 @@ class HYDRA(BaseEM, ClassifierMixin):
         return SVM_coefficient, SVM_intercept
 
 
-    def predict_clusters_proba_for_new_points(self, X, idx_outside_polytope):
+    def predict_clusters_proba_for_new_points(self, X, idx_outside_polytope, n_clusters):
         clustering_assignments = np.zeros((len(X), self.n_consensus))
         for consensus in range(self.n_consensus) :
             X_proj = X @ self.orthonormal_basis[idx_outside_polytope].T
@@ -602,10 +602,14 @@ class HYDRA(BaseEM, ClassifierMixin):
                 clustering_assignments[:,consensus] = self.k_means[idx_outside_polytope].predict(X_proj)
             elif self.clustering == 'gaussian_mixture' :
                 clustering_assignments[:,consensus] = self.gaussian_mixture[idx_outside_polytope].predict(X_proj)
-
         similarity_matrix = compute_similarity_matrix(self.clustering_assignments[idx_outside_polytope], clustering_assignments_to_pred=clustering_assignments)
-        y_clusters_pred_proba = np.mean(similarity_matrix*self.y_clusters_pred[idx_outside_polytope][:,None], 0)
-        return y_clusters_pred_proba
+
+        Q = np.zeros((len(X), n_clusters))
+        y_clusters_train_ = self.y_clusters_pred[idx_outside_polytope]
+        for cluster in range(n_clusters) :
+            Q[:, cluster] = np.mean(similarity_matrix[y_clusters_train_==cluster], 0)
+        print(Q)
+        return Q
 
 
     def clustering_bagging(self, X, y_polytope, n_clusters, index_positives,
@@ -637,9 +641,9 @@ class HYDRA(BaseEM, ClassifierMixin):
         self.y_clusters_pred[idx_outside_polytope] = consensus_cluster_index
 
         if self.negative_weighting in ['soft_clustering']:
-            S = self.predict_clusters_proba_for_new_points(X, idx_outside_polytope)
+            S = self.predict_clusters_proba_for_new_points(X, idx_outside_polytope, n_clusters)
         elif self.negative_weighting in ['hard_clustering']:
-            S = np.rint(self.predict_clusters_proba_for_new_points(X, idx_outside_polytope))
+            S = np.rint(self.predict_clusters_proba_for_new_points(X, idx_outside_polytope, n_clusters))
 
         S[index_positives, consensus_cluster_index[index_positives]] = 1
 
