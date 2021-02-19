@@ -286,25 +286,9 @@ class HYDRA(BaseEM, ClassifierMixin):
                 cluster_predictions[label][:, 0] = (1 - y_proj_pred)
                 cluster_predictions[label][:, 1] = y_proj_pred
 
-        elif self.clustering in ['k_means', 'bisector_k_means']:
+        elif self.clustering in ['k_means', 'gaussian_mixture']:
             for label in range(self.n_labels):
-                X_proj = X @ self.orthonormal_basis[label].T
-                if self.k_means[label] is not None :
-                    y_proj_pred = self.k_means[label].predict(X_proj)
-                else :
-                    y_proj_pred = np.zeros(len(X)).astype(np.int)
-
-                cluster_predictions[label] = one_hot_encode(y_proj_pred, n_classes=self.n_clusters_per_label[label])
-
-        elif self.clustering in ['gaussian_mixture', 'bisector_gaussian_mixture']:
-            for label in range(self.n_labels):
-                X_proj = X @ self.orthonormal_basis[label].T
-                if self.gaussian_mixture[label] is not None :
-                    y_proj_pred = self.gaussian_mixture[label].predict(X_proj)
-                else :
-                    y_proj_pred = np.zeros(len(X)).astype(np.int)
-
-                cluster_predictions[label] = one_hot_encode(y_proj_pred, n_classes=self.n_clusters_per_label[label])
+                cluster_predictions[label] = self.predict_clusters_proba_for_new_points(X, label, self.n_clusters_per_label[label])
 
         return cluster_predictions
 
@@ -602,20 +586,14 @@ class HYDRA(BaseEM, ClassifierMixin):
                 X_clustering_assignments[:,consensus] = self.k_means[idx_outside_polytope][consensus].predict(X_proj)
             elif self.clustering == 'gaussian_mixture' :
                 X_clustering_assignments[:,consensus] = self.gaussian_mixture[idx_outside_polytope][consensus].predict(X_proj)
-        print(X.shape)
-        print(X_clustering_assignments.shape)
-        print('X_clustering : ', X_clustering_assignments[:10])
-        print('')
         similarity_matrix = compute_similarity_matrix(self.clustering_assignments[idx_outside_polytope], clustering_assignments_to_pred=X_clustering_assignments)
-        print(similarity_matrix.shape)
-        print('similarity mat : ', similarity_matrix[:10])
-        print('')
 
         Q = np.zeros((len(X), n_clusters))
         y_clusters_train_ = self.y_clusters_pred[idx_outside_polytope]
         for cluster in range(n_clusters) :
             Q[:, cluster] = np.mean(similarity_matrix[y_clusters_train_==cluster], 0)
-        print('Q : ', Q[:5])
+        print(np.unique(y_clusters_train_))
+        print('Q : ', Q)
         print('')
         return Q
 
