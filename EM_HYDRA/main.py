@@ -139,7 +139,6 @@ class HYDRA(BaseEM, ClassifierMixin):
 
         # cluster each label one by one and confine the other inside the polytope
         for label in range(self.n_labels):
-            print(label)
             self.run(X_train, y_train_copy, self.n_clusters_per_label[label], idx_outside_polytope=label)
 
         return self
@@ -383,6 +382,8 @@ class HYDRA(BaseEM, ClassifierMixin):
 
             # update the cluster index for the consensus clustering
             self.clustering_assignments[idx_outside_polytope][:, consensus] = cluster_index + 1
+
+            print(self.gaussian_mixture[idx_outside_polytope])
 
         self.clustering_bagging(X, y_polytope, n_clusters, index_positives, idx_outside_polytope)
 
