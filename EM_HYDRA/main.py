@@ -397,7 +397,7 @@ class HYDRA(BaseEM, ClassifierMixin):
                     self.intercept_lists[idx_outside_polytope][cluster][iteration + 1] = SVM_intercept.copy()
 
             # update the cluster index for the consensus clustering
-            self.clustering_assignments[idx_outside_polytope][:, consensus_i] = cluster_index + 1
+            self.clustering_assignments[idx_outside_polytope][:, consensus] = cluster_index + 1
 
         self.clustering_bagging(X, y_polytope, n_clusters, index_positives, idx_outside_polytope)
 
