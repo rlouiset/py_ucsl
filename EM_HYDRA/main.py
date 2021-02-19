@@ -344,7 +344,7 @@ class HYDRA(BaseEM, ClassifierMixin):
                 # decide the convergence based on the clustering stability
                 S_hold = S.copy()
                 S, cluster_index = self.update_clustering(X, S, index_positives, cluster_index, n_clusters,
-                                                          idx_outside_polytope)
+                                                          idx_outside_polytope, consensus)
 
                 # TODO : get rid of
                 self.S_lists[idx_outside_polytope][iteration + 1] = S.copy()
@@ -404,9 +404,9 @@ class HYDRA(BaseEM, ClassifierMixin):
 
         return self
 
-    def update_clustering(self, X, S, index, cluster_index, n_clusters, idx_outside_polytope, print_=False):
+    def update_clustering(self, X, S, index, cluster_index, n_clusters, idx_outside_polytope, consensus, print_=False):
         if n_clusters == 1:
-            self.orthonormal_basis[idx_outside_polytope] = np.eye(X.shape[1])
+            self.orthonormal_basis[idx_outside_polytope][consensus] = np.eye(X.shape[1])
             S[index] = 1
             return S, cluster_index
 
@@ -437,22 +437,22 @@ class HYDRA(BaseEM, ClassifierMixin):
             if print_:
                 print('')
 
-            self.orthonormal_basis[idx_outside_polytope] = np.array(basis)
+            self.orthonormal_basis[idx_outside_polytope][consensus] = np.array(basis)
             X_proj = X @ self.orthonormal_basis[idx_outside_polytope].T
 
             centroids = [np.mean(S[index, cluster_i][:, None] * X_proj[index, :], 0) for cluster_i in
                          range(self.n_clusters_per_label[idx_outside_polytope])]
 
             if self.clustering == 'k_means':
-                self.k_means[idx_outside_polytope] = KMeans(n_clusters=self.n_clusters_per_label[idx_outside_polytope],
+                self.k_means[idx_outside_polytope][consensus] = KMeans(n_clusters=self.n_clusters_per_label[idx_outside_polytope],
                                                             init=np.array(centroids), n_init=1).fit(X_proj[index])
-                Q = one_hot_encode(self.k_means[idx_outside_polytope].predict(X_proj),
+                Q = one_hot_encode(self.k_means[idx_outside_polytope][consensus].predict(X_proj),
                                    n_classes=self.n_clusters_per_label[idx_outside_polytope])
 
             if self.clustering == 'gaussian_mixture':
-                self.gaussian_mixture[idx_outside_polytope] = GaussianMixture(
+                self.gaussian_mixture[idx_outside_polytope][consensus] = GaussianMixture(
                     n_components=self.n_clusters_per_label[idx_outside_polytope]).fit(X_proj[index])
-                Q = self.gaussian_mixture[idx_outside_polytope].predict_proba(X_proj)
+                Q = self.gaussian_mixture[idx_outside_polytope][consensus].predict_proba(X_proj)
 
         elif self.clustering in ['bisector_hyperplane']:
             directions = np.array([self.coefficients[idx_outside_polytope][cluster_i][0] for cluster_i in
@@ -597,11 +597,11 @@ class HYDRA(BaseEM, ClassifierMixin):
     def predict_clusters_proba_for_new_points(self, X, idx_outside_polytope, n_clusters):
         clustering_assignments = np.zeros((len(X), self.n_consensus))
         for consensus in range(self.n_consensus) :
-            X_proj = X @ self.orthonormal_basis[idx_outside_polytope].T
+            X_proj = X @ self.orthonormal_basis[idx_outside_polytope][consensus].T
             if self.clustering == 'k_means' :
-                clustering_assignments[:,consensus] = self.k_means[idx_outside_polytope].predict(X_proj)
+                clustering_assignments[:,consensus] = self.k_means[idx_outside_polytope][consensus].predict(X_proj)
             elif self.clustering == 'gaussian_mixture' :
-                clustering_assignments[:,consensus] = self.gaussian_mixture[idx_outside_polytope].predict(X_proj)
+                clustering_assignments[:,consensus] = self.gaussian_mixture[idx_outside_polytope][consensus].predict(X_proj)
         similarity_matrix = compute_similarity_matrix(self.clustering_assignments[idx_outside_polytope], clustering_assignments_to_pred=clustering_assignments)
 
         Q = np.zeros((len(X), n_clusters))
