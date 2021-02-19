@@ -592,9 +592,7 @@ class HYDRA(BaseEM, ClassifierMixin):
         y_clusters_train_ = self.y_clusters_pred[idx_outside_polytope]
         for cluster in range(n_clusters) :
             Q[:, cluster] = np.mean(similarity_matrix[y_clusters_train_==cluster], 0)
-        print(np.unique(y_clusters_train_))
-        print('Q : ', Q)
-        print('')
+        Q /= np.sum(Q, 1)
         return Q
 
 
