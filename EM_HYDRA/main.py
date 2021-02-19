@@ -438,7 +438,7 @@ class HYDRA(BaseEM, ClassifierMixin):
                 print('')
 
             self.orthonormal_basis[idx_outside_polytope][consensus] = np.array(basis)
-            X_proj = X @ self.orthonormal_basis[idx_outside_polytope].T
+            X_proj = X @ self.orthonormal_basis[idx_outside_polytope][consensus].T
 
             centroids = [np.mean(S[index, cluster_i][:, None] * X_proj[index, :], 0) for cluster_i in
                          range(self.n_clusters_per_label[idx_outside_polytope])]
