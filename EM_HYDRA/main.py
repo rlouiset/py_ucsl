@@ -598,7 +598,10 @@ class HYDRA(BaseEM, ClassifierMixin):
         clustering_assignments = np.zeros(len(X), self.n_consensus)
         for consensus in self.n_consensus() :
             X_proj = X @ self.k_means[idx_outside_polytope].T
-            clustering_assignments[:,consensus] = self.k_means[idx_outside_polytope].predict(X_proj)
+            if self.clustering == 'k_means' :
+                clustering_assignments[:,consensus] = self.k_means[idx_outside_polytope].predict(X_proj)
+            elif self.clustering == 'gaussian_mixture' :
+                clustering_assignments[:,consensus] = self.gaussian_mixture[idx_outside_polytope].predict(X_proj)
 
         similarity_matrix = compute_similarity_matrix(self.clustering_assignments[idx_outside_polytope], clustering_assignments_to_pred=clustering_assignments)
         y_clusters_pred_proba = np.mean(similarity_matrix*self.y_clusters_pred[idx_outside_polytope][:,1], 0)
