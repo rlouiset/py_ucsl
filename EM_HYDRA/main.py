@@ -635,9 +635,6 @@ class HYDRA(BaseEM, ClassifierMixin):
         S[index_positives] *= 0
         S[index_positives, consensus_cluster_index] = 1
 
-        print(S[index_positives])
-        print('-----------')
-
         # check for degenerate clustering for positive labels (warning) and negatives (might be normal)
         for cluster in range(self.n_clusters_per_label[idx_outside_polytope]):
             if np.count_nonzero(S[index_negatives, cluster]) == 0:

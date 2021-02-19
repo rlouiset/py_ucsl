@@ -193,30 +193,25 @@ def consensus_clustering(clustering_results, n_clusters, index_positives):
 
 
 def compute_similarity_matrix(consensus_assignment, clustering_assignments_to_pred=None):
-    # compute inter-samples diagonal co-occurence matrix
-    if clustering_assignments_to_pred is None :
-        n_positives = len(consensus_assignment)
-        similarity_matrix = np.zeros((n_positives, n_positives))
-        for i in range(n_positives - 1):
-            for j in range(i + 1, n_positives):
-                similarity_matrix[i, j] = sum(consensus_assignment[i, :] == consensus_assignment[j, :])
-        similarity_matrix = np.add(similarity_matrix, similarity_matrix.transpose())
-
     # compute inter-samples positive/negative co-occurence matrix
-    else :
-        similarity_matrix = np.zeros((len(consensus_assignment), len(clustering_assignments_to_pred)))
-        for i, p_assignment in enumerate(consensus_assignment) :
-            for j, new_point_assignment in enumerate(clustering_assignments_to_pred) :
-                similarity_matrix[i, j] = sum(p_assignment==new_point_assignment)
+    similarity_matrix = np.zeros((len(consensus_assignment), len(clustering_assignments_to_pred)))
+    for i, p_assignment in enumerate(consensus_assignment) :
+        for j, new_point_assignment in enumerate(clustering_assignments_to_pred) :
+            similarity_matrix[i, j] = np.sum(p_assignment==new_point_assignment)
+            print(similarity_matrix[i, j])
     #similarity_matrix += 1e-3
-    print(similarity_matrix[:10, :10])
     similarity_matrix /= np.max(similarity_matrix)
     return similarity_matrix
 
 
 def compute_spectral_clustering_consensus(clustering_results, n_clusters):
     # compute positive samples co-occurence matrix
-    similarity_matrix = compute_similarity_matrix(clustering_results)
+    n_positives = len(clustering_results)
+    similarity_matrix = np.zeros((n_positives, n_positives))
+    for i in range(n_positives - 1):
+        for j in range(i + 1, n_positives):
+            similarity_matrix[i, j] = sum(clustering_results[i, :] == clustering_results[j, :])
+    similarity_matrix = np.add(similarity_matrix, similarity_matrix.transpose())
 
     # initialize spectral clustering method
     spectral_clustering_method = SpectralClustering(n_clusters=n_clusters, affinity='precomputed')
