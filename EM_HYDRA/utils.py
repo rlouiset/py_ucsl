@@ -208,7 +208,8 @@ def compute_similarity_matrix(consensus_assignment, clustering_assignments_to_pr
         for i, p_assignment in enumerate(consensus_assignment) :
             for j, new_point_assignment in enumerate(clustering_assignments_to_pred) :
                 similarity_matrix[i, j] = sum(p_assignment==new_point_assignment)
-    similarity_matrix += 1e-3
+    #similarity_matrix += 1e-3
+    print(similarity_matrix[:10, :10])
     similarity_matrix /= np.max(similarity_matrix)
     return similarity_matrix
 
