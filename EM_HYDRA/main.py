@@ -113,9 +113,12 @@ class HYDRA(BaseEM, ClassifierMixin):
         self.mean_direction = {label: None for label in range(self.n_labels)}
 
         # define k_means clustering method orthonormal basis and k_means
-        self.orthonormal_basis = {label: None for label in range(self.n_labels)}
-        self.k_means = {label: None for label in range(self.n_labels)}
-        self.gaussian_mixture = {label: None for label in range(self.n_labels)}
+        self.y_clusters_pred = {label: None for label in range(self.n_labels)}
+        self.orthonormal_basis = {label: [None for consensus in range(n_consensus)] for label in range(self.n_labels)}
+        self.k_means = {label: [None for consensus in range(n_consensus)] for label in range(self.n_labels)}
+        self.gaussian_mixture = {label: [None for consensus in range(n_consensus)] for label in range(self.n_labels)}
+
+        self.clustering_assignments = {label: None for label in range(self.n_labels)}
 
     def fit(self, X_train, y_train):
         """Fit the HYDRA model according to the given training data.
@@ -305,8 +308,6 @@ class HYDRA(BaseEM, ClassifierMixin):
         return cluster_predictions
 
     def run(self, X, y, n_clusters, idx_outside_polytope):
-        n_consensus = self.n_consensus if (self.n_clusters_per_label[idx_outside_polytope] > 1) else 1
-
         # set label idx_outside_polytope outside of the polytope by setting it to positive labels
         y_polytope = np.copy(y)
         # if label is inside of the polytope, the distance is negative and the label is not divided into
@@ -314,12 +315,13 @@ class HYDRA(BaseEM, ClassifierMixin):
         # if label is outside of the polytope, the distance is positive and the label is clustered
         y_polytope[y_polytope == idx_outside_polytope] = 1
 
-        consensus_assignment = np.zeros((len(y_polytope), n_consensus))
-
         index_positives = np.where(y_polytope == 1)[0]  # index for Positive labels (outside polytope)
         index_negatives = np.where(y_polytope == -1)[0]  # index for Negative labels (inside polytope)
 
-        for consensus_i in range(n_consensus):
+        # define the clustering assignment matrix (each column correspond to one consensus run)
+        self.clustering_assignments[idx_outside_polytope] = np.zeros((len(index_positives), self.n_consensus))
+
+        for consensus_i in range(self.n_consensus):
             # first we initialize the clustering matrix S, with the initialization strategy set in self.initialization
             S, cluster_index = self.initialize_clustering(X, y_polytope, index_positives, index_negatives,
                                                           n_clusters, idx_outside_polytope)
@@ -395,11 +397,9 @@ class HYDRA(BaseEM, ClassifierMixin):
                     self.intercept_lists[idx_outside_polytope][cluster][iteration + 1] = SVM_intercept.copy()
 
             # update the cluster index for the consensus clustering
-            consensus_assignment[:, consensus_i] = cluster_index + 1
+            self.clustering_assignments[idx_outside_polytope][:, consensus_i] = cluster_index + 1
 
-        if n_consensus > 1:
-            self.clustering_bagging(X, y_polytope, consensus_assignment, n_clusters, index_positives,
-                                    idx_outside_polytope)
+        self.clustering_bagging(X, y_polytope, n_clusters, index_positives, idx_outside_polytope)
 
         return self
 
@@ -593,7 +593,19 @@ class HYDRA(BaseEM, ClassifierMixin):
 
         return SVM_coefficient, SVM_intercept
 
-    def clustering_bagging(self, X, y_polytope, consensus_assignment, n_clusters, index_positives,
+
+    def predict_clusters_proba_for_new_points(self, X, idx_outside_polytope):
+        clustering_assignments = np.zeros(len(X), self.n_consensus)
+        for consensus in self.n_consensus() :
+            X_proj = X @ self.k_means[idx_outside_polytope].T
+            clustering_assignments[:,consensus] = self.k_means[idx_outside_polytope].predict(X_proj)
+
+        similarity_matrix = compute_similarity_matrix(self.clustering_assignments[idx_outside_polytope], clustering_assignments_to_pred=clustering_assignments)
+        y_clusters_pred_proba = np.mean(similarity_matrix*self.y_clusters_pred[idx_outside_polytope][:,1], 0)
+        return y_clusters_pred_proba
+
+
+    def clustering_bagging(self, X, y_polytope, n_clusters, index_positives,
                            idx_outside_polytope):
         """Perform a bagging of the prviously obtained clusterings and compute new hyperplanes.
         Parameters
@@ -617,37 +629,16 @@ class HYDRA(BaseEM, ClassifierMixin):
         # initialize the consensus clustering vector
         S = np.ones(index_positives.shape) / n_clusters
 
-        if self.consensus == 'spectral_clustering':
-            # perform consensus clustering
-            S = consensus_clustering(consensus_assignment.astype(int), n_clusters, index_positives,
-                                     negative_weighting=self.negative_weighting)
-
-        if self.consensus == 'weighted_spectral_clustering':
-            # compute clustering relevancy to weight the spectral clustering
-            clustering_weights = np.zeros((consensus_assignment.shape[1], consensus_assignment.shape[1]))
-            for clustering_i in range(len(clustering_weights)):
-                for clustering_j in range(len(clustering_weights)):
-                    if clustering_j != clustering_i:
-                        clustering_weights[clustering_i][clustering_j] = ARI(
-                            consensus_assignment[index_positives, clustering_i],
-                            consensus_assignment[index_positives, clustering_j])
-            clustering_weights = np.sum(clustering_weights, 1)
-            clustering_weights[clustering_weights < 0] = 0
-            clustering_weights = clustering_weights / np.sum(clustering_weights)
-
-            # do consensus clustering
-            S = consensus_clustering(consensus_assignment, n_clusters, index_positives,
-                                     negative_weighting=self.negative_weighting,
-                                     cluster_weight=clustering_weights)
+        # perform consensus clustering
+        consensus_cluster_index = compute_spectral_clustering_consensus(self.clustering_assignments[idx_outside_polytope], n_clusters)
+        self.y_clusters_pred[idx_outside_polytope] = consensus_cluster_index
 
         if self.negative_weighting in ['soft_clustering']:
-            SVM_negatives = SVC(kernel='linear', probability=True).fit(X[index_positives],
-                                                                       np.argmax(S[index_positives], 1))
-            S[:, 1] = SVM_negatives.predict(X)
-            S[:, 0] = 1 - S[:, 1]
+            S = self.predict_clusters_proba_for_new_points(X, idx_outside_polytope)
         elif self.negative_weighting in ['hard_clustering']:
-            SVM_negatives = SVC(kernel='linear').fit(X[index_positives], np.argmax(S[index_positives], 1))
-            S = one_hot_encode(SVM_negatives.predict(X))
+            S = np.rint(self.predict_clusters_proba_for_new_points(X, idx_outside_polytope))
+
+        S[index_positives, consensus_cluster_index[index_positives]] = 1
 
         for cluster in range(n_clusters):
             cluster_weight = np.ascontiguousarray(S[:, cluster])
@@ -659,7 +650,4 @@ class HYDRA(BaseEM, ClassifierMixin):
             self.coef_lists[idx_outside_polytope][cluster][-1] = SVM_coefficient.copy()
             self.intercept_lists[idx_outside_polytope][cluster][-1] = SVM_intercept.copy()
 
-        # update clustering one last time for methods such as k_means or bisector_hyperplane
-        S, _ = self.update_clustering(X, S, index_positives, np.argmax(S, 1), n_clusters, idx_outside_polytope,
-                                      print_=True)
 

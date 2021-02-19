@@ -4,8 +4,8 @@ import scipy
 from EM_HYDRA.sinkornknopp import *
 from sklearn.cluster import KMeans
 import cvxpy as cp
+from sklearn.cluster import SpectralClustering
 from sklearn.mixture import GaussianMixture
-
 
 
 def one_hot_encode(y, n_classes=None):
@@ -157,18 +157,13 @@ def elem_sym_poly(lambda_value, k):
     return E
 
 
-def consensus_clustering(clustering_results, n_clusters, index_positives, negative_weighting='all',
-                         cluster_weight=None):
+def consensus_clustering(clustering_results, n_clusters, index_positives):
     S = np.ones((clustering_results.shape[0], n_clusters)) / n_clusters
     co_occurrence_matrix = np.zeros((clustering_results.shape[0], clustering_results.shape[0]))
 
     for i in range(clustering_results.shape[0] - 1):
         for j in range(i + 1, clustering_results.shape[0]):
-            if cluster_weight is None:
-                co_occurrence_matrix[i, j] = sum(clustering_results[i, :] == clustering_results[j, :])
-            else:
-                co_occurrence_matrix[i, j] = sum(
-                    cluster_weight * (clustering_results[i, :] == clustering_results[j, :]).astype(np.int))
+            co_occurrence_matrix[i, j] = sum(clustering_results[i, :] == clustering_results[j, :])
 
     co_occurrence_matrix = np.add(co_occurrence_matrix, co_occurrence_matrix.transpose())
     # here is to compute the Laplacian matrix
@@ -195,6 +190,36 @@ def consensus_clustering(clustering_results, n_clusters, index_positives, negati
     S[index_positives] = one_hot_encode(k_means.labels_.astype(np.int), n_classes=n_clusters)
 
     return S
+
+
+def compute_similarity_matrix(consensus_assignment, clustering_assignments_to_pred=None):
+    # compute inter-samples diagonal co-occurence matrix
+    if clustering_assignments_to_pred is None :
+        n_positives = len(consensus_assignment)
+        similarity_matrix = np.zeros((n_positives, n_positives))
+        for i in range(n_positives - 1):
+            for j in range(i + 1, n_positives):
+                similarity_matrix[i, j] = sum(consensus_assignment[i, :] == consensus_assignment[j, :])
+        similarity_matrix = np.add(similarity_matrix, similarity_matrix.transpose())
+
+    # compute inter-samples positive/negative co-occurence matrix
+    else :
+        similarity_matrix = np.zeros((len(consensus_assignment), len(clustering_assignments_to_pred)))
+        for i, p_assignment in enumerate(consensus_assignment) :
+            for j, new_point_assignment in enumerate(clustering_assignments_to_pred) :
+                similarity_matrix[i, j] = sum(p_assignment==new_point_assignment)
+    return similarity_matrix
+
+
+def compute_spectral_clustering_consensus(clustering_results, n_clusters):
+    # compute positive samples co-occurence matrix
+    similarity_matrix = compute_similarity_matrix(clustering_results)
+
+    # initialize spectral clustering method
+    spectral_clustering_method = SpectralClustering(n_clusters=n_clusters, affinity='precomputed')
+    spectral_clustering_method.fit(similarity_matrix)
+
+    return spectral_clustering_method.labels_
 
 
 def optimize_HYDRA_dual(self, X, y_polytope, S):
