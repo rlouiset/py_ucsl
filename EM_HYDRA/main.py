@@ -388,7 +388,7 @@ class HYDRA(BaseEM, ClassifierMixin):
             self.clustering_assignments[idx_outside_polytope][:, consensus] = cluster_index + 1
 
         if n_clusters > 1 :
-            self.clustering_bagging(X, y_polytope, n_clusters, index_positives, idx_outside_polytope)
+            self.clustering_bagging(X, y_polytope, n_clusters, index_positives, index_negatives, idx_outside_polytope)
 
         return self
 
@@ -600,7 +600,7 @@ class HYDRA(BaseEM, ClassifierMixin):
         return Q
 
 
-    def clustering_bagging(self, X, y_polytope, n_clusters, index_positives, idx_outside_polytope):
+    def clustering_bagging(self, X, y_polytope, n_clusters, index_positives, index_negatives, idx_outside_polytope):
         """Perform a bagging of the prviously obtained clusterings and compute new hyperplanes.
         Parameters
         ----------
@@ -639,6 +639,13 @@ class HYDRA(BaseEM, ClassifierMixin):
         print(S)
         print('-----------')
 
+        # check for degenerate clustering for positive labels (warning) and negatives (might be normal)
+        for cluster in range(self.n_clusters_per_label[idx_outside_polytope]):
+            if np.count_nonzero(S[index_negatives, cluster]) == 0:
+                print(
+                    "Cluster too far, meaning that one cluster have no negative points anymore, in Consensus phasis.")
+                print("Re-distribution of this cluster negative weight to 'all'...")
+                S[index_negatives, cluster] = 1 / n_clusters
         for cluster in range(n_clusters):
             cluster_weight = np.ascontiguousarray(S[:, cluster])
             SVM_coefficient, SVM_intercept = self.launch_svc(X, y_polytope, cluster_weight)
