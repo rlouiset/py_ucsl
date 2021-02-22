@@ -420,6 +420,21 @@ class HYDRA(BaseEM, ClassifierMixin):
             prob = py_softmax(prob, 1)
             S[index_positives] = cpu_sk(prob, 1)
 
+        if self.initialization == "DPP_GMM" :
+            num_subject = y_polytope.shape[0]
+            W = np.zeros((num_subject, X.shape[1]))
+            for j in range(num_subject):
+                ipt = np.random.randint(len(index_positives))
+                icn = np.random.randint(len(index_negatives))
+                W[j, :] = X[index_positives[ipt], :] - X[index_negatives[icn], :]
+
+            KW = np.matmul(W, W.transpose())
+            KW = np.divide(KW, np.sqrt(np.multiply(np.diag(KW)[:, np.newaxis], np.diag(KW)[:, np.newaxis].transpose())))
+            evalue, evector = np.linalg.eig(KW)
+            Widx = sample_dpp(np.real(evalue), np.real(evector), n_clusters)
+
+            print(W[Widx].shape)
+
 
         if self.initialization == "k_means":
             KM = KMeans(n_clusters=self.n_clusters_per_label[idx_outside_polytope]).fit(X[index_positives])
@@ -719,5 +734,16 @@ class HYDRA(BaseEM, ClassifierMixin):
         S[index_positives] *= 0
         S[index_positives, consensus_cluster_index] = 1
 
-        self.run_EM(X, y_polytope, S, consensus_cluster_index, index_positives, index_negatives,
+        if self.clustering == "original" :
+            for cluster in range(n_clusters):
+                cluster_assignment = np.ascontiguousarray(S[:, cluster])
+                SVM_coefficient, SVM_intercept = self.launch_svc(X, y_polytope, cluster_assignment)
+                self.coefficients[idx_outside_polytope][cluster] = SVM_coefficient
+                self.intercepts[idx_outside_polytope][cluster] = SVM_intercept
+
+                # TODO: get rid of
+                self.coef_lists[idx_outside_polytope][cluster][-1] = SVM_coefficient.copy()
+                self.intercept_lists[idx_outside_polytope][cluster][-1] = SVM_intercept.copy()
+        else :
+            self.run_EM(X, y_polytope, S, consensus_cluster_index, index_positives, index_negatives,
                     idx_outside_polytope, n_clusters, -1)
