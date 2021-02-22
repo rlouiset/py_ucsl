@@ -72,7 +72,7 @@ def sample_dpp(evalue, evector, k=None):
          v.tolist()]  # due to the index difference between matlab & python, here, the element of v is for matlab
     V = evector[:, v]
 
-    ## iterate
+    # iterate
     y = np.zeros(k)
     for i in range(k, 0, -1):
         # compute probabilities for each item
@@ -214,6 +214,7 @@ def compute_spectral_clustering_consensus(clustering_results, n_clusters):
 
     # initialize spectral clustering method
     spectral_clustering_method = SpectralClustering(n_clusters=n_clusters, affinity='precomputed')
+    print(similarity_matrix[:10, :10])
     spectral_clustering_method.fit(similarity_matrix)
 
     return spectral_clustering_method.labels_

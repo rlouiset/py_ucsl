@@ -334,7 +334,7 @@ class HYDRA(BaseEM, ClassifierMixin):
             self.clustering_bagging(X, y_polytope, index_positives, index_negatives, idx_outside_polytope, n_clusters)
 
     def update_clustering(self, X, S, index_positives, cluster_index, n_clusters, idx_outside_polytope, consensus):
-        """Perform a bagging of the previously obtained clusterings and compute new hyperplanes.
+        """Update clustering method (update clustering distribution matrix S).
         Parameters
         ----------
         X : array-like, shape (n_samples, n_features)
