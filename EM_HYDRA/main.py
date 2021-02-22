@@ -653,7 +653,10 @@ class HYDRA(BaseEM, ClassifierMixin):
                 cluster_assignment = np.ascontiguousarray(S[:, cluster])
                 SVM_coefficient, SVM_intercept = self.launch_svc(X, y_polytope, cluster_assignment)
                 self.coefficients[idx_outside_polytope][cluster] = SVM_coefficient
-                self.intercepts[idx_outside_polytope][cluster] = SVM_intercept
+                self.intercepts[idx_outside_polytope][cluster][iteration] = SVM_intercept
+
+                self.coef_lists[idx_outside_polytope][cluster][iteration] = SVM_coefficient
+                self.intercept_lists[idx_outside_polytope][cluster] = SVM_intercept
 
             # decide the convergence based on the clustering stability
             S_hold = S.copy()
