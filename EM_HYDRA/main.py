@@ -6,6 +6,7 @@ from EM_HYDRA.DPP_utils import *
 from EM_HYDRA.utils import *
 from sklearn.svm import SVC
 
+import logging
 import copy
 
 
@@ -325,13 +326,106 @@ class HYDRA(BaseEM, ClassifierMixin):
             # TODO : Get rid of these visualization helps
             self.S_lists[idx_outside_polytope][0] = S.copy()
 
-            self.run_EM(X, y_polytope, S, cluster_index, index_positives, index_negatives, idx_outside_polytope, n_clusters, consensus)
+            self.run_EM(X, y_polytope, S, cluster_index, index_positives, index_negatives, idx_outside_polytope,
+                        n_clusters, consensus)
 
             # update the cluster index for the consensus clustering
             self.clustering_assignments[idx_outside_polytope][:, consensus] = cluster_index + 1
 
         if n_clusters > 1:
             self.clustering_bagging(X, y_polytope, index_positives, index_negatives, idx_outside_polytope, n_clusters)
+
+    def predict_clusters_proba_for_negative_points(self, X, idx_outside_polytope, n_clusters):
+        """Predict positive and negative points clustering probabilities.
+        Parameters
+        ----------
+        X : array-like, shape (n_samples, n_features)
+            Training vectors.
+        idx_outside_polytope : int
+            label that is being clustered
+        n_clusters :
+            number of clusters
+        Returns
+        -------
+        None
+        """
+        X_clustering_assignments = np.zeros((len(X), self.n_consensus))
+        for consensus in range(self.n_consensus):
+            X_proj = X @ self.orthonormal_basis[idx_outside_polytope][consensus].T
+            if self.clustering == 'k_means':
+                X_clustering_assignments[:, consensus] = self.k_means[idx_outside_polytope][consensus].predict(X_proj)
+            elif self.clustering == 'gaussian_mixture':
+                X_clustering_assignments[:, consensus] = self.gaussian_mixture[idx_outside_polytope][consensus].predict(
+                    X_proj)
+        similarity_matrix = compute_similarity_matrix(self.clustering_assignments[idx_outside_polytope],
+                                                      clustering_assignments_to_pred=X_clustering_assignments)
+
+        Q = np.zeros((len(X), n_clusters))
+        y_clusters_train_ = self.y_clusters_pred[idx_outside_polytope]
+        for cluster in range(n_clusters):
+            Q[:, cluster] = np.mean(similarity_matrix[y_clusters_train_ == cluster], 0)
+        Q /= np.sum(Q, 1)[:, None]
+        return Q
+
+    def initialize_clustering(self, X, y_polytope, index_positives, index_negatives, n_clusters, idx_outside_polytope):
+        """Perform a bagging of the previously obtained clusterings and compute new hyperplanes.
+        Parameters
+        ----------
+        X : array-like, shape (n_samples, n_features)
+            Training vectors.
+        y_polytope : array-like, shape (n_samples,)
+            Target values.
+        index_positives : array-like, shape (n_positives_samples,)
+            indexes of the positive labels being clustered
+        index_negatives : array-like, shape (n_negatives_samples, )
+            indexes of the negatives labels nàt being clustered
+        n_clusters : int
+            number of clusters to be set.
+        idx_outside_polytope : int
+            label that is being clustered
+        Returns
+        -------
+        S : array-like, shape (n_samples, n_samples)
+            Cluster prediction matrix.
+        """
+        if n_clusters == 1:
+            S = np.ones((len(y_polytope), n_clusters)) / n_clusters
+            cluster_index = np.argmax(S[index_positives], axis=1)
+            self.barycenters[idx_outside_polytope][0] = np.mean(X, 0)
+            return S, cluster_index
+
+        S = np.ones((len(y_polytope), n_clusters)) / n_clusters
+
+        if self.initialization == "DPP":
+            num_subject = y_polytope.shape[0]
+            W = np.zeros((num_subject, X.shape[1]))
+            for j in range(num_subject):
+                ipt = np.random.randint(len(index_positives))
+                icn = np.random.randint(len(index_negatives))
+                W[j, :] = X[index_positives[ipt], :] - X[index_negatives[icn], :]
+
+            KW = np.matmul(W, W.transpose())
+            KW = np.divide(KW, np.sqrt(np.multiply(np.diag(KW)[:, np.newaxis], np.diag(KW)[:, np.newaxis].transpose())))
+            evalue, evector = np.linalg.eig(KW)
+            Widx = sample_dpp(np.real(evalue), np.real(evector), n_clusters)
+            prob = np.zeros((len(index_positives), n_clusters))  # only consider the PTs
+
+            for i in range(n_clusters):
+                prob[:, i] = np.matmul(
+                    np.multiply(X[index_positives, :],
+                                np.divide(1, np.linalg.norm(X[index_positives, :], axis=1))[:, np.newaxis]),
+                    W[Widx[i], :].transpose())
+
+            l_ = np.minimum(prob - 1, 0)
+            d = prob - 1
+            S[index_positives] = proportional_assign(l_, d)
+
+        if self.initialization == "k_means":
+            KM = KMeans(n_clusters=self.n_clusters_per_label[idx_outside_polytope]).fit(X[index_positives])
+            S = one_hot_encode(KM.predict(X))
+
+        cluster_index = np.argmax(S[index_positives], axis=1)
+        return S, cluster_index
 
     def update_clustering(self, X, S, index_positives, cluster_index, n_clusters, idx_outside_polytope, consensus):
         """Update clustering method (update clustering distribution matrix S).
@@ -477,66 +571,6 @@ class HYDRA(BaseEM, ClassifierMixin):
         cluster_index = np.argmax(Q[index_positives], axis=1)
         return S, cluster_index
 
-    def initialize_clustering(self, X, y_polytope, index_positives, index_negatives, n_clusters, idx_outside_polytope):
-        """Perform a bagging of the previously obtained clusterings and compute new hyperplanes.
-        Parameters
-        ----------
-        X : array-like, shape (n_samples, n_features)
-            Training vectors.
-        y_polytope : array-like, shape (n_samples,)
-            Target values.
-        index_positives : array-like, shape (n_positives_samples,)
-            indexes of the positive labels being clustered
-        index_negatives : array-like, shape (n_negatives_samples, )
-            indexes of the negatives labels nàt being clustered
-        n_clusters : int
-            number of clusters to be set.
-        idx_outside_polytope : int
-            label that is being clustered
-        Returns
-        -------
-        S : array-like, shape (n_samples, n_samples)
-            Cluster prediction matrix.
-        """
-        if n_clusters == 1:
-            S = np.ones((len(y_polytope), n_clusters)) / n_clusters
-            cluster_index = np.argmax(S[index_positives], axis=1)
-            self.barycenters[idx_outside_polytope][0] = np.mean(X, 0)
-            return S, cluster_index
-
-        S = np.ones((len(y_polytope), n_clusters)) / n_clusters
-
-        if self.initialization == "DPP":
-            num_subject = y_polytope.shape[0]
-            W = np.zeros((num_subject, X.shape[1]))
-            for j in range(num_subject):
-                ipt = np.random.randint(len(index_positives))
-                icn = np.random.randint(len(index_negatives))
-                W[j, :] = X[index_positives[ipt], :] - X[index_negatives[icn], :]
-
-            KW = np.matmul(W, W.transpose())
-            KW = np.divide(KW, np.sqrt(np.multiply(np.diag(KW)[:, np.newaxis], np.diag(KW)[:, np.newaxis].transpose())))
-            evalue, evector = np.linalg.eig(KW)
-            Widx = sample_dpp(np.real(evalue), np.real(evector), n_clusters)
-            prob = np.zeros((len(index_positives), n_clusters))  # only consider the PTs
-
-            for i in range(n_clusters):
-                prob[:, i] = np.matmul(
-                    np.multiply(X[index_positives, :],
-                                np.divide(1, np.linalg.norm(X[index_positives, :], axis=1))[:, np.newaxis]),
-                    W[Widx[i], :].transpose())
-
-            l_ = np.minimum(prob - 1, 0)
-            d = prob - 1
-            S[index_positives] = proportional_assign(l_, d)
-
-        if self.initialization == "k_means":
-            KM = KMeans(n_clusters=self.n_clusters_per_label[idx_outside_polytope]).fit(X[index_positives])
-            S = one_hot_encode(KM.predict(X))
-
-        cluster_index = np.argmax(S[index_positives], axis=1)
-        return S, cluster_index
-
     def launch_svc(self, X, y, sample_weight):
         """Fit the classification SVMs according to the given training data.
         Parameters
@@ -571,41 +605,48 @@ class HYDRA(BaseEM, ClassifierMixin):
 
         return SVM_coefficient, SVM_intercept
 
-    def predict_clusters_proba_for_negative_points(self, X, idx_outside_polytope, n_clusters):
-        X_clustering_assignments = np.zeros((len(X), self.n_consensus))
-        for consensus in range(self.n_consensus):
-            X_proj = X @ self.orthonormal_basis[idx_outside_polytope][consensus].T
-            if self.clustering == 'k_means':
-                X_clustering_assignments[:, consensus] = self.k_means[idx_outside_polytope][consensus].predict(X_proj)
-            elif self.clustering == 'gaussian_mixture':
-                X_clustering_assignments[:, consensus] = self.gaussian_mixture[idx_outside_polytope][consensus].predict(
-                    X_proj)
-        similarity_matrix = compute_similarity_matrix(self.clustering_assignments[idx_outside_polytope],
-                                                      clustering_assignments_to_pred=X_clustering_assignments)
-
-        Q = np.zeros((len(X), n_clusters))
-        y_clusters_train_ = self.y_clusters_pred[idx_outside_polytope]
-        for cluster in range(n_clusters):
-            Q[:, cluster] = np.mean(similarity_matrix[y_clusters_train_ == cluster], 0)
-        Q /= np.sum(Q, 1)[:, None]
-        return Q
-
-    def run_EM(self, X, y_polytope, S, cluster_index, index_positives, index_negatives, idx_outside_polytope, n_clusters, consensus):
+    def run_EM(self, X, y_polytope, S, cluster_index, index_positives, index_negatives, idx_outside_polytope,
+               n_clusters, consensus):
+        """Perform a bagging of the previously obtained clusterings and compute new hyperplanes.
+        Parameters
+        ----------
+        X : array-like, shape (n_samples, n_features)
+            Training vectors.
+        y_polytope : array-like, shape (n_samples,)
+            Target values.
+        S : array-like, shape (n_samples, n_samples)
+            Cluster prediction matrix.
+        cluster_index : array-like, shape (n_positives_samples, )
+            clusters predictions argmax for positive samples.
+        index_positives : array-like, shape (n_positives_samples,)
+            indexes of the positive labels being clustered
+        index_negatives : array-like, shape (n_positives_samples,)
+            indexes of the positive labels being clustered
+        idx_outside_polytope : int
+            label that is being clustered
+        n_clusters : int
+            number of clusters to be set.
+        consensus : int
+            index of consensus
+        Returns
+        -------
+        S : array-like, shape (n_samples, n_samples)
+            Cluster prediction matrix.
+        """
         for iteration in range(self.n_iterations):
             # check for degenerate clustering for positive labels (warning) and negatives (might be normal)
             for cluster in range(self.n_clusters_per_label[idx_outside_polytope]):
                 if np.count_nonzero(S[index_positives, cluster]) == 0:
-                    print(
-                        "Cluster dropped, meaning that one cluster have no positive points anymore, in iteration: %d" % (
-                                iteration - 1))
-                    print("Re-initialization of the clustering...")
+                    logging.debug(
+                        "Cluster dropped, one cluster have no positive points anymore, in iteration : %d" % (iteration - 1))
+                    logging.debug("Re-initialization of the clustering...")
                     S, cluster_index = self.initialize_clustering(X, y_polytope, index_positives, index_negatives,
                                                                   n_clusters, idx_outside_polytope)
 
                 if np.count_nonzero(S[index_negatives, cluster]) == 0:
-                    print(
-                        "Cluster too far, meaning that one cluster have no negative points anymore, in Consensus phasis.")
-                    print("Re-distribution of this cluster negative weight to 'all'...")
+                    logging.debug(
+                        "Cluster too far, one cluster have no negative points anymore, in consensus : %d" % (iteration - 1))
+                    logging.debug("Re-distribution of this cluster negative weight to 'all'...")
                     S[index_negatives, cluster] = 1 / n_clusters
 
             for cluster in range(n_clusters):
@@ -635,21 +676,21 @@ class HYDRA(BaseEM, ClassifierMixin):
         return
 
     def clustering_bagging(self, X, y_polytope, index_positives, index_negatives, idx_outside_polytope, n_clusters):
-        """Perform a bagging of the previously obtained clusterings and compute new hyperplanes.
+        """Perform a bagging of the previously obtained clustering and compute new hyperplanes.
         Parameters
         ----------
         X : array-like, shape (n_samples, n_features)
             Training vectors.
         y_polytope : array-like, shape (n_samples,)
             Target values.
-        n_clusters : int
-            number of clusters to be set.
         index_positives : array-like, shape (n_positives_samples,)
             indexes of the positive labels being clustered
         index_negatives : array-like, shape (n_positives_samples,)
             indexes of the positive labels being clustered
         idx_outside_polytope : int
             label that is being clustered
+        n_clusters : int
+            number of clusters to be set.
         Returns
         -------
         None
@@ -662,11 +703,11 @@ class HYDRA(BaseEM, ClassifierMixin):
             self.clustering_assignments[idx_outside_polytope], n_clusters)
         self.y_clusters_pred[idx_outside_polytope] = consensus_cluster_index
 
+        # update clustering matrix S
         if self.negative_weighting in ['soft_clustering']:
             S = self.predict_clusters_proba_for_negative_points(X, idx_outside_polytope, n_clusters)
         elif self.negative_weighting in ['hard_clustering']:
             S = np.rint(self.predict_clusters_proba_for_negative_points(X, idx_outside_polytope, n_clusters))
-
         S[index_positives] *= 0
         S[index_positives, consensus_cluster_index] = 1
 

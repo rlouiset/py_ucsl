@@ -214,7 +214,6 @@ def compute_spectral_clustering_consensus(clustering_results, n_clusters):
 
     # initialize spectral clustering method
     spectral_clustering_method = SpectralClustering(n_clusters=n_clusters, affinity='precomputed')
-    print(similarity_matrix[:10, :10])
     spectral_clustering_method.fit(similarity_matrix)
 
     return spectral_clustering_method.labels_
