@@ -417,8 +417,8 @@ class HYDRA(BaseEM, ClassifierMixin):
                                 np.divide(1, np.linalg.norm(X[index_positives, :], axis=1))[:, np.newaxis]),
                     W[Widx[i], :].transpose())
 
-            print(prob.shape)
-            prob = prob / np.sum(prob, 1)[:, 1]
+            print(np.min(prob))
+            prob = prob / np.sum(prob, 1)[:, None]
             S[index_positives] = cpu_sk(prob, 1)
 
         if self.initialization == "k_means":
@@ -704,6 +704,9 @@ class HYDRA(BaseEM, ClassifierMixin):
         -------
         None
         """
+        # initialize the consensus clustering vector
+        S = np.ones((len(X), n_clusters)) / n_clusters
+
         # perform consensus clustering
         consensus_cluster_index = compute_spectral_clustering_consensus(
             self.clustering_assignments[idx_outside_polytope], n_clusters)
@@ -714,8 +717,6 @@ class HYDRA(BaseEM, ClassifierMixin):
             S = self.predict_clusters_proba_for_negative_points(X, idx_outside_polytope, n_clusters)
         elif self.negative_weighting in ['hard_clustering']:
             S = np.rint(self.predict_clusters_proba_for_negative_points(X, idx_outside_polytope, n_clusters))
-        else :
-            S = np.ones((len(X), n_clusters)) / n_clusters
         S[index_positives] *= 0
         S[index_positives, consensus_cluster_index] = 1
 
