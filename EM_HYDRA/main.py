@@ -434,7 +434,7 @@ class HYDRA(BaseEM, ClassifierMixin):
             Widx = sample_dpp(np.real(evalue), np.real(evector), n_clusters)
 
             X_proj = X@W[Widx].T
-            GMM = GaussianMixture(n_components=n_clusters)
+            GMM = GaussianMixture(n_components=n_clusters).fit(X[index_positives])
             S = GMM.predict_proba(X_proj)
 
         if self.initialization == "k_means":
