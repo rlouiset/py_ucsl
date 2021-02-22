@@ -211,6 +211,8 @@ def compute_spectral_clustering_consensus(clustering_results, n_clusters):
         for j in range(i + 1, n_positives):
             similarity_matrix[i, j] = sum(clustering_results[i, :] == clustering_results[j, :])
     similarity_matrix = np.add(similarity_matrix, similarity_matrix.transpose())
+    similarity_matrix += 1e-3
+    similarity_matrix /= np.max(similarity_matrix)
 
     # initialize spectral clustering method
     spectral_clustering_method = SpectralClustering(n_clusters=n_clusters, affinity='precomputed')
