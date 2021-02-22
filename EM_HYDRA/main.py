@@ -671,21 +671,52 @@ class HYDRA(BaseEM, ClassifierMixin):
         S[index_positives] *= 0
         S[index_positives, consensus_cluster_index] = 1
 
-        # check for degenerate clustering for positive labels (warning) and negatives (might be normal)
-        for cluster in range(self.n_clusters_per_label[idx_outside_polytope]):
-            if np.count_nonzero(S[index_negatives, cluster]) == 0:
-                print(
-                    "Cluster too far, meaning that one cluster have no negative points anymore, in Consensus phasis.")
-                print("Re-distribution of this cluster negative weight to 'all'...")
-                S[index_negatives, cluster] = 1 / n_clusters
-        for cluster in range(n_clusters):
-            cluster_weight = np.ascontiguousarray(S[:, cluster])
-            SVM_coefficient, SVM_intercept = self.launch_svc(X, y_polytope, cluster_weight)
-            self.coefficients[idx_outside_polytope][cluster] = SVM_coefficient
-            self.intercepts[idx_outside_polytope][cluster] = SVM_intercept
 
-            # TODO: get rid of
-            self.coef_lists[idx_outside_polytope][cluster][-1] = SVM_coefficient.copy()
-            self.intercept_lists[idx_outside_polytope][cluster][-1] = SVM_intercept.copy()
+        for iteration in range(self.n_iterations):
+            # check for degenerate clustering for positive labels (warning) and negatives (might be normal)
+            for cluster in range(self.n_clusters_per_label[idx_outside_polytope]):
+                if np.count_nonzero(S[index_positives, cluster]) == 0:
+                    print(
+                        "Cluster dropped, meaning that one cluster have no positive points anymore, in iteration: %d" % (
+                                iteration - 1))
+                    print("Re-initialization of the clustering...")
+                    S, cluster_index = self.initialize_clustering(X, y_polytope, index_positives, index_negatives,
+                                                                  n_clusters, idx_outside_polytope)
 
+                if np.count_nonzero(S[index_negatives, cluster]) == 0:
+                    print(
+                        "Cluster too far, meaning that one cluster have no negative points anymore, in Consensus phasis.")
+                    print("Re-distribution of this cluster negative weight to 'all'...")
+                    S[index_negatives, cluster] = 1 / n_clusters
 
+            for cluster in range(n_clusters):
+                cluster_assignment = np.ascontiguousarray(S[:, cluster])
+                SVM_coefficient, SVM_intercept = self.launch_svc(X, y_polytope, cluster_assignment)
+                self.coefficients[idx_outside_polytope][cluster] = SVM_coefficient
+                self.intercepts[idx_outside_polytope][cluster] = SVM_intercept
+
+            if idx_outside_polytope == 1:
+                y_pred = self.predict_proba(X)
+                y = (y_polytope+1)/2
+                BCE = y * np.log(y_pred[:, 1]) + (1 - y_polytope) * np.log(y_pred[:, 0])
+                print(np.sum(BCE))
+
+            # decide the convergence based on the clustering stability
+            S_hold = S.copy()
+            S, cluster_index = self.update_clustering(X, S, index_positives, consensus_cluster_index, n_clusters,
+                                                      idx_outside_polytope, -1)
+
+            # applying the negative weighting set as input
+            if self.negative_weighting == 'all':
+                S[index_negatives] = 1 / n_clusters
+            elif self.negative_weighting == 'hard_clustering':
+                S[index_negatives] = np.rint(S[index_negatives]).astype(np.float)
+
+            # always set positive clustering as hard
+            S[index_positives] = 0
+            S[index_positives, cluster_index] = 1
+            # check the Clustering Stability \w Adjusted Rand Index for stopping criteria
+            cluster_consistency = ARI(np.argmax(S[index_positives], 1), np.argmax(S_hold[index_positives], 1))
+            if cluster_consistency > self.stability_threshold:
+                break
+        print('')
