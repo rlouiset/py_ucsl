@@ -288,7 +288,12 @@ class HYDRA(BaseEM, ClassifierMixin):
         elif self.clustering in ['k_means', 'gaussian_mixture']:
             for label in range(self.n_labels):
                 if self.n_clusters_per_label[label] > 1:
-                    cluster_predictions[label] = self.predict_clusters_proba_for_new_points(X, label, self.n_clusters_per_label[label])
+                    X_proj = X @ self.orthonormal_basis[label][-1].T
+                    if self.clustering == 'k_means':
+                        cluster_predictions[label] = one_hot_encode(self.k_means[label][-1].predict(X_proj).astype(np.int),
+                                                                    n_classes=self.n_clusters_per_label[label])
+                    elif self.clustering == 'gaussian_mixture':
+                        cluster_predictions[label] = self.gaussian_mixture[label][-1].predict_proba(X_proj)
                 else :
                     cluster_predictions[label] = np.zeros(len(X))
         return cluster_predictions
@@ -513,6 +518,26 @@ class HYDRA(BaseEM, ClassifierMixin):
         return S, cluster_index
 
     def initialize_clustering(self, X, y_polytope, index_positives, index_negatives, n_clusters, idx_outside_polytope):
+        """Perform a bagging of the previously obtained clusterings and compute new hyperplanes.
+        Parameters
+        ----------
+        X : array-like, shape (n_samples, n_features)
+            Training vectors.
+        y_polytope : array-like, shape (n_samples,)
+            Target values.
+        index_positives : array-like, shape (n_positives_samples,)
+            indexes of the positive labels being clustered
+        index_positives : array-like, shape (n_negatives_samples, )
+            indexes of the negatives labels nàt being clustered
+        n_clusters : int
+            number of clusters to be set.
+        idx_outside_polytope : int
+            label that is being clustered
+        Returns
+        -------
+        S : array-like, shape (n_samples, n_samples)
+            Cluster prediction matrix.
+        """
         if n_clusters == 1:
             S = np.ones((len(y_polytope), n_clusters)) / n_clusters
             cluster_index = np.argmax(S[index_positives], axis=1)
@@ -606,7 +631,7 @@ class HYDRA(BaseEM, ClassifierMixin):
 
 
     def clustering_bagging(self, X, y_polytope, n_clusters, index_positives, index_negatives, idx_outside_polytope):
-        """Perform a bagging of the prviously obtained clusterings and compute new hyperplanes.
+        """Perform a bagging of the previously obtained clusterings and compute new hyperplanes.
         Parameters
         ----------
         X : array-like, shape (n_samples, n_features)
