@@ -417,10 +417,7 @@ class HYDRA(BaseEM, ClassifierMixin):
                                 np.divide(1, np.linalg.norm(X[index_positives, :], axis=1))[:, np.newaxis]),
                     W[Widx[i], :].transpose())
 
-            l_ = np.minimum(prob - 1, 0)
-            d = prob - 1
-            prob = proportional_assign(l_, d)
-            print(prob)
+            prob = py_softmax(prob, 1)
             S[index_positives] = cpu_sk(prob, 1)
 
 
