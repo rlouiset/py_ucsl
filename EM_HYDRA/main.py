@@ -433,8 +433,9 @@ class HYDRA(BaseEM, ClassifierMixin):
             evalue, evector = np.linalg.eig(KW)
             Widx = sample_dpp(np.real(evalue), np.real(evector), n_clusters)
 
-            print(W[Widx].shape)
-
+            X_proj = X@W[Widx].T
+            GMM = GaussianMixture(n_components=n_clusters)
+            S = GMM.predict_proba(X_proj)
 
         if self.initialization == "k_means":
             KM = KMeans(n_clusters=self.n_clusters_per_label[idx_outside_polytope]).fit(X[index_positives])
