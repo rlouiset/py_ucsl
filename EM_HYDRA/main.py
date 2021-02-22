@@ -417,6 +417,8 @@ class HYDRA(BaseEM, ClassifierMixin):
                                 np.divide(1, np.linalg.norm(X[index_positives, :], axis=1))[:, np.newaxis]),
                     W[Widx[i], :].transpose())
 
+            prob = prob / np.sum(prob, 1)[:, 1]
+            print(prob.shape)
             S[index_positives] = cpu_sk(prob, 1)
 
         if self.initialization == "k_means":
