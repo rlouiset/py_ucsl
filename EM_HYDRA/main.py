@@ -393,7 +393,7 @@ class HYDRA(BaseEM, ClassifierMixin):
 
                 if idx_outside_polytope == 1 :
                     y_pred = self.predict_proba(X)
-                    BCE = y*np.log(1-y_pred) + (1-y_polytope) * np.log(1-y_pred)
+                    BCE = y*np.log(y_pred[:,1]) + (1-y_polytope) * np.log(y_pred[:,0])
                     print(BCE)
 
             # update the cluster index for the consensus clustering
