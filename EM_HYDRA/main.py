@@ -420,6 +420,7 @@ class HYDRA(BaseEM, ClassifierMixin):
             l_ = np.minimum(prob - 1, 0)
             d = prob - 1
             prob = proportional_assign(l_, d)
+            print(prob)
             S[index_positives] = cpu_sk(prob, 1)
 
 
