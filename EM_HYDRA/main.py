@@ -186,18 +186,19 @@ class HYDRA(BaseEM, ClassifierMixin):
         else:
             # compute the predictions \w.r.t cluster previously found
             cluster_predictions = self.predict_clusters(X)
-            if self.n_labels == 2 :
+            if self.n_labels == 2:
                 y_pred[:, 1] = sum([cluster_predictions[1][:, cluster] * SVM_distances[1][:, cluster] for cluster in
                                     range(self.n_clusters_per_label[1])])
-                #y_pred[:, 1] -= sum([cluster_predictions[0][:, cluster] * SVM_distances[0][:, cluster] for cluster in
-                #                     range(self.n_clusters_per_label[0])])
+                y_pred[:, 1] -= sum([cluster_predictions[0][:, cluster] * SVM_distances[0][:, cluster] for cluster in
+                                     range(self.n_clusters_per_label[0])])
                 # compute probabilities \w sigmoid
                 y_pred[:, 1] = sigmoid(y_pred[:, 1] / np.max(y_pred[:, 1]))
                 y_pred[:, 0] = 1 - y_pred[:, 1]
-            else :
+            else:
                 for label in range(self.n_labels):
-                    y_pred[:, label] = sum([cluster_predictions[label][:, cluster] * SVM_distances[label][:, cluster] for cluster in
-                                        range(self.n_clusters_per_label[label])])
+                    y_pred[:, label] = sum(
+                        [cluster_predictions[label][:, cluster] * SVM_distances[label][:, cluster] for cluster in
+                         range(self.n_clusters_per_label[label])])
                 y_pred = py_softmax(y_pred, axis=1)
 
         return y_pred
@@ -292,11 +293,12 @@ class HYDRA(BaseEM, ClassifierMixin):
                 if self.n_clusters_per_label[label] > 1:
                     X_proj = X @ self.orthonormal_basis[label][-1].T
                     if self.clustering == 'k_means':
-                        cluster_predictions[label] = one_hot_encode(self.k_means[label][-1].predict(X_proj).astype(np.int),
-                                                                    n_classes=self.n_clusters_per_label[label])
+                        cluster_predictions[label] = one_hot_encode(
+                            self.k_means[label][-1].predict(X_proj).astype(np.int),
+                            n_classes=self.n_clusters_per_label[label])
                     elif self.clustering == 'gaussian_mixture':
                         cluster_predictions[label] = self.gaussian_mixture[label][-1].predict_proba(X_proj)
-                else :
+                else:
                     cluster_predictions[label] = np.zeros(len(X))
         return cluster_predictions
 
@@ -391,24 +393,41 @@ class HYDRA(BaseEM, ClassifierMixin):
                     self.coef_lists[idx_outside_polytope][cluster][iteration + 1] = SVM_coefficient.copy()
                     self.intercept_lists[idx_outside_polytope][cluster][iteration + 1] = SVM_intercept.copy()
 
-                if idx_outside_polytope == 1 :
-                    y_pred = self.predict_proba(X)
-                    BCE = y*np.log(y_pred[:,1]) + (1-y_polytope) * np.log(y_pred[:,0])
-                    print(np.sum(BCE))
-            print('')
-
             # update the cluster index for the consensus clustering
             self.clustering_assignments[idx_outside_polytope][:, consensus] = cluster_index + 1
 
-        if n_clusters > 1 :
+        if n_clusters > 1:
             self.clustering_bagging(X, y_polytope, n_clusters, index_positives, index_negatives, idx_outside_polytope)
 
-        return self
+    def update_clustering(self, X, S, index_positives, cluster_index, n_clusters, idx_outside_polytope, consensus):
+        """Perform a bagging of the previously obtained clusterings and compute new hyperplanes.
+        Parameters
+        ----------
+        X : array-like, shape (n_samples, n_features)
+            Training vectors.
 
-    def update_clustering(self, X, S, index, cluster_index, n_clusters, idx_outside_polytope, consensus, print_=False):
+        S : array-like, shape (n_samples, n_samples)
+            Cluster prediction matrix.
+        index_positives : array-like, shape (n_positives_samples,)
+            indexes of the positive labels being clustered
+        cluster_index : array-like, shape (n_positives_samples, )
+            clusters predictions argmax for positive samples.
+        n_clusters : int
+            number of clusters to be set.
+        idx_outside_polytope : int
+            label that is being clustered
+        consensus : int
+            which consensus is being run ?
+        Returns
+        -------
+        S : array-like, shape (n_samples, n_samples)
+            Cluster prediction matrix.
+        cluster_index : array-like, shape (n_positives_samples, )
+            clusters predictions argmax for positive samples.
+        """
         if n_clusters == 1:
             self.orthonormal_basis[idx_outside_polytope][consensus] = np.eye(X.shape[1])
-            S[index] = 1
+            S[index_positives] = 1
             return S, cluster_index
 
         Q = S.copy()
@@ -431,32 +450,31 @@ class HYDRA(BaseEM, ClassifierMixin):
             basis = []
             for v in directions:
                 w = v - np.sum(np.dot(v, b) * b for b in basis)
-                if print_:
-                    print(np.linalg.norm(w))
                 if np.linalg.norm(w) * self.noise_tolerance_threshold > 1:
                     basis.append(w / np.linalg.norm(w))
-            if print_:
-                print('')
 
             self.orthonormal_basis[idx_outside_polytope][consensus] = np.array(basis)
             self.orthonormal_basis[idx_outside_polytope][-1] = np.array(basis).copy()
             X_proj = X @ self.orthonormal_basis[idx_outside_polytope][consensus].T
 
-            centroids = [np.mean(S[index, cluster_i][:, None] * X_proj[index, :], 0) for cluster_i in
+            centroids = [np.mean(S[index_positives, cluster_i][:, None] * X_proj[index_positives, :], 0) for cluster_i
+                         in
                          range(self.n_clusters_per_label[idx_outside_polytope])]
 
             if self.clustering == 'k_means':
-                self.k_means[idx_outside_polytope][consensus] = KMeans(n_clusters=self.n_clusters_per_label[idx_outside_polytope],
-                                                            init=np.array(centroids), n_init=1).fit(X_proj[index])
+                self.k_means[idx_outside_polytope][consensus] = KMeans(
+                    n_clusters=self.n_clusters_per_label[idx_outside_polytope],
+                    init=np.array(centroids), n_init=1).fit(X_proj[index_positives])
                 Q = one_hot_encode(self.k_means[idx_outside_polytope][consensus].predict(X_proj),
                                    n_classes=self.n_clusters_per_label[idx_outside_polytope])
                 self.k_means[idx_outside_polytope][-1] = copy.deepcopy(self.k_means[idx_outside_polytope][consensus])
 
             if self.clustering == 'gaussian_mixture':
                 self.gaussian_mixture[idx_outside_polytope][consensus] = GaussianMixture(
-                    n_components=self.n_clusters_per_label[idx_outside_polytope]).fit(X_proj[index])
+                    n_components=self.n_clusters_per_label[idx_outside_polytope]).fit(X_proj[index_positives])
                 Q = self.gaussian_mixture[idx_outside_polytope][consensus].predict_proba(X_proj)
-                self.gaussian_mixture[idx_outside_polytope][-1] = copy.deepcopy(self.gaussian_mixture[idx_outside_polytope][consensus])
+                self.gaussian_mixture[idx_outside_polytope][-1] = copy.deepcopy(
+                    self.gaussian_mixture[idx_outside_polytope][consensus])
 
         elif self.clustering in ['bisector_hyperplane']:
             directions = np.array([self.coefficients[idx_outside_polytope][cluster_i][0] for cluster_i in
@@ -489,18 +507,20 @@ class HYDRA(BaseEM, ClassifierMixin):
             self.orthonormal_basis[idx_outside_polytope] = np.array(basis)
             X_proj = X @ self.orthonormal_basis[idx_outside_polytope].T
 
-            centroids = [np.mean(S[index, cluster_i][:, None] * X_proj[index, :], 0) for cluster_i in
+            centroids = [np.mean(S[index_positives, cluster_i][:, None] * X_proj[index_positives, :], 0) for cluster_i
+                         in
                          range(self.n_clusters_per_label[idx_outside_polytope])]
 
             if self.clustering == 'bisector_k_means':
                 self.k_means[idx_outside_polytope] = KMeans(n_clusters=self.n_clusters_per_label[idx_outside_polytope],
-                                                            init=np.array(centroids), n_init=1).fit(X_proj[index])
+                                                            init=np.array(centroids), n_init=1).fit(
+                    X_proj[index_positives])
                 Q = one_hot_encode(self.k_means[idx_outside_polytope].predict(X_proj),
                                    n_classes=self.n_clusters_per_label[idx_outside_polytope])
 
             if self.clustering == 'bisector_gaussian_mixture':
                 self.gaussian_mixture[idx_outside_polytope] = GaussianMixture(
-                    n_components=self.n_clusters_per_label[idx_outside_polytope]).fit(X_proj[index])
+                    n_components=self.n_clusters_per_label[idx_outside_polytope]).fit(X_proj[index_positives])
                 Q = self.gaussian_mixture[idx_outside_polytope].predict_proba(X_proj)
 
         elif self.clustering == 'boundary_barycenter':
@@ -520,7 +540,7 @@ class HYDRA(BaseEM, ClassifierMixin):
             Q = Q / np.sum(Q, 1)[:, None]
 
         S = Q.copy()
-        cluster_index = np.argmax(Q[index], axis=1)
+        cluster_index = np.argmax(Q[index_positives], axis=1)
         return S, cluster_index
 
     def initialize_clustering(self, X, y_polytope, index_positives, index_negatives, n_clusters, idx_outside_polytope):
@@ -533,7 +553,7 @@ class HYDRA(BaseEM, ClassifierMixin):
             Target values.
         index_positives : array-like, shape (n_positives_samples,)
             indexes of the positive labels being clustered
-        index_positives : array-like, shape (n_negatives_samples, )
+        index_negatives : array-like, shape (n_negatives_samples, )
             indexes of the negatives labels nàt being clustered
         n_clusters : int
             number of clusters to be set.
@@ -572,9 +592,9 @@ class HYDRA(BaseEM, ClassifierMixin):
                                 np.divide(1, np.linalg.norm(X[index_positives, :], axis=1))[:, np.newaxis]),
                     W[Widx[i], :].transpose())
 
-            l = np.minimum(prob - 1, 0)
+            l_ = np.minimum(prob - 1, 0)
             d = prob - 1
-            S[index_positives] = proportional_assign(l, d)
+            S[index_positives] = proportional_assign(l_, d)
 
         if self.initialization == "k_means":
             KM = KMeans(n_clusters=self.n_clusters_per_label[idx_outside_polytope]).fit(X[index_positives])
@@ -617,24 +637,24 @@ class HYDRA(BaseEM, ClassifierMixin):
 
         return SVM_coefficient, SVM_intercept
 
-
-    def predict_clusters_proba_for_new_points(self, X, idx_outside_polytope, n_clusters):
+    def predict_clusters_proba_for_negative_points(self, X, idx_outside_polytope, n_clusters):
         X_clustering_assignments = np.zeros((len(X), self.n_consensus))
-        for consensus in range(self.n_consensus) :
+        for consensus in range(self.n_consensus):
             X_proj = X @ self.orthonormal_basis[idx_outside_polytope][consensus].T
-            if self.clustering == 'k_means' :
-                X_clustering_assignments[:,consensus] = self.k_means[idx_outside_polytope][consensus].predict(X_proj)
-            elif self.clustering == 'gaussian_mixture' :
-                X_clustering_assignments[:,consensus] = self.gaussian_mixture[idx_outside_polytope][consensus].predict(X_proj)
-        similarity_matrix = compute_similarity_matrix(self.clustering_assignments[idx_outside_polytope], clustering_assignments_to_pred=X_clustering_assignments)
+            if self.clustering == 'k_means':
+                X_clustering_assignments[:, consensus] = self.k_means[idx_outside_polytope][consensus].predict(X_proj)
+            elif self.clustering == 'gaussian_mixture':
+                X_clustering_assignments[:, consensus] = self.gaussian_mixture[idx_outside_polytope][consensus].predict(
+                    X_proj)
+        similarity_matrix = compute_similarity_matrix(self.clustering_assignments[idx_outside_polytope],
+                                                      clustering_assignments_to_pred=X_clustering_assignments)
 
         Q = np.zeros((len(X), n_clusters))
         y_clusters_train_ = self.y_clusters_pred[idx_outside_polytope]
-        for cluster in range(n_clusters) :
-            Q[:, cluster] = np.mean(similarity_matrix[y_clusters_train_==cluster], 0)
+        for cluster in range(n_clusters):
+            Q[:, cluster] = np.mean(similarity_matrix[y_clusters_train_ == cluster], 0)
         Q /= np.sum(Q, 1)[:, None]
         return Q
-
 
     def clustering_bagging(self, X, y_polytope, n_clusters, index_positives, index_negatives, idx_outside_polytope):
         """Perform a bagging of the previously obtained clusterings and compute new hyperplanes.
@@ -644,11 +664,11 @@ class HYDRA(BaseEM, ClassifierMixin):
             Training vectors.
         y_polytope : array-like, shape (n_samples,)
             Target values.
-        consensus_assignment : array-like, shape (n_samples, n_consensus)
-            Clustering predicted for each consensus run.
         n_clusters : int
             number of clusters to be set.
         index_positives : array-like, shape (n_positives_samples,)
+            indexes of the positive labels being clustered
+        index_negatives : array-like, shape (n_positives_samples,)
             indexes of the positive labels being clustered
         idx_outside_polytope : int
             label that is being clustered
@@ -660,17 +680,17 @@ class HYDRA(BaseEM, ClassifierMixin):
         S = np.ones((len(X), n_clusters)) / n_clusters
 
         # perform consensus clustering
-        consensus_cluster_index = compute_spectral_clustering_consensus(self.clustering_assignments[idx_outside_polytope], n_clusters)
+        consensus_cluster_index = compute_spectral_clustering_consensus(
+            self.clustering_assignments[idx_outside_polytope], n_clusters)
         self.y_clusters_pred[idx_outside_polytope] = consensus_cluster_index
 
         if self.negative_weighting in ['soft_clustering']:
-            S = self.predict_clusters_proba_for_new_points(X, idx_outside_polytope, n_clusters)
+            S = self.predict_clusters_proba_for_negative_points(X, idx_outside_polytope, n_clusters)
         elif self.negative_weighting in ['hard_clustering']:
-            S = np.rint(self.predict_clusters_proba_for_new_points(X, idx_outside_polytope, n_clusters))
+            S = np.rint(self.predict_clusters_proba_for_negative_points(X, idx_outside_polytope, n_clusters))
 
         S[index_positives] *= 0
         S[index_positives, consensus_cluster_index] = 1
-
 
         for iteration in range(self.n_iterations):
             # check for degenerate clustering for positive labels (warning) and negatives (might be normal)
@@ -695,12 +715,6 @@ class HYDRA(BaseEM, ClassifierMixin):
                 self.coefficients[idx_outside_polytope][cluster] = SVM_coefficient
                 self.intercepts[idx_outside_polytope][cluster] = SVM_intercept
 
-            if idx_outside_polytope == 1:
-                y_pred = self.predict_proba(X)
-                y = (y_polytope+1)/2
-                BCE = y * np.log(y_pred[:, 1]) + (1 - y_polytope) * np.log(y_pred[:, 0])
-                print(np.sum(BCE))
-
             # decide the convergence based on the clustering stability
             S_hold = S.copy()
             S, cluster_index = self.update_clustering(X, S, index_positives, consensus_cluster_index, n_clusters,
@@ -719,4 +733,3 @@ class HYDRA(BaseEM, ClassifierMixin):
             cluster_consistency = ARI(np.argmax(S[index_positives], 1), np.argmax(S_hold[index_positives], 1))
             if cluster_consistency > self.stability_threshold:
                 break
-        print('')
