@@ -384,6 +384,11 @@ class HYDRA(BaseEM, ClassifierMixin):
                     self.coef_lists[idx_outside_polytope][cluster][iteration + 1] = SVM_coefficient.copy()
                     self.intercept_lists[idx_outside_polytope][cluster][iteration + 1] = SVM_intercept.copy()
 
+                if idx_outside_polytope == 1 :
+                    y_pred = self.predict_proba(X)[idx_outside_polytope]
+                    BCE = y*np.log(1-y_pred) + (1-Y) * np.log(1-y_pred)
+                    print(BCE)
+
             # update the cluster index for the consensus clustering
             self.clustering_assignments[idx_outside_polytope][:, consensus] = cluster_index + 1
 

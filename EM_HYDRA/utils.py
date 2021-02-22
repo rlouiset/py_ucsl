@@ -195,10 +195,10 @@ def consensus_clustering(clustering_results, n_clusters, index_positives):
 def compute_similarity_matrix(consensus_assignment, clustering_assignments_to_pred=None):
     # compute inter-samples positive/negative co-occurence matrix
     similarity_matrix = np.zeros((len(consensus_assignment), len(clustering_assignments_to_pred)))
-    for i, p_assignment in enumerate(consensus_assignment) :
-        for j, new_point_assignment in enumerate(clustering_assignments_to_pred) :
-            similarity_matrix[i, j] = np.sum(p_assignment==new_point_assignment)
-    #similarity_matrix += 1e-3
+    for i, p_assignment in enumerate(consensus_assignment):
+        for j, new_point_assignment in enumerate(clustering_assignments_to_pred):
+            similarity_matrix[i, j] = np.sum(p_assignment == new_point_assignment)
+    similarity_matrix += 1e-3
     similarity_matrix /= np.max(similarity_matrix)
     return similarity_matrix
 
