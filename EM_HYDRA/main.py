@@ -417,9 +417,11 @@ class HYDRA(BaseEM, ClassifierMixin):
                                 np.divide(1, np.linalg.norm(X[index_positives, :], axis=1))[:, np.newaxis]),
                     W[Widx[i], :].transpose())
 
-            print(np.min(prob))
-            prob = prob / np.sum(prob, 1)[:, None]
+            l_ = np.minimum(prob - 1, 0)
+            d = prob - 1
+            prob = proportional_assign(l_, d)
             S[index_positives] = cpu_sk(prob, 1)
+
 
         if self.initialization == "k_means":
             KM = KMeans(n_clusters=self.n_clusters_per_label[idx_outside_polytope]).fit(X[index_positives])
