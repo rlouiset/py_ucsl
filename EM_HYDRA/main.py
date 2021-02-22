@@ -417,9 +417,7 @@ class HYDRA(BaseEM, ClassifierMixin):
                                 np.divide(1, np.linalg.norm(X[index_positives, :], axis=1))[:, np.newaxis]),
                     W[Widx[i], :].transpose())
 
-            l_ = np.minimum(prob - 1, 0)
-            d = prob - 1
-            S[index_positives] = proportional_assign(l_, d)
+            S[index_positives] = cpu_sk(prob, 1)
 
         if self.initialization == "k_means":
             KM = KMeans(n_clusters=self.n_clusters_per_label[idx_outside_polytope]).fit(X[index_positives])
@@ -683,7 +681,6 @@ class HYDRA(BaseEM, ClassifierMixin):
             cluster_consistency = ARI(np.argmax(S[index_positives], 1), np.argmax(S_hold[index_positives], 1))
             if cluster_consistency > self.stability_threshold:
                 break
-        return
 
     def clustering_bagging(self, X, y_polytope, index_positives, index_negatives, idx_outside_polytope, n_clusters):
         """Perform a bagging of the previously obtained clustering and compute new hyperplanes.
