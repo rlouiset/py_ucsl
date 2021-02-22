@@ -325,7 +325,7 @@ class HYDRA(BaseEM, ClassifierMixin):
             # TODO : Get rid of these visualization helps
             self.S_lists[idx_outside_polytope][0] = S.copy()
 
-            self.run_EM(X, y_polytope, S, cluster_index, index_positives, index_negatives, idx_outside_polytope, n_clusters)
+            self.run_EM(X, y_polytope, S, cluster_index, index_positives, index_negatives, idx_outside_polytope, n_clusters, consensus)
 
             # update the cluster index for the consensus clustering
             self.clustering_assignments[idx_outside_polytope][:, consensus] = cluster_index + 1
@@ -590,7 +590,7 @@ class HYDRA(BaseEM, ClassifierMixin):
         Q /= np.sum(Q, 1)[:, None]
         return Q
 
-    def run_EM(self, X, y_polytope, S, cluster_index, index_positives, index_negatives, idx_outside_polytope, n_clusters):
+    def run_EM(self, X, y_polytope, S, cluster_index, index_positives, index_negatives, idx_outside_polytope, n_clusters, consensus):
         for iteration in range(self.n_iterations):
             # check for degenerate clustering for positive labels (warning) and negatives (might be normal)
             for cluster in range(self.n_clusters_per_label[idx_outside_polytope]):
@@ -617,7 +617,7 @@ class HYDRA(BaseEM, ClassifierMixin):
             # decide the convergence based on the clustering stability
             S_hold = S.copy()
             S, cluster_index = self.update_clustering(X, S, index_positives, cluster_index, n_clusters,
-                                                      idx_outside_polytope, -1)
+                                                      idx_outside_polytope, consensus)
 
             # applying the negative weighting set as input
             if self.negative_weighting == 'all':
@@ -671,4 +671,4 @@ class HYDRA(BaseEM, ClassifierMixin):
         S[index_positives, consensus_cluster_index] = 1
 
         self.run_EM(X, y_polytope, S, consensus_cluster_index, index_positives, index_negatives,
-                    idx_outside_polytope, n_clusters)
+                    idx_outside_polytope, n_clusters, -1)
