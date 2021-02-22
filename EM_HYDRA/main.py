@@ -322,82 +322,16 @@ class HYDRA(BaseEM, ClassifierMixin):
             # first we initialize the clustering matrix S, with the initialization strategy set in self.initialization
             S, cluster_index = self.initialize_clustering(X, y_polytope, index_positives, index_negatives,
                                                           n_clusters, idx_outside_polytope)
-
             # TODO : Get rid of these visualization helps
             self.S_lists[idx_outside_polytope][0] = S.copy()
 
-            for cluster in range(n_clusters):
-                cluster_assignment = np.ascontiguousarray(S[:, cluster])
-                SVM_coefficient, SVM_intercept = self.launch_svc(X, y_polytope, cluster_assignment)
-                self.coefficients[idx_outside_polytope][cluster] = SVM_coefficient
-                self.intercepts[idx_outside_polytope][cluster] = SVM_intercept
-
-                # TODO: get rid of
-                self.coef_lists[idx_outside_polytope][cluster][0] = SVM_coefficient.copy()
-                self.intercept_lists[idx_outside_polytope][cluster][0] = SVM_intercept.copy()
-
-            for iteration in range(self.n_iterations):
-                # decide the convergence based on the clustering stability
-                S_hold = S.copy()
-                S, cluster_index = self.update_clustering(X, S, index_positives, cluster_index, n_clusters,
-                                                          idx_outside_polytope, consensus)
-
-                # TODO : get rid of
-                self.S_lists[idx_outside_polytope][iteration + 1] = S.copy()
-
-                # applying the negative weighting set as input
-                if self.negative_weighting == 'all':
-                    S[index_negatives] = 1 / n_clusters
-                elif self.negative_weighting == 'hard_clustering':
-                    S[index_negatives] = np.rint(S[index_negatives]).astype(np.float)
-
-                # always set positive clustering as hard
-                S[index_positives] = 0
-                S[index_positives, cluster_index] = 1
-
-                # update barycenters
-                for cluster_i in range(n_clusters):
-                    self.barycenters[idx_outside_polytope][cluster_i] = np.mean(
-                        X[index_positives] * S[index_positives, cluster_i][:, None], 0)
-
-                # check the Clustering Stability \w Adjusted Rand Index for stopping criteria
-                cluster_consistency = ARI(np.argmax(S[index_positives], 1), np.argmax(S_hold[index_positives], 1))
-
-                if cluster_consistency > self.stability_threshold:
-                    break
-
-                # check for degenerate clustering for positive labels (warning) and negatives (might be normal)
-                for cluster in range(self.n_clusters_per_label[idx_outside_polytope]):
-                    if np.count_nonzero(S[index_positives, cluster]) == 0:
-                        print(
-                            "Cluster dropped, meaning that one cluster have no positive points anymore, in iteration: %d" % (
-                                    iteration - 1))
-                        print("Re-initialization of the clustering...")
-                        S, cluster_index = self.initialize_clustering(X, y_polytope, index_positives, index_negatives,
-                                                                      n_clusters, idx_outside_polytope)
-
-                    if np.count_nonzero(S[index_negatives, cluster]) == 0:
-                        print(
-                            "Cluster too far, meaning that one cluster have no negative points anymore, in iteration: %d" % (
-                                    iteration - 1))
-                        print("Re-distribution of this cluster negative weight to 'all...'")
-                        S[index_negatives, cluster] = 1 / n_clusters
-
-                for cluster in range(n_clusters):
-                    cluster_assignment = np.ascontiguousarray(S[:, cluster])
-                    SVM_coefficient, SVM_intercept = self.launch_svc(X, y_polytope, cluster_assignment)
-                    self.coefficients[idx_outside_polytope][cluster] = SVM_coefficient
-                    self.intercepts[idx_outside_polytope][cluster] = SVM_intercept
-
-                    # TODO: get rid of
-                    self.coef_lists[idx_outside_polytope][cluster][iteration + 1] = SVM_coefficient.copy()
-                    self.intercept_lists[idx_outside_polytope][cluster][iteration + 1] = SVM_intercept.copy()
+            self.run_EM(X, y_polytope, S, cluster_index, index_positives, index_negatives, idx_outside_polytope, n_clusters)
 
             # update the cluster index for the consensus clustering
             self.clustering_assignments[idx_outside_polytope][:, consensus] = cluster_index + 1
 
         if n_clusters > 1:
-            self.clustering_bagging(X, y_polytope, n_clusters, index_positives, index_negatives, idx_outside_polytope)
+            self.clustering_bagging(X, y_polytope, index_positives, index_negatives, idx_outside_polytope, n_clusters)
 
     def update_clustering(self, X, S, index_positives, cluster_index, n_clusters, idx_outside_polytope, consensus):
         """Perform a bagging of the previously obtained clusterings and compute new hyperplanes.
@@ -656,7 +590,51 @@ class HYDRA(BaseEM, ClassifierMixin):
         Q /= np.sum(Q, 1)[:, None]
         return Q
 
-    def clustering_bagging(self, X, y_polytope, n_clusters, index_positives, index_negatives, idx_outside_polytope):
+    def run_EM(self, X, y_polytope, S, cluster_index, index_positives, index_negatives, idx_outside_polytope, n_clusters):
+        for iteration in range(self.n_iterations):
+            # check for degenerate clustering for positive labels (warning) and negatives (might be normal)
+            for cluster in range(self.n_clusters_per_label[idx_outside_polytope]):
+                if np.count_nonzero(S[index_positives, cluster]) == 0:
+                    print(
+                        "Cluster dropped, meaning that one cluster have no positive points anymore, in iteration: %d" % (
+                                iteration - 1))
+                    print("Re-initialization of the clustering...")
+                    S, cluster_index = self.initialize_clustering(X, y_polytope, index_positives, index_negatives,
+                                                                  n_clusters, idx_outside_polytope)
+
+                if np.count_nonzero(S[index_negatives, cluster]) == 0:
+                    print(
+                        "Cluster too far, meaning that one cluster have no negative points anymore, in Consensus phasis.")
+                    print("Re-distribution of this cluster negative weight to 'all'...")
+                    S[index_negatives, cluster] = 1 / n_clusters
+
+            for cluster in range(n_clusters):
+                cluster_assignment = np.ascontiguousarray(S[:, cluster])
+                SVM_coefficient, SVM_intercept = self.launch_svc(X, y_polytope, cluster_assignment)
+                self.coefficients[idx_outside_polytope][cluster] = SVM_coefficient
+                self.intercepts[idx_outside_polytope][cluster] = SVM_intercept
+
+            # decide the convergence based on the clustering stability
+            S_hold = S.copy()
+            S, cluster_index = self.update_clustering(X, S, index_positives, cluster_index, n_clusters,
+                                                      idx_outside_polytope, -1)
+
+            # applying the negative weighting set as input
+            if self.negative_weighting == 'all':
+                S[index_negatives] = 1 / n_clusters
+            elif self.negative_weighting == 'hard_clustering':
+                S[index_negatives] = np.rint(S[index_negatives]).astype(np.float)
+
+            # always set positive clustering as hard
+            S[index_positives] = 0
+            S[index_positives, cluster_index] = 1
+            # check the Clustering Stability \w Adjusted Rand Index for stopping criteria
+            cluster_consistency = ARI(np.argmax(S[index_positives], 1), np.argmax(S_hold[index_positives], 1))
+            if cluster_consistency > self.stability_threshold:
+                break
+        return
+
+    def clustering_bagging(self, X, y_polytope, index_positives, index_negatives, idx_outside_polytope, n_clusters):
         """Perform a bagging of the previously obtained clusterings and compute new hyperplanes.
         Parameters
         ----------
@@ -692,44 +670,5 @@ class HYDRA(BaseEM, ClassifierMixin):
         S[index_positives] *= 0
         S[index_positives, consensus_cluster_index] = 1
 
-        for iteration in range(self.n_iterations):
-            # check for degenerate clustering for positive labels (warning) and negatives (might be normal)
-            for cluster in range(self.n_clusters_per_label[idx_outside_polytope]):
-                if np.count_nonzero(S[index_positives, cluster]) == 0:
-                    print(
-                        "Cluster dropped, meaning that one cluster have no positive points anymore, in iteration: %d" % (
-                                iteration - 1))
-                    print("Re-initialization of the clustering...")
-                    S, cluster_index = self.initialize_clustering(X, y_polytope, index_positives, index_negatives,
-                                                                  n_clusters, idx_outside_polytope)
-
-                if np.count_nonzero(S[index_negatives, cluster]) == 0:
-                    print(
-                        "Cluster too far, meaning that one cluster have no negative points anymore, in Consensus phasis.")
-                    print("Re-distribution of this cluster negative weight to 'all'...")
-                    S[index_negatives, cluster] = 1 / n_clusters
-
-            for cluster in range(n_clusters):
-                cluster_assignment = np.ascontiguousarray(S[:, cluster])
-                SVM_coefficient, SVM_intercept = self.launch_svc(X, y_polytope, cluster_assignment)
-                self.coefficients[idx_outside_polytope][cluster] = SVM_coefficient
-                self.intercepts[idx_outside_polytope][cluster] = SVM_intercept
-
-            # decide the convergence based on the clustering stability
-            S_hold = S.copy()
-            S, cluster_index = self.update_clustering(X, S, index_positives, consensus_cluster_index, n_clusters,
-                                                      idx_outside_polytope, -1)
-
-            # applying the negative weighting set as input
-            if self.negative_weighting == 'all':
-                S[index_negatives] = 1 / n_clusters
-            elif self.negative_weighting == 'hard_clustering':
-                S[index_negatives] = np.rint(S[index_negatives]).astype(np.float)
-
-            # always set positive clustering as hard
-            S[index_positives] = 0
-            S[index_positives, cluster_index] = 1
-            # check the Clustering Stability \w Adjusted Rand Index for stopping criteria
-            cluster_consistency = ARI(np.argmax(S[index_positives], 1), np.argmax(S_hold[index_positives], 1))
-            if cluster_consistency > self.stability_threshold:
-                break
+        self.run_EM(X, y_polytope, S, consensus_cluster_index, index_positives, index_negatives,
+                    idx_outside_polytope, n_clusters)
