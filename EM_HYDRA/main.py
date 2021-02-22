@@ -347,7 +347,8 @@ class HYDRA(BaseEM, ClassifierMixin):
             number of clusters
         Returns
         -------
-        None
+        S : array-like, shape (n_samples, n_samples)
+            Cluster prediction matrix.
         """
         X_clustering_assignments = np.zeros((len(X), self.n_consensus))
         for consensus in range(self.n_consensus):
@@ -655,8 +656,9 @@ class HYDRA(BaseEM, ClassifierMixin):
                 self.coefficients[idx_outside_polytope][cluster] = SVM_coefficient
                 self.intercepts[idx_outside_polytope][cluster] = SVM_intercept
 
-                self.coef_lists[idx_outside_polytope][cluster][iteration] = SVM_coefficient.copy()
-                self.intercept_lists[idx_outside_polytope][cluster][iteration] = SVM_intercept.copy()
+                # TODO: get rid of
+                self.coef_lists[idx_outside_polytope][cluster][iteration + 1] = SVM_coefficient.copy()
+                self.intercept_lists[idx_outside_polytope][cluster][iteration + 1] = SVM_intercept.copy()
 
             # decide the convergence based on the clustering stability
             S_hold = S.copy()
@@ -672,7 +674,9 @@ class HYDRA(BaseEM, ClassifierMixin):
             # always set positive clustering as hard
             S[index_positives] = 0
             S[index_positives, cluster_index] = 1
-            self.S_lists[idx_outside_polytope][iteration] = S.copy()
+
+            # TODO : get rid of
+            self.S_lists[idx_outside_polytope][iteration + 1] = S.copy()
 
             # check the Clustering Stability \w Adjusted Rand Index for stopping criteria
             cluster_consistency = ARI(np.argmax(S[index_positives], 1), np.argmax(S_hold[index_positives], 1))
