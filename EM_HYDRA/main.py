@@ -189,8 +189,8 @@ class HYDRA(BaseEM, ClassifierMixin):
             if self.n_labels == 2 :
                 y_pred[:, 1] = sum([cluster_predictions[1][:, cluster] * SVM_distances[1][:, cluster] for cluster in
                                     range(self.n_clusters_per_label[1])])
-                y_pred[:, 1] -= sum([cluster_predictions[0][:, cluster] * SVM_distances[0][:, cluster] for cluster in
-                                     range(self.n_clusters_per_label[0])])
+                #y_pred[:, 1] -= sum([cluster_predictions[0][:, cluster] * SVM_distances[0][:, cluster] for cluster in
+                #                     range(self.n_clusters_per_label[0])])
                 # compute probabilities \w sigmoid
                 y_pred[:, 1] = sigmoid(y_pred[:, 1] / np.max(y_pred[:, 1]))
                 y_pred[:, 0] = 1 - y_pred[:, 1]
