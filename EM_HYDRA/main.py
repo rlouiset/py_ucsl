@@ -6,6 +6,8 @@ from EM_HYDRA.DPP_utils import *
 from EM_HYDRA.utils import *
 from sklearn.svm import SVC
 
+import copy
+
 
 class BaseEM(BaseEstimator, metaclass=ABCMeta):
     """Basic class for our Machine Learning Expectation-Maximization framework."""
@@ -436,6 +438,7 @@ class HYDRA(BaseEM, ClassifierMixin):
                 print('')
 
             self.orthonormal_basis[idx_outside_polytope][consensus] = np.array(basis)
+            self.orthonormal_basis[idx_outside_polytope][-1] = np.array(basis).copy()
             X_proj = X @ self.orthonormal_basis[idx_outside_polytope][consensus].T
 
             centroids = [np.mean(S[index, cluster_i][:, None] * X_proj[index, :], 0) for cluster_i in
@@ -446,11 +449,13 @@ class HYDRA(BaseEM, ClassifierMixin):
                                                             init=np.array(centroids), n_init=1).fit(X_proj[index])
                 Q = one_hot_encode(self.k_means[idx_outside_polytope][consensus].predict(X_proj),
                                    n_classes=self.n_clusters_per_label[idx_outside_polytope])
+                self.k_means[idx_outside_polytope][-1] = copy.deepcopy(self.k_means[idx_outside_polytope][consensus])
 
             if self.clustering == 'gaussian_mixture':
                 self.gaussian_mixture[idx_outside_polytope][consensus] = GaussianMixture(
                     n_components=self.n_clusters_per_label[idx_outside_polytope]).fit(X_proj[index])
                 Q = self.gaussian_mixture[idx_outside_polytope][consensus].predict_proba(X_proj)
+                self.gaussian_mixture[idx_outside_polytope][-1] = copy.deepcopy(self.gaussian_mixture[idx_outside_polytope][consensus])
 
         elif self.clustering in ['bisector_hyperplane']:
             directions = np.array([self.coefficients[idx_outside_polytope][cluster_i][0] for cluster_i in
