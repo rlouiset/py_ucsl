@@ -481,7 +481,6 @@ class HYDRA(BaseEM, ClassifierMixin):
             for cluster in range(self.n_clusters_per_label[idx_outside_polytope]):
                 # Apply the data again the trained model to get the final SVM scores
                 SVM_coefficient = self.coefficients[idx_outside_polytope][cluster]
-                SVM_coefficient = SVM_coefficient / np.linalg.norm(SVM_coefficient)
                 SVM_intercept = self.intercepts[idx_outside_polytope][cluster]
                 SVM_distances[:, cluster] = X @ SVM_coefficient[0] + SVM_intercept[0]
 
