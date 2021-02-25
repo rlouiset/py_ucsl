@@ -320,7 +320,6 @@ class HYDRA(BaseEM, ClassifierMixin):
         self.clustering_assignments[idx_outside_polytope] = np.zeros((len(index_positives), n_consensus))
 
         for consensus in range(n_consensus):
-            print('Consensus : ', consensus)
             # first we initialize the clustering matrix S, with the initialization strategy set in self.initialization
             S, cluster_index = self.initialize_clustering(X, y_polytope, index_positives, index_negatives,
                                                           n_clusters, idx_outside_polytope)
@@ -651,10 +650,8 @@ class HYDRA(BaseEM, ClassifierMixin):
 
             # check the Clustering Stability \w Adjusted Rand Index for stopping criteria
             cluster_consistency = ARI(np.argmax(S[index_positives], 1), np.argmax(S_hold[index_positives], 1))
-            print(cluster_consistency)
             if cluster_consistency > self.stability_threshold:
                 break
-        print('')
 
     def clustering_bagging(self, X, y_polytope, index_positives, index_negatives, idx_outside_polytope, n_clusters):
         """Perform a bagging of the previously obtained clustering and compute new hyperplanes.
