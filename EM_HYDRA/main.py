@@ -320,6 +320,7 @@ class HYDRA(BaseEM, ClassifierMixin):
         self.clustering_assignments[idx_outside_polytope] = np.zeros((len(index_positives), n_consensus))
 
         for consensus in range(n_consensus):
+            print('Consensus : ', consensus)
             # first we initialize the clustering matrix S, with the initialization strategy set in self.initialization
             S, cluster_index = self.initialize_clustering(X, y_polytope, index_positives, index_negatives,
                                                           n_clusters, idx_outside_polytope)
@@ -474,15 +475,12 @@ class HYDRA(BaseEM, ClassifierMixin):
         if self.clustering in ['k_means', 'gaussian_mixture']:
             directions = [self.coefficients[idx_outside_polytope][cluster_i][0] for cluster_i in
                           range(self.n_clusters_per_label[idx_outside_polytope])]
-            print(len(directions))
 
             basis = []
             for v in directions:
                 w = v - np.sum(np.dot(v, b) * b for b in basis)
-                print(np.linalg.norm(w) * self.noise_tolerance_threshold)
                 if np.linalg.norm(w) * self.noise_tolerance_threshold > 1:
                     basis.append(w / np.linalg.norm(w))
-            print('')
 
             self.orthonormal_basis[idx_outside_polytope][consensus] = np.array(basis)
             self.orthonormal_basis[idx_outside_polytope][-1] = np.array(basis).copy()
