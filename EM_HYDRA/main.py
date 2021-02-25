@@ -420,23 +420,6 @@ class HYDRA(BaseEM, ClassifierMixin):
             prob = py_softmax(prob, 1)
             S[index_positives] = cpu_sk(prob, 1)
 
-        if self.initialization == "DPP_GMM" :
-            num_subject = y_polytope.shape[0]
-            W = np.zeros((num_subject, X.shape[1]))
-            for j in range(num_subject):
-                ipt = np.random.randint(len(index_positives))
-                icn = np.random.randint(len(index_negatives))
-                W[j, :] = X[index_positives[ipt], :] - X[index_negatives[icn], :]
-
-            KW = np.matmul(W, W.transpose())
-            KW = np.divide(KW, np.sqrt(np.multiply(np.diag(KW)[:, np.newaxis], np.diag(KW)[:, np.newaxis].transpose())))
-            evalue, evector = np.linalg.eig(KW)
-            Widx = sample_dpp(np.real(evalue), np.real(evector), n_clusters)
-
-            X_proj = X@W[Widx].T
-            GMM = GaussianMixture(n_components=n_clusters).fit(X_proj[index_positives])
-            S = GMM.predict_proba(X_proj)
-
         if self.initialization == "k_means":
             KM = KMeans(n_clusters=self.n_clusters_per_label[idx_outside_polytope]).fit(X[index_positives])
             S = one_hot_encode(KM.predict(X))
@@ -495,8 +478,10 @@ class HYDRA(BaseEM, ClassifierMixin):
             basis = []
             for v in directions:
                 w = v - np.sum(np.dot(v, b) * b for b in basis)
+                print(np.linalg.norm(w))
                 if np.linalg.norm(w) * self.noise_tolerance_threshold > 1:
                     basis.append(w / np.linalg.norm(w))
+            print('')
 
             self.orthonormal_basis[idx_outside_polytope][consensus] = np.array(basis)
             self.orthonormal_basis[idx_outside_polytope][-1] = np.array(basis).copy()
@@ -516,7 +501,7 @@ class HYDRA(BaseEM, ClassifierMixin):
 
             if self.clustering == 'gaussian_mixture':
                 self.gaussian_mixture[idx_outside_polytope][consensus] = GaussianMixture(
-                    n_components=self.n_clusters_per_label[idx_outside_polytope]).fit(X_proj[index_positives])
+                    n_components=self.n_clusters_per_label[idx_outside_polytope], covariance_type='diag').fit(X_proj[index_positives])
                 Q = self.gaussian_mixture[idx_outside_polytope][consensus].predict_proba(X_proj)
                 self.gaussian_mixture[idx_outside_polytope][-1] = copy.deepcopy(
                     self.gaussian_mixture[idx_outside_polytope][consensus])
@@ -538,35 +523,6 @@ class HYDRA(BaseEM, ClassifierMixin):
 
             Q = np.concatenate((1 - X_proj, X_proj), axis=1)
 
-        elif self.clustering in ['bisector_k_means', 'bisector_gaussian_mixture']:
-            directions = np.array([self.coefficients[idx_outside_polytope][cluster_i][0] for cluster_i in
-                                   range(self.n_clusters_per_label[idx_outside_polytope])])
-            basis = []
-            for i, direction_i in enumerate(directions):
-                for j, direction_j in enumerate(directions):
-                    if i != j:
-                        bisector_direction = (direction_i / np.linalg.norm(direction_i)) - (
-                                direction_j / np.linalg.norm(direction_j))
-                        basis.append(bisector_direction / 2)
-
-            self.orthonormal_basis[idx_outside_polytope] = np.array(basis)
-            X_proj = X @ self.orthonormal_basis[idx_outside_polytope].T
-
-            centroids = [np.mean(S[index_positives, cluster_i][:, None] * X_proj[index_positives, :], 0) for cluster_i
-                         in
-                         range(self.n_clusters_per_label[idx_outside_polytope])]
-
-            if self.clustering == 'bisector_k_means':
-                self.k_means[idx_outside_polytope] = KMeans(n_clusters=self.n_clusters_per_label[idx_outside_polytope],
-                                                            init=np.array(centroids), n_init=1).fit(
-                    X_proj[index_positives])
-                Q = one_hot_encode(self.k_means[idx_outside_polytope].predict(X_proj),
-                                   n_classes=self.n_clusters_per_label[idx_outside_polytope])
-
-            if self.clustering == 'bisector_gaussian_mixture':
-                self.gaussian_mixture[idx_outside_polytope] = GaussianMixture(
-                    n_components=self.n_clusters_per_label[idx_outside_polytope]).fit(X_proj[index_positives])
-                Q = self.gaussian_mixture[idx_outside_polytope].predict_proba(X_proj)
 
         elif self.clustering == 'boundary_barycenter':
             cluster_barycenters = self.barycenters[idx_outside_polytope]
@@ -696,8 +652,10 @@ class HYDRA(BaseEM, ClassifierMixin):
 
             # check the Clustering Stability \w Adjusted Rand Index for stopping criteria
             cluster_consistency = ARI(np.argmax(S[index_positives], 1), np.argmax(S_hold[index_positives], 1))
+            print(cluster_consistency)
             if cluster_consistency > self.stability_threshold:
                 break
+        print('')
 
     def clustering_bagging(self, X, y_polytope, index_positives, index_negatives, idx_outside_polytope, n_clusters):
         """Perform a bagging of the previously obtained clustering and compute new hyperplanes.
