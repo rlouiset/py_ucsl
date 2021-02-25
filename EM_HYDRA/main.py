@@ -249,7 +249,7 @@ class HYDRA(BaseEM, ClassifierMixin):
                 for cluster in range(self.n_clusters_per_label[label]):
                     SVM_coefficient = self.coefficients[label][cluster]
                     SVM_intercept = self.intercepts[label][cluster]
-                    SVM_distances[label][:, cluster] = X @ SVM_coefficient[0] + SVM_intercept[0]
+                    SVM_distances[label][:, cluster] = 1 + X @ SVM_coefficient[0] + SVM_intercept[0]
 
                 # compute clustering conditional probabilities as in the original HYDRA paper : P(cluster=i|y=label)
                 SVM_distances[label] -= np.min(SVM_distances[label])
@@ -690,6 +690,7 @@ class HYDRA(BaseEM, ClassifierMixin):
         S[index_positives, consensus_cluster_index] = 1
 
         if self.clustering == "original" :
+            print(S)
             for cluster in range(n_clusters):
                 cluster_assignment = np.ascontiguousarray(S[:, cluster])
                 SVM_coefficient, SVM_intercept = self.launch_svc(X, y_polytope, cluster_assignment)
