@@ -474,6 +474,7 @@ class HYDRA(BaseEM, ClassifierMixin):
         if self.clustering in ['k_means', 'gaussian_mixture']:
             directions = [self.coefficients[idx_outside_polytope][cluster_i][0] for cluster_i in
                           range(self.n_clusters_per_label[idx_outside_polytope])]
+            print(len(directions))
 
             basis = []
             for v in directions:
