@@ -78,7 +78,7 @@ class HYDRA(BaseEM, ClassifierMixin):
         If not specified, HYDRA original "all" will be used.
     """
 
-    def __init__(self, C=1, kernel="linear", stability_threshold=0.99, noise_tolerance_threshold=5,
+    def __init__(self, C=1, kernel="linear", stability_threshold=0.99, noise_tolerance_threshold=10,
                  n_consensus=5, n_iterations=5, n_labels=2, n_clusters_per_label=None,
                  initialization="DPP", clustering='original', consensus='spectral_clustering', negative_weighting='all',
                  training_label_mapping=None, dual_consensus=False):
@@ -478,7 +478,7 @@ class HYDRA(BaseEM, ClassifierMixin):
             basis = []
             for v in directions:
                 w = v - np.sum(np.dot(v, b) * b for b in basis)
-                print(np.linalg.norm(w))
+                print(np.linalg.norm(w) * self.noise_tolerance_threshold)
                 if np.linalg.norm(w) * self.noise_tolerance_threshold > 1:
                     basis.append(w / np.linalg.norm(w))
             print('')
