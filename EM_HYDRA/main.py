@@ -105,6 +105,10 @@ class HYDRA(BaseEM, ClassifierMixin):
         self.intercepts = {label: {cluster_i: None for cluster_i in range(n_clusters_per_label[label])} for label in
                            range(self.n_labels)}
 
+        # in the case were there is only one cluster
+        self.rbf_SVM_coef = {label: dict() for label in range(self.n_labels)}
+        self.rbf_SVM_intercept = {label: dict() for label in range(self.n_labels)}
+
         # TODO : Get rid of these visualization helps
         self.S_lists = {label: dict() for label in range(self.n_labels)}
         self.coef_lists = {label: {cluster_i: dict() for cluster_i in range(n_clusters_per_label[label])} for label in
@@ -198,6 +202,9 @@ class HYDRA(BaseEM, ClassifierMixin):
                 y_pred[:, 0] = 1 - y_pred[:, 1]
             else:
                 for label in range(self.n_labels):
+                    print(self.n_clusters_per_label[label])
+                    print(SVM_distances[label].shape)
+                    print(cluster_predictions[label].shape)
                     y_pred[:, label] = sum(
                         [cluster_predictions[label][:, cluster] * SVM_distances[label][:, cluster] for cluster in
                          range(self.n_clusters_per_label[label])])
@@ -220,7 +227,6 @@ class HYDRA(BaseEM, ClassifierMixin):
         SVM_distances = {label: np.zeros((len(X), self.n_clusters_per_label[label])) for label in range(self.n_labels)}
 
         for label in range(self.n_labels):
-            # fulfill the SVM distances \w the original HYDRA formulation
             for cluster_i in range(self.n_clusters_per_label[label]):
                 SVM_coefficient = self.coefficients[label][cluster_i]
                 SVM_intercept = self.intercepts[label][cluster_i]
@@ -305,8 +311,6 @@ class HYDRA(BaseEM, ClassifierMixin):
         return cluster_predictions
 
     def run(self, X, y, n_clusters, idx_outside_polytope):
-        n_consensus = self.n_consensus if n_clusters > 1 else 1
-
         # set label idx_outside_polytope outside of the polytope by setting it to positive labels
         y_polytope = np.copy(y)
         # if label is inside of the polytope, the distance is negative and the label is not divided into
@@ -317,11 +321,17 @@ class HYDRA(BaseEM, ClassifierMixin):
         index_positives = np.where(y_polytope == 1)[0]  # index for Positive labels (outside polytope)
         index_negatives = np.where(y_polytope == -1)[0]  # index for Negative labels (inside polytope)
 
-        # define the clustering assignment matrix (each column correspond to one consensus run)
-        self.clustering_assignments[idx_outside_polytope] = np.zeros((len(index_positives), n_consensus))
+        if n_clusters == 1 :
+            SVM_coefficient, SVM_intercept = self.launch_svc(X, y_polytope, kernel='rbf')
+            self.coefficients[idx_outside_polytope][0] = SVM_coefficient
+            self.intercepts[idx_outside_polytope][0] = SVM_intercept
+            n_consensus=0
+        else :
+            n_consensus = self.n_consensus
+            # define the clustering assignment matrix (each column correspond to one consensus run)
+            self.clustering_assignments[idx_outside_polytope] = np.zeros((len(index_positives), n_consensus))
 
         for consensus in range(n_consensus):
-            print(consensus)
             # first we initialize the clustering matrix S, with the initialization strategy set in self.initialization
             S, cluster_index = self.initialize_clustering(X, y_polytope, index_positives, index_negatives,
                                                           n_clusters, idx_outside_polytope)
@@ -334,7 +344,7 @@ class HYDRA(BaseEM, ClassifierMixin):
             # update the cluster index for the consensus clustering
             self.clustering_assignments[idx_outside_polytope][:, consensus] = cluster_index + 1
 
-        if n_clusters > 1:
+        if n_consensus > 0:
             self.clustering_bagging(X, y_polytope, index_positives, index_negatives, idx_outside_polytope, n_clusters)
 
     def predict_clusters_proba_for_negative_points(self, X, idx_outside_polytope, n_clusters):
@@ -391,12 +401,6 @@ class HYDRA(BaseEM, ClassifierMixin):
         S : array-like, shape (n_samples, n_samples)
             Cluster prediction matrix.
         """
-        if n_clusters == 1:
-            S = np.ones((len(y_polytope), n_clusters)) / n_clusters
-            cluster_index = np.argmax(S[index_positives], axis=1)
-            self.barycenters[idx_outside_polytope][0] = np.mean(X, 0)
-            return S, cluster_index
-
         S = np.ones((len(y_polytope), n_clusters)) / n_clusters
 
         if self.initialization == "DPP":
@@ -455,11 +459,6 @@ class HYDRA(BaseEM, ClassifierMixin):
         cluster_index : array-like, shape (n_positives_samples, )
             clusters predictions argmax for positive samples.
         """
-        if n_clusters == 1:
-            self.orthonormal_basis[idx_outside_polytope][consensus] = np.eye(X.shape[1])
-            S[index_positives] = 1
-            return S, cluster_index
-
         Q = S.copy()
         if self.clustering == 'original':
             SVM_distances = np.zeros(S.shape)
@@ -544,7 +543,7 @@ class HYDRA(BaseEM, ClassifierMixin):
         cluster_index = np.argmax(Q[index_positives], axis=1)
         return S, cluster_index
 
-    def launch_svc(self, X, y, sample_weight):
+    def launch_svc(self, X, y, sample_weight=None, kernel=None):
         """Fit the classification SVMs according to the given training data.
         Parameters
         ----------
@@ -561,15 +560,18 @@ class HYDRA(BaseEM, ClassifierMixin):
         SVM_intercept : array-like, shape (1,)
             The intercept of the resulting SVM.
         """
+        if kernel is None :
+            kernel = self.kernel
+
         # fit the different SVM/hyperplanes
-        SVM_classifier = SVC(kernel=self.kernel, C=self.C)
+        SVM_classifier = SVC(kernel=kernel, C=self.C)
         SVM_classifier.fit(X, y, sample_weight=sample_weight)
 
         # get SVM intercept value
         SVM_intercept = SVM_classifier.intercept_
 
         # get SVM hyperplane coefficient
-        if self.kernel == 'rbf':
+        if kernel == 'rbf':
             X_support = X[SVM_classifier.support_]
             y_support = y[SVM_classifier.support_]
             SVM_coefficient = SVM_classifier.dual_coef_ @ np.einsum('i,ij->ij', y_support, X_support)
