@@ -633,7 +633,7 @@ class HYDRA(BaseEM, ClassifierMixin):
                     S, cluster_index = self.initialize_clustering(X, y_polytope, index_positives, index_negatives,
                                                                   n_clusters, idx_outside_polytope)
 
-                if np.count_nonzero(S[index_negatives, cluster]) < 1/n_clusters**2:
+                if np.max(S[index_negatives, cluster]) < 0.01:
                     print(
                         "Cluster too far, one cluster have no negative points anymore, in consensus : %d" % (
                                 iteration - 1))
