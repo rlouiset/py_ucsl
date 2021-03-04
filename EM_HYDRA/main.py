@@ -80,7 +80,7 @@ class HYDRA(BaseEM, ClassifierMixin):
     def __init__(self, C=1, kernel="linear", stability_threshold=0.99, noise_tolerance_threshold=10,
                  n_consensus=5, n_iterations=5, n_labels=2, n_clusters_per_label=None,
                  initialization="DPP", clustering='original', consensus='spectral_clustering', negative_weighting='all',
-                 training_label_mapping=None, initialization_matrix=None):
+                 training_label_mapping=None, initialization_matrixes=None):
 
         super().__init__(C=C, kernel=kernel, stability_threshold=stability_threshold,
                          noise_tolerance_threshold=noise_tolerance_threshold,
@@ -122,7 +122,7 @@ class HYDRA(BaseEM, ClassifierMixin):
 
         self.clustering_assignments = {label: None for label in range(self.n_labels)}
 
-        self.initialization_matrix = initialization_matrix
+        self.initialization_matrixes = initialization_matrixes
 
     def fit(self, X_train, y_train):
         """Fit the HYDRA model according to the given training data.
@@ -428,7 +428,7 @@ class HYDRA(BaseEM, ClassifierMixin):
             S = GMM.predict_proba(X)
 
         if self.initialization == "precomputed":
-            S = self.initialization_matrix
+            S = self.initialization_matrixes[idx_outside_polytope]
 
         cluster_index = np.argmax(S[index_positives], axis=1)
         return S, cluster_index
