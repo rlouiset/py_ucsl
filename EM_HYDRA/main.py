@@ -496,7 +496,7 @@ class HYDRA(BaseEM, ClassifierMixin):
                 if len(basis) >= 2 :
                     if np.linalg.norm(w) * self.noise_tolerance_threshold > 1 :
                         basis.append(w / np.linalg.norm(w))
-                elif np.linalg.norm(w) > 1e-5:
+                elif np.linalg.norm(w) > 0.01:
                     basis.append(w / np.linalg.norm(w))
             print('')
 
