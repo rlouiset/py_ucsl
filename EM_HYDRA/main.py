@@ -485,18 +485,25 @@ class HYDRA(BaseEM, ClassifierMixin):
                 for j, direction_j in enumerate(directions) :
                     if i != j :
                         scores_i.append(np.linalg.norm(direction_i-(np.dot(direction_i, direction_j)*direction_j)))
-                print(scores_i)
+                scores.append(np.mean(scores_i))
+            directions = directions[np.array(scores).argsort(),:]
+
+            # compute the most important vectors because Graam Schmidt is not invariant by permutation when the matrix is not square
+            scores = []
+            for i, direction_i in enumerate(directions) :
+                scores_i = []
+                for j, direction_j in enumerate(directions) :
+                    if i != j :
+                        scores_i.append(np.linalg.norm(direction_i-(np.dot(direction_i, direction_j)*direction_j)))
                 scores.append(np.mean(scores_i))
             print(scores)
-            directions = directions[np.array(scores).argsort(),:]
 
             basis = []
             for v in directions:
                 w = v - np.sum(np.dot(v, b) * b for b in basis)
-                print(np.linalg.norm(w))
+                #print(np.linalg.norm(w))
                 if np.linalg.norm(w) * self.noise_tolerance_threshold > 1 :
                     basis.append(w / np.linalg.norm(w))
-            print('')
 
             self.orthonormal_basis[idx_outside_polytope][consensus] = np.array(basis)
             self.orthonormal_basis[idx_outside_polytope][-1] = np.array(basis).copy()
