@@ -634,10 +634,10 @@ class HYDRA(BaseEM, ClassifierMixin):
                                                                   n_clusters, idx_outside_polytope)
 
                 if np.max(S[index_negatives, cluster]) < 0.01:
-                    print(
+                    logging.debug(
                         "Cluster too far, one cluster have no negative points anymore, in consensus : %d" % (
                                 iteration - 1))
-                    print("Re-distribution of this cluster negative weight to 'all'...")
+                    logging.debug("Re-distribution of this cluster negative weight to 'all'...")
                     S[index_negatives, cluster] = 1 / n_clusters
 
             for cluster in range(n_clusters):
