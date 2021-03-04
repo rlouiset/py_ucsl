@@ -475,12 +475,13 @@ class HYDRA(BaseEM, ClassifierMixin):
         if self.clustering in ['k_means', 'gaussian_mixture']:
             directions = [self.coefficients[idx_outside_polytope][cluster_i][0] for cluster_i in
                           range(self.n_clusters_per_label[idx_outside_polytope])]
+            norm_directions = [np.linalg.norm(direction) for direction in directions]
 
             basis = []
             for v in directions:
                 w = v - np.sum(np.dot(v, b) * b for b in basis)
                 print(np.linalg.norm(w))
-                if np.linalg.norm(w) * self.noise_tolerance_threshold > 1:
+                if np.linalg.norm(w) * self.noise_tolerance_threshold > np.max(norm_directions):
                     basis.append(w / np.linalg.norm(w))
             print('')
 
