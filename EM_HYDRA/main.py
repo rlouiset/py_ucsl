@@ -429,7 +429,6 @@ class HYDRA(BaseEM, ClassifierMixin):
 
         if self.initialization == "precomputed":
             S = self.initialization_matrixes[idx_outside_polytope]
-            print(S[index_positives])
 
         cluster_index = np.argmax(S[index_positives], axis=1)
         return S, cluster_index
