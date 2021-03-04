@@ -16,7 +16,7 @@ class BaseEM(BaseEstimator, metaclass=ABCMeta):
     @abstractmethod
     def __init__(self, C, kernel, stability_threshold, noise_tolerance_threshold,
                  n_consensus, n_iterations, n_labels, n_clusters_per_label,
-                 initialization, clustering, consensus, negative_weighting, dual_consensus):
+                 initialization, clustering, consensus, negative_weighting):
 
         if stability_threshold < 0 or stability_threshold > 1:
             msg = "The stability_threshold value is invalid. It must be between 0 and 1."
@@ -44,7 +44,6 @@ class BaseEM(BaseEstimator, metaclass=ABCMeta):
         self.clustering = clustering
         self.consensus = consensus
         self.negative_weighting = negative_weighting
-        self.dual_consensus = dual_consensus
 
 
 class HYDRA(BaseEM, ClassifierMixin):
@@ -81,14 +80,14 @@ class HYDRA(BaseEM, ClassifierMixin):
     def __init__(self, C=1, kernel="linear", stability_threshold=0.99, noise_tolerance_threshold=10,
                  n_consensus=5, n_iterations=5, n_labels=2, n_clusters_per_label=None,
                  initialization="DPP", clustering='original', consensus='spectral_clustering', negative_weighting='all',
-                 training_label_mapping=None, dual_consensus=False):
+                 training_label_mapping=None, initialization_matrix=None):
 
         super().__init__(C=C, kernel=kernel, stability_threshold=stability_threshold,
                          noise_tolerance_threshold=noise_tolerance_threshold,
                          n_consensus=n_consensus, n_iterations=n_iterations, n_labels=n_labels,
                          n_clusters_per_label=n_clusters_per_label,
                          initialization=initialization, clustering=clustering, consensus=consensus,
-                         negative_weighting=negative_weighting, dual_consensus=dual_consensus)
+                         negative_weighting=negative_weighting)
 
         # define the mapping of labels before fitting the algorithm
         # for example, one may want to merge 2 labels together before fitting to check if clustering separate them well
@@ -104,10 +103,6 @@ class HYDRA(BaseEM, ClassifierMixin):
                              range(self.n_labels)}
         self.intercepts = {label: {cluster_i: None for cluster_i in range(n_clusters_per_label[label])} for label in
                            range(self.n_labels)}
-
-        # in the case were there is only one cluster
-        self.rbf_SVM_coef = {label: dict() for label in range(self.n_labels)}
-        self.rbf_SVM_intercept = {label: dict() for label in range(self.n_labels)}
 
         # TODO : Get rid of these visualization helps
         self.S_lists = {label: dict() for label in range(self.n_labels)}
@@ -126,6 +121,8 @@ class HYDRA(BaseEM, ClassifierMixin):
         self.gaussian_mixture = {label: [None for consensus in range(n_consensus)] for label in range(self.n_labels)}
 
         self.clustering_assignments = {label: None for label in range(self.n_labels)}
+
+        self.initialization_matrix = initialization_matrix
 
     def fit(self, X_train, y_train):
         """Fit the HYDRA model according to the given training data.
@@ -146,7 +143,6 @@ class HYDRA(BaseEM, ClassifierMixin):
 
         # cluster each label one by one and confine the other inside the polytope
         for label in range(self.n_labels):
-            print(label)
             self.run(X_train, y_train_copy, self.n_clusters_per_label[label], idx_outside_polytope=label)
 
         return self
@@ -193,18 +189,15 @@ class HYDRA(BaseEM, ClassifierMixin):
             # compute the predictions \w.r.t cluster previously found
             cluster_predictions = self.predict_clusters(X)
             if self.n_labels == 2:
-                y_pred[:, 1] = sum([cluster_predictions[1][:, cluster] * SVM_distances[1][:, cluster] for cluster in
+                y_pred[:, 1] = sum([np.rint(cluster_predictions[1])[:, cluster] * SVM_distances[1][:, cluster] for cluster in
                                     range(self.n_clusters_per_label[1])])
-                y_pred[:, 1] -= sum([cluster_predictions[0][:, cluster] * SVM_distances[0][:, cluster] for cluster in
-                                     range(self.n_clusters_per_label[0])])
+                #y_pred[:, 1] -= sum([cluster_predictions[0][:, cluster] * SVM_distances[0][:, cluster] for cluster in
+                #                     range(self.n_clusters_per_label[0])])
                 # compute probabilities \w sigmoid
                 y_pred[:, 1] = sigmoid(y_pred[:, 1] / np.max(y_pred[:, 1]))
                 y_pred[:, 0] = 1 - y_pred[:, 1]
             else:
                 for label in range(self.n_labels):
-                    print(self.n_clusters_per_label[label])
-                    print(SVM_distances[label].shape)
-                    print(cluster_predictions[label].shape)
                     y_pred[:, label] = sum(
                         [cluster_predictions[label][:, cluster] * SVM_distances[label][:, cluster] for cluster in
                          range(self.n_clusters_per_label[label])])
@@ -307,7 +300,7 @@ class HYDRA(BaseEM, ClassifierMixin):
                     elif self.clustering == 'gaussian_mixture':
                         cluster_predictions[label] = self.gaussian_mixture[label][-1].predict_proba(X_proj)
                 else:
-                    cluster_predictions[label] = np.zeros(len(X))
+                    cluster_predictions[label] = np.ones((len(X), 1))
         return cluster_predictions
 
     def run(self, X, y, n_clusters, idx_outside_polytope):
@@ -321,12 +314,12 @@ class HYDRA(BaseEM, ClassifierMixin):
         index_positives = np.where(y_polytope == 1)[0]  # index for Positive labels (outside polytope)
         index_negatives = np.where(y_polytope == -1)[0]  # index for Negative labels (inside polytope)
 
-        if n_clusters == 1 :
+        if n_clusters == 1:
             SVM_coefficient, SVM_intercept = self.launch_svc(X, y_polytope, kernel='rbf')
             self.coefficients[idx_outside_polytope][0] = SVM_coefficient
             self.intercepts[idx_outside_polytope][0] = SVM_intercept
-            n_consensus=0
-        else :
+            n_consensus = 0
+        else:
             n_consensus = self.n_consensus
             # define the clustering assignment matrix (each column correspond to one consensus run)
             self.clustering_assignments[idx_outside_polytope] = np.zeros((len(index_positives), n_consensus))
@@ -430,6 +423,13 @@ class HYDRA(BaseEM, ClassifierMixin):
             KM = KMeans(n_clusters=self.n_clusters_per_label[idx_outside_polytope]).fit(X[index_positives])
             S = one_hot_encode(KM.predict(X))
 
+        if self.initialization == "gaussian_mixture":
+            GMM = GaussianMixture(n_components=self.n_clusters_per_label[idx_outside_polytope]).fit(X[index_positives])
+            S = GMM.predict_proba(X)
+
+        if self.initialization == "precomputed":
+            S = self.initialization_matrix
+
         cluster_index = np.argmax(S[index_positives], axis=1)
         return S, cluster_index
 
@@ -500,7 +500,8 @@ class HYDRA(BaseEM, ClassifierMixin):
 
             if self.clustering == 'gaussian_mixture':
                 self.gaussian_mixture[idx_outside_polytope][consensus] = GaussianMixture(
-                    n_components=self.n_clusters_per_label[idx_outside_polytope], covariance_type='diag').fit(X_proj[index_positives])
+                    n_components=self.n_clusters_per_label[idx_outside_polytope], covariance_type='diag').fit(
+                    X_proj[index_positives])
                 Q = self.gaussian_mixture[idx_outside_polytope][consensus].predict_proba(X_proj)
                 self.gaussian_mixture[idx_outside_polytope][-1] = copy.deepcopy(
                     self.gaussian_mixture[idx_outside_polytope][consensus])
@@ -560,7 +561,7 @@ class HYDRA(BaseEM, ClassifierMixin):
         SVM_intercept : array-like, shape (1,)
             The intercept of the resulting SVM.
         """
-        if kernel is None :
+        if kernel is None:
             kernel = self.kernel
 
         # fit the different SVM/hyperplanes
@@ -613,14 +614,16 @@ class HYDRA(BaseEM, ClassifierMixin):
             for cluster in range(self.n_clusters_per_label[idx_outside_polytope]):
                 if np.count_nonzero(S[index_positives, cluster]) == 0:
                     logging.debug(
-                        "Cluster dropped, one cluster have no positive points anymore, in iteration : %d" % (iteration - 1))
+                        "Cluster dropped, one cluster have no positive points anymore, in iteration : %d" % (
+                                iteration - 1))
                     logging.debug("Re-initialization of the clustering...")
                     S, cluster_index = self.initialize_clustering(X, y_polytope, index_positives, index_negatives,
                                                                   n_clusters, idx_outside_polytope)
 
                 if np.count_nonzero(S[index_negatives, cluster]) == 0:
                     logging.debug(
-                        "Cluster too far, one cluster have no negative points anymore, in consensus : %d" % (iteration - 1))
+                        "Cluster too far, one cluster have no negative points anymore, in consensus : %d" % (
+                                iteration - 1))
                     logging.debug("Re-distribution of this cluster negative weight to 'all'...")
                     S[index_negatives, cluster] = 1 / n_clusters
 
@@ -654,8 +657,10 @@ class HYDRA(BaseEM, ClassifierMixin):
 
             # check the Clustering Stability \w Adjusted Rand Index for stopping criteria
             cluster_consistency = ARI(np.argmax(S[index_positives], 1), np.argmax(S_hold[index_positives], 1))
+            print(cluster_consistency)
             if cluster_consistency > self.stability_threshold:
                 break
+        print('')
 
     def clustering_bagging(self, X, y_polytope, index_positives, index_negatives, idx_outside_polytope, n_clusters):
         """Perform a bagging of the previously obtained clustering and compute new hyperplanes.
@@ -693,8 +698,7 @@ class HYDRA(BaseEM, ClassifierMixin):
         S[index_positives] *= 0
         S[index_positives, consensus_cluster_index] = 1
 
-        if self.clustering == "original" :
-            print(S)
+        if self.clustering == "original":
             for cluster in range(n_clusters):
                 cluster_assignment = np.ascontiguousarray(S[:, cluster])
                 SVM_coefficient, SVM_intercept = self.launch_svc(X, y_polytope, cluster_assignment)
@@ -704,6 +708,6 @@ class HYDRA(BaseEM, ClassifierMixin):
                 # TODO: get rid of
                 self.coef_lists[idx_outside_polytope][cluster][-1] = SVM_coefficient.copy()
                 self.intercept_lists[idx_outside_polytope][cluster][-1] = SVM_intercept.copy()
-        else :
+        else:
             self.run_EM(X, y_polytope, S, consensus_cluster_index, index_positives, index_negatives,
-                    idx_outside_polytope, n_clusters, -1)
+                        idx_outside_polytope, n_clusters, -1)
