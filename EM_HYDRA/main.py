@@ -476,6 +476,7 @@ class HYDRA(BaseEM, ClassifierMixin):
             directions = [self.coefficients[idx_outside_polytope][cluster_i][0] for cluster_i in
                           range(self.n_clusters_per_label[idx_outside_polytope])]
             norm_directions = [np.linalg.norm(direction) for direction in directions]
+            directions = np.array(directions) / norm_directions
 
             basis = []
             for v in directions:
