@@ -486,6 +486,7 @@ class HYDRA(BaseEM, ClassifierMixin):
                 for j, direction_j in enumerate(directions) :
                     scores_i.append(np.linalg.norm(direction_i-np.sum(np.dot(direction_i, direction_j)*direction_j)))
                 scores.append(np.mean(scores_i))
+            print(scores)
 
             if not_weighted :
                 basis = []
