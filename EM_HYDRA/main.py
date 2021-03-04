@@ -481,7 +481,7 @@ class HYDRA(BaseEM, ClassifierMixin):
             for v in directions:
                 w = v - np.sum(np.dot(v, b) * b for b in basis)
                 print(np.linalg.norm(w))
-                if np.linalg.norm(w) * self.noise_tolerance_threshold > np.max(norm_directions):
+                if np.linalg.norm(w) * self.noise_tolerance_threshold > 1 : #np.max(norm_directions):
                     basis.append(w / np.linalg.norm(w))
             print('')
 
