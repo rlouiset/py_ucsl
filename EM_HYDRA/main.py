@@ -77,7 +77,7 @@ class HYDRA(BaseEM, ClassifierMixin):
         If not specified, HYDRA original "all" will be used.
     """
 
-    def __init__(self, C=1, kernel="linear", stability_threshold=0.95, noise_tolerance_threshold=10,
+    def __init__(self, C=1, kernel="linear", stability_threshold=0.95, noise_tolerance_threshold=5,
                  n_consensus=5, n_iterations=5, n_labels=2, n_clusters_per_label=None,
                  initialization="DPP", clustering='original', consensus='spectral_clustering', negative_weighting='all',
                  training_label_mapping=None, initialization_matrixes=None):
