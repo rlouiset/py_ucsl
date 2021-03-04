@@ -512,7 +512,8 @@ class HYDRA(BaseEM, ClassifierMixin):
 
             if self.clustering == 'gaussian_mixture':
                 self.gaussian_mixture[idx_outside_polytope][consensus] = GaussianMixture(
-                    n_components=self.n_clusters_per_label[idx_outside_polytope], covariance_type='spherical').fit(
+                    n_components=self.n_clusters_per_label[idx_outside_polytope],
+                    covariance_type='spherical', means_init=np.array(centroids)).fit(
                     X_proj[index_positives])
                 Q = self.gaussian_mixture[idx_outside_polytope][consensus].predict_proba(X_proj)
                 self.gaussian_mixture[idx_outside_polytope][-1] = copy.deepcopy(
