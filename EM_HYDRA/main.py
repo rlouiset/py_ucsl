@@ -480,13 +480,14 @@ class HYDRA(BaseEM, ClassifierMixin):
 
             not_weighted = True
 
+            # compute the most important vectors because Graam Schmidt is not invariant by permutation when the matrix is not square
             scores = []
             for i, direction_i in enumerate(directions) :
                 scores_i = []
                 for j, direction_j in enumerate(directions) :
                     scores_i.append(np.linalg.norm(direction_i-(np.dot(direction_i, direction_j)*direction_j)))
                 scores.append(np.mean(scores_i))
-            print(scores)
+            directions = directions[directions.argsort(),:]
 
             if not_weighted :
                 basis = []
