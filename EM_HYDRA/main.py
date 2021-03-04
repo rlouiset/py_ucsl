@@ -624,7 +624,7 @@ class HYDRA(BaseEM, ClassifierMixin):
         for iteration in range(self.n_iterations):
             # check for degenerate clustering for positive labels (warning) and negatives (might be normal)
             for cluster in range(self.n_clusters_per_label[idx_outside_polytope]):
-                print(str(cluster), S[index_negatives, cluster])
+                print(str(cluster), np.max(S[index_negatives, cluster]))
                 if np.count_nonzero(S[index_positives, cluster]) == 0:
                     logging.debug(
                         "Cluster dropped, one cluster have no positive points anymore, in iteration : %d" % (
