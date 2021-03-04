@@ -492,13 +492,11 @@ class HYDRA(BaseEM, ClassifierMixin):
             basis = []
             for v in directions:
                 w = v - np.sum(np.dot(v, b) * b for b in basis)
-                print(np.linalg.norm(w))
                 if len(basis) >= 2 :
                     if np.linalg.norm(w) * self.noise_tolerance_threshold > 1 :
                         basis.append(w / np.linalg.norm(w))
-                elif np.linalg.norm(w) > 0.01:
+                elif np.linalg.norm(w) > 1e-4:
                     basis.append(w / np.linalg.norm(w))
-            print('')
 
             self.orthonormal_basis[idx_outside_polytope][consensus] = np.array(basis)
             self.orthonormal_basis[idx_outside_polytope][-1] = np.array(basis).copy()
@@ -639,9 +637,8 @@ class HYDRA(BaseEM, ClassifierMixin):
                     S, cluster_index = self.initialize_clustering(X, y_polytope, index_positives, index_negatives,
                                                                   n_clusters, idx_outside_polytope)
 
-                print('neg weight', np.max(S[index_negatives, cluster]))
                 if np.max(S[index_negatives, cluster]) < 0.01:
-                    print(
+                    logging.debug(
                         "Cluster too far, one cluster have no negative points anymore, in consensus : %d" % (
                                 iteration - 1))
                     logging.debug("Re-distribution of this cluster negative weight to 'all'...")
