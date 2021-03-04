@@ -478,13 +478,26 @@ class HYDRA(BaseEM, ClassifierMixin):
             norm_directions = [np.linalg.norm(direction) for direction in directions]
             directions = np.array(directions) / np.array(norm_directions)[:, None]
 
-            basis = []
-            for v in directions:
-                w = v - np.sum(np.dot(v, b) * b for b in basis)
-                print(np.linalg.norm(w))
-                if np.linalg.norm(w) * self.noise_tolerance_threshold > 1 : #np.max(norm_directions):
-                    basis.append(w / np.linalg.norm(w))
-            print('')
+            not_weighted = True
+
+            scores = []
+            for i, direction_i in enumerate(directions) :
+                scores_i = []
+                for j, direction_j in enumerate(directions) :
+                    scores_i.append(np.linalg.norm(direction_i-np.sum(np.dot(direction_i, direction_j)*direction_j)))
+                scores.append(np.mean(scores_i))
+
+            if not_weighted :
+                basis = []
+                for v in directions:
+                    w = v - np.sum(np.dot(v, b) * b for b in basis)
+                    print(np.linalg.norm(w))
+                    if np.linalg.norm(w) * self.noise_tolerance_threshold > 1 :
+                        basis.append(w / np.linalg.norm(w))
+                print('')
+            else :
+
+                print('')
 
             self.orthonormal_basis[idx_outside_polytope][consensus] = np.array(basis)
             self.orthonormal_basis[idx_outside_polytope][-1] = np.array(basis).copy()
