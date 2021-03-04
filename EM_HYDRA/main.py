@@ -189,9 +189,10 @@ class HYDRA(BaseEM, ClassifierMixin):
             # compute the predictions \w.r.t cluster previously found
             cluster_predictions = self.predict_clusters(X)
             if self.n_labels == 2:
-                y_pred[:, 1] = sum([np.rint(cluster_predictions[1])[:, cluster] * SVM_distances[1][:, cluster] for cluster in
-                                    range(self.n_clusters_per_label[1])])
-                #y_pred[:, 1] -= sum([cluster_predictions[0][:, cluster] * SVM_distances[0][:, cluster] for cluster in
+                y_pred[:, 1] = sum(
+                    [np.rint(cluster_predictions[1])[:, cluster] * SVM_distances[1][:, cluster] for cluster in
+                     range(self.n_clusters_per_label[1])])
+                # y_pred[:, 1] -= sum([cluster_predictions[0][:, cluster] * SVM_distances[0][:, cluster] for cluster in
                 #                     range(self.n_clusters_per_label[0])])
                 # compute probabilities \w sigmoid
                 y_pred[:, 1] = sigmoid(y_pred[:, 1] / np.max(y_pred[:, 1]))
@@ -480,19 +481,22 @@ class HYDRA(BaseEM, ClassifierMixin):
 
             # compute the most important vectors because Graam Schmidt is not invariant by permutation when the matrix is not square
             scores = []
-            for i, direction_i in enumerate(directions) :
+            for i, direction_i in enumerate(directions):
                 scores_i = []
-                for j, direction_j in enumerate(directions) :
-                    if i != j :
-                        scores_i.append(np.linalg.norm(direction_i-(np.dot(direction_i, direction_j)*direction_j)))
+                for j, direction_j in enumerate(directions):
+                    if i != j:
+                        scores_i.append(np.linalg.norm(direction_i - (np.dot(direction_i, direction_j) * direction_j)))
                 scores.append(np.mean(scores_i))
-            directions = directions[np.array(scores).argsort()[::-1],:]
+            directions = directions[np.array(scores).argsort()[::-1], :]
 
             basis = []
             for v in directions:
                 w = v - np.sum(np.dot(v, b) * b for b in basis)
                 print(np.linalg.norm(w))
-                if np.linalg.norm(w) * self.noise_tolerance_threshold > 1 :
+                if len(basis) >= 2 :
+                    if np.linalg.norm(w) * self.noise_tolerance_threshold > 1 :
+                        basis.append(w / np.linalg.norm(w))
+                elif np.linalg.norm(w) > 1e-5:
                     basis.append(w / np.linalg.norm(w))
             print('')
 
@@ -640,10 +644,11 @@ class HYDRA(BaseEM, ClassifierMixin):
                         "Cluster too far, one cluster have no negative points anymore, in consensus : %d" % (
                                 iteration - 1))
                     logging.debug("Re-distribution of this cluster negative weight to 'all'...")
-                    if self.clustering == "k_means" :
+                    if self.clustering == "k_means":
                         S[index_negatives, cluster] = 1 / n_clusters
-                    else :
-                        S[index_negatives, cluster] = S[index_negatives, cluster] * (1/n_clusters) / np.sum(S[index_negatives, cluster] )
+                    else:
+                        S[index_negatives, cluster] = S[index_negatives, cluster] * (1 / n_clusters) / np.sum(
+                            S[index_negatives, cluster])
 
             for cluster in range(n_clusters):
                 cluster_assignment = np.ascontiguousarray(S[:, cluster])
