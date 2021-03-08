@@ -638,7 +638,6 @@ class HYDRA(BaseEM, ClassifierMixin):
                                                                   n_clusters, idx_outside_polytope)
 
                 if np.max(S[index_negatives, cluster]) < 0.5:
-                    print('fuck')
                     logging.debug(
                         "Cluster too far, one cluster have no negative points anymore, in consensus : %d" % (
                                 iteration - 1))
