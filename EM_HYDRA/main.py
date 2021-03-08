@@ -492,11 +492,13 @@ class HYDRA(BaseEM, ClassifierMixin):
             basis = []
             for v in directions:
                 w = v - np.sum(np.dot(v, b) * b for b in basis)
+                print(np.linalg.norm(w))
                 if len(basis) >= 2 :
                     if np.linalg.norm(w) * self.noise_tolerance_threshold > 1 :
                         basis.append(w / np.linalg.norm(w))
                 elif np.linalg.norm(w) > 1e-2:
                     basis.append(w / np.linalg.norm(w))
+            print('')
 
             self.orthonormal_basis[idx_outside_polytope][consensus] = np.array(basis)
             self.orthonormal_basis[idx_outside_polytope][-1] = np.array(basis).copy()
@@ -628,7 +630,9 @@ class HYDRA(BaseEM, ClassifierMixin):
         """
         for iteration in range(self.n_iterations):
             # check for degenerate clustering for positive labels (warning) and negatives (might be normal)
+            print('')
             for cluster in range(self.n_clusters_per_label[idx_outside_polytope]):
+                print(cluster, np.max(S[index_negatives, cluster]) )
                 if np.count_nonzero(S[index_positives, cluster]) == 0:
                     logging.debug(
                         "Cluster dropped, one cluster have no positive points anymore, in iteration : %d" % (
