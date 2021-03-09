@@ -79,7 +79,8 @@ class HYDRA(BaseEM, ClassifierMixin):
 
     def __init__(self, C=1, kernel="linear", stability_threshold=0.95, noise_tolerance_threshold=5,
                  n_consensus=5, n_iterations=5, n_labels=2, n_clusters_per_label=None,
-                 initialization="DPP", clustering='original', consensus='spectral_clustering', negative_weighting='all',
+                 initialization="DPP", clustering='original', consensus='spectral_clustering',
+                 negative_weighting='all', positive_weighting='hard_clustering',
                  training_label_mapping=None, initialization_matrixes=None):
 
         super().__init__(C=C, kernel=kernel, stability_threshold=stability_threshold,
@@ -87,7 +88,7 @@ class HYDRA(BaseEM, ClassifierMixin):
                          n_consensus=n_consensus, n_iterations=n_iterations, n_labels=n_labels,
                          n_clusters_per_label=n_clusters_per_label,
                          initialization=initialization, clustering=clustering, consensus=consensus,
-                         negative_weighting=negative_weighting)
+                         negative_weighting=negative_weighting, positive_weighting=positive_weighting)
 
         # define the mapping of labels before fitting the algorithm
         # for example, one may want to merge 2 labels together before fitting to check if clustering separate them well
@@ -644,6 +645,7 @@ class HYDRA(BaseEM, ClassifierMixin):
                     logging.debug("Re-distribution of this cluster negative weight to 'all'...")
                     S[index_negatives, cluster] = 1 / n_clusters
 
+            #self.update_classification
             for cluster in range(n_clusters):
                 cluster_assignment = np.ascontiguousarray(S[:, cluster])
                 SVM_coefficient, SVM_intercept = self.launch_svc(X, y_polytope, cluster_assignment)
