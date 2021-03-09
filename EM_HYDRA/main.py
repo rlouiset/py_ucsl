@@ -452,7 +452,7 @@ class HYDRA(BaseEM, ClassifierMixin):
                 print(len(self.coefficients[idx_outside_polytope][cluster]))
 
                 self.coefficients[idx_outside_polytope][cluster].extend(SVM_coefficient)
-                self.intercepts[idx_outside_polytope][cluster].extend(SVM_intercept)
+                self.intercepts[idx_outside_polytope][cluster] = SVM_intercept
 
                 # TODO: get rid of
                 self.coef_lists[idx_outside_polytope][cluster][iteration + 1] = SVM_coefficient.copy()
@@ -543,7 +543,6 @@ class HYDRA(BaseEM, ClassifierMixin):
                     covariance_type='spherical', means_init=np.array(centroids)).fit(
                     X_proj[index_positives])
                 Q = self.clustering_method[idx_outside_polytope][consensus].predict_proba(X_proj)
-                print(Q.shape)
                 self.clustering_method[idx_outside_polytope][-1] = copy.deepcopy(
                     self.clustering_method[idx_outside_polytope][consensus])
 
@@ -609,11 +608,12 @@ class HYDRA(BaseEM, ClassifierMixin):
                     logging.debug("Re-distribution of this cluster negative weight to 'all'...")
                     S[index_negatives, cluster] = 1 / n_clusters
 
+            # re-init directions for each clusters
+            for cluster in range(n_clusters):
+                self.coefficients[idx_outside_polytope][cluster] = []
             if self.multiclass_config != 'one_vs_one':
                 self.maximization_step(X, y_polytope, S, idx_outside_polytope, n_clusters, iteration)
             else:
-                for cluster in range(n_clusters) :
-                    self.coefficients[idx_outside_polytope][cluster] = []
                 for label in range(self.n_labels):
                     if label != idx_outside_polytope:
                         index_polytope = np.array([i for (i, y_i) in enumerate(y) if y_i in [label, idx_outside_polytope]])
