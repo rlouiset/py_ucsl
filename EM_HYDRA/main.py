@@ -608,24 +608,17 @@ class HYDRA(BaseEM, ClassifierMixin):
         -------
         None
         """
-        # initialize the consensus clustering vector
-        S = np.ones((len(X), n_clusters)) / n_clusters
-
         # perform consensus clustering
         consensus_cluster_index = compute_spectral_clustering_consensus(
             self.clustering_assignments[idx_outside_polytope], n_clusters)
         self.y_clusters_pred[idx_outside_polytope] = consensus_cluster_index
 
-        # update clustering matrix S
-        S = self.predict_clusters_proba_for_negative_points(X, idx_outside_polytope, n_clusters)
-        if self.negative_weighting in ['all']:
-            S[index_negatives] = 1 / n_clusters
-        elif self.negative_weighting in ['hard_clustering']:
-            S[index_negatives] = np.rint(S[index_negatives])
-        if self.positive_weighting in ['hard_clustering']:
-            S[index_positives] = np.rint(S[index_positives])
+        if self.clustering == 'original' :
+            # initialize the consensus clustering vector
+            S = np.ones((len(X), n_clusters)) / n_clusters
+            S[index_positives] *= 0
+            S[index_positives, consensus_cluster_index] = 1
 
-        if self.clustering == "original":
             for cluster in range(n_clusters):
                 cluster_assignment = np.ascontiguousarray(S[:, cluster])
                 SVM_coefficient, SVM_intercept = launch_svc(X, y_polytope, cluster_assignment, self.kernel, self.C)
@@ -635,6 +628,16 @@ class HYDRA(BaseEM, ClassifierMixin):
                 # TODO: get rid of
                 self.coef_lists[idx_outside_polytope][cluster][-1] = SVM_coefficient.copy()
                 self.intercept_lists[idx_outside_polytope][cluster][-1] = SVM_intercept.copy()
-        else:
+
+        else :
+            # update clustering matrix S
+            S = self.predict_clusters_proba_for_negative_points(X, idx_outside_polytope, n_clusters)
+            if self.negative_weighting in ['all']:
+                S[index_negatives] = 1 / n_clusters
+            elif self.negative_weighting in ['hard_clustering']:
+                S[index_negatives] = np.rint(S[index_negatives])
+            if self.positive_weighting in ['hard_clustering']:
+                S[index_positives] = np.rint(S[index_positives])
+
             self.run_EM(X, y_polytope, S, consensus_cluster_index, index_positives, index_negatives,
                         idx_outside_polytope, n_clusters, -1)
