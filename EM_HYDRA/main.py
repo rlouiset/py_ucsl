@@ -84,7 +84,7 @@ class HYDRA(BaseEM, ClassifierMixin):
     """
 
     def __init__(self, stability_threshold=0.95, noise_tolerance_threshold=10,
-                 n_consensus=10, n_iterations=10, n_labels=2, n_clusters_per_label=None, multiclass_config="ovr",
+                 n_consensus=10, n_iterations=10, n_labels=2, n_clusters_per_label=None, multiclass_config=None,
                  initialization="DPP", clustering='original', consensus='spectral_clustering',
                  classification='max_margin',
                  negative_weighting='all', positive_weighting='hard_clustering',
@@ -448,6 +448,8 @@ class HYDRA(BaseEM, ClassifierMixin):
             for cluster in range(n_clusters):
                 cluster_assignment = np.ascontiguousarray(S[:, cluster])
                 SVM_coefficient, SVM_intercept = launch_svc(X, y_polytope, cluster_assignment, self.kernel, self.C)
+
+                print(len(self.coefficients[idx_outside_polytope][cluster]))
 
                 self.coefficients[idx_outside_polytope][cluster].extend(SVM_coefficient)
                 self.intercepts[idx_outside_polytope][cluster].extend(SVM_intercept)
