@@ -539,7 +539,7 @@ class HYDRA(BaseEM, ClassifierMixin):
 
         S = Q.copy()
         cluster_index = np.argmax(Q[index_positives], axis=1)
-        return S, cluster_index
+        return S, cluster_index, S.shape[1]
 
     def run_EM(self, X, y, y_polytope, S, cluster_index, index_positives, index_negatives, idx_outside_polytope,
                n_clusters, consensus):
