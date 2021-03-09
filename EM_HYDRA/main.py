@@ -565,7 +565,7 @@ class HYDRA(BaseEM, ClassifierMixin):
                     logging.debug("Re-distribution of this cluster negative weight to 'all'...")
                     S[index_negatives, cluster] = 1 / n_clusters
 
-            self.maximization_step(X, y_polytope, S, n_clusters)
+            self.maximization_step(X, y_polytope, S, idx_outside_polytope, n_clusters, iteration)
 
             # decide the convergence based on the clustering stability
             S_hold = S.copy()
