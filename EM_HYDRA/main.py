@@ -71,7 +71,7 @@ class HYDRA(BaseEM, ClassifierMixin):
         If not specified, "Determinental Point Process" will be used.
     clustering : string, optional (default="original")
         Clustering method for the Expectation step,
-        It must be one of "original", "boundary_barycenter", "k_means", "gaussian_mixture" or "bissector_hyperplane".
+        It must be one of "original", "k_means", "gaussian_mixture".
         If not specified, HYDRA original "Max Margin Distance" will be used.
     consensus : string, optional (default="spectral_clustering")
         Consensus method for the Clustering bagging method,
@@ -154,9 +154,13 @@ class HYDRA(BaseEM, ClassifierMixin):
         for original_label, new_label in self.training_label_mapping.items():
             y_train_copy[y_train == original_label] = new_label
 
-        # cluster each label one by one and confine the other inside the polytope
-        for label in range(self.n_labels):
-            self.run(X_train, y_train_copy, self.n_clusters_per_label[label], idx_outside_polytope=label)
+        if self.n_labels > 1 :
+            # cluster each label one by one and confine the other inside the polytope
+            for label in range(self.n_labels):
+                self.run(X_train, y_train_copy, self.n_clusters_per_label[label], idx_outside_polytope=label)
+        else :
+            # if n_labels == 1, then we have a regression problem
+            self.run_regression(X_train, y_train_copy, self.n_clusters_per_label[0])
 
         return self
 
@@ -259,7 +263,7 @@ class HYDRA(BaseEM, ClassifierMixin):
                              range(self.n_labels)}
 
             for label in range(self.n_labels):
-                # fullfill the SVM score matrix
+                # fulfill the SVM score matrix
                 for cluster in range(self.n_clusters_per_label[label]):
                     SVM_coefficient = self.coefficients[label][cluster]
                     SVM_intercept = self.intercepts[label][cluster]
@@ -292,6 +296,23 @@ class HYDRA(BaseEM, ClassifierMixin):
                 else:
                     cluster_predictions[label] = np.ones((len(X), 1))
         return cluster_predictions
+
+    def run_regression(self, X, y, n_clusters):
+        n_consensus = self.n_consensus
+        for consensus in range(n_consensus):
+            # first we initialize the clustering matrix S, with the initialization strategy set in self.initialization
+            S, cluster_index, n_clusters = self.initialize_clustering(X, y, None, None, 0, n_clusters)
+            if self.positive_weighting in ['hard_clustering']:
+                S = np.rint(S)
+
+            cluster_index = self.run_EM(X, y, y, S, cluster_index, None, None, 0, n_clusters, consensus)
+
+            # update the cluster index for the consensus clustering
+            self.clustering_assignments[0][:, consensus] = cluster_index
+
+        if n_consensus > 1:
+            self.clustering_bagging(X, y, y, None, None, 0,
+                                    n_clusters)
 
     def run(self, X, y, n_clusters, idx_outside_polytope):
         # set label idx_outside_polytope outside of the polytope by setting it to positive labels
@@ -419,11 +440,11 @@ class HYDRA(BaseEM, ClassifierMixin):
             prob = py_softmax(prob, 1)
             S[index_positives] = cpu_sk(prob, 1)
 
-        if self.initialization == "k_means":
+        if self.initialization in ["k_means"]:
             KM = KMeans(n_clusters=self.n_clusters_per_label[idx_outside_polytope]).fit(X[index_positives])
             S = one_hot_encode(KM.predict(X))
 
-        if self.initialization == "gaussian_mixture":
+        if self.initialization in ["gaussian_mixture"]:
             GMM = GaussianMixture(n_components=self.n_clusters_per_label[idx_outside_polytope]).fit(X[index_positives])
             S = GMM.predict_proba(X)
 
@@ -448,13 +469,19 @@ class HYDRA(BaseEM, ClassifierMixin):
             for cluster in range(n_clusters):
                 cluster_assignment = np.ascontiguousarray(S[:, cluster])
                 SVM_coefficient, SVM_intercept = launch_svc(X, y_polytope, cluster_assignment, self.kernel, self.C)
-
                 self.coefficients[idx_outside_polytope][cluster].extend(SVM_coefficient)
                 self.intercepts[idx_outside_polytope][cluster] = SVM_intercept
-
                 # TODO: get rid of
                 self.coef_lists[idx_outside_polytope][cluster][iteration + 1] = SVM_coefficient.copy()
                 self.intercept_lists[idx_outside_polytope][cluster][iteration + 1] = SVM_intercept.copy()
+
+        elif self.classification == "logistic_regression":
+            for cluster in range(n_clusters):
+                cluster_assignment = np.ascontiguousarray(S[:, cluster])
+                logistic_coefficient = launch_logistic(X, y_polytope, cluster_assignment)
+                self.coefficients[idx_outside_polytope][cluster].extend(logistic_coefficient)
+                # TODO: get rid of
+                self.coef_lists[idx_outside_polytope][cluster][iteration + 1] = logistic_coefficient.copy()
 
     def expectation_step(self, X, S, index_positives, idx_outside_polytope, consensus):
         """Update clustering method (update clustering distribution matrix S).
@@ -521,6 +548,8 @@ class HYDRA(BaseEM, ClassifierMixin):
             self.orthonormal_basis[idx_outside_polytope][consensus] = np.array(basis)
             self.orthonormal_basis[idx_outside_polytope][-1] = np.array(basis).copy()
             X_proj = X @ self.orthonormal_basis[idx_outside_polytope][consensus].T
+
+            print(X_proj.shape)
 
             centroids = [np.mean(S[index_positives, cluster_i][:, None] * X_proj[index_positives, :], 0) for cluster_i
                          in
@@ -644,10 +673,10 @@ class HYDRA(BaseEM, ClassifierMixin):
 
             # check the Clustering Stability \w Adjusted Rand Index for stopping criteria
             cluster_consistency = ARI(np.argmax(S[index_positives], 1), np.argmax(S_hold[index_positives], 1))
-            #print(cluster_consistency)
+            print(cluster_consistency)
             if cluster_consistency > self.stability_threshold:
                 break
-        #print('')
+        print('')
         return cluster_index
 
     def clustering_bagging(self, X, y, y_polytope, index_positives, index_negatives, idx_outside_polytope, n_clusters):

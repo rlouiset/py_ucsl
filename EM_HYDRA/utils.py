@@ -6,6 +6,7 @@ from sklearn.cluster import KMeans
 from sklearn.svm import SVC
 from sklearn.cluster import SpectralClustering
 from sklearn.mixture import GaussianMixture
+from sklearn.linear_model import LogisticRegression
 
 
 def one_hot_encode(y, n_classes=None):
@@ -260,3 +261,28 @@ def launch_svc(X, y, sample_weight=None, kernel='linear', C=1):
 
     return SVM_coefficient, SVM_intercept
 
+
+def launch_logistic(X, y, sample_weight=None):
+    """Fit the logistic regressions according to the given training data.
+    Parameters
+    ----------
+    X : array-like, shape (n_samples, n_features)
+        Training vectors.
+    y : array-like, shape (n_samples,)
+        Target values.
+    sample_weight : array-like, shape (n_samples,)
+        Training sample weights.
+    Returns
+    -------
+    logistic_coefficient : array-like, shape (1, n_features)
+        The coefficient of the resulting logistic regression.
+    """
+
+    # fit the different logistic classifier
+    logistic = LogisticRegression()
+    logistic.fit(X, y, sample_weight=sample_weight)
+
+    # get logistic coefficient
+    logistic_coefficient = logistic.coef_
+
+    return logistic_coefficient
