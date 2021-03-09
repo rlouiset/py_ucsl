@@ -116,9 +116,9 @@ class HYDRA(BaseEM, ClassifierMixin):
         # define clustering parameters
         self.cluster_labels_ = {label: None for label in range(self.n_labels)}
         self.barycenters = {label: None for label in range(self.n_labels)}
-        self.coefficients = {label: {cluster_i: None for cluster_i in range(n_clusters_per_label[label])} for label in
+        self.coefficients = {label: {cluster_i: [] for cluster_i in range(n_clusters_per_label[label])} for label in
                              range(self.n_labels)}
-        self.intercepts = {label: {cluster_i: None for cluster_i in range(n_clusters_per_label[label])} for label in
+        self.intercepts = {label: {cluster_i: [] for cluster_i in range(n_clusters_per_label[label])} for label in
                            range(self.n_labels)}
 
         # TODO : Get rid of these visualization helps
@@ -449,8 +449,8 @@ class HYDRA(BaseEM, ClassifierMixin):
                 cluster_assignment = np.ascontiguousarray(S[:, cluster])
                 SVM_coefficient, SVM_intercept = launch_svc(X, y_polytope, cluster_assignment, self.kernel, self.C)
 
-                self.coefficients[idx_outside_polytope][cluster].append(SVM_coefficient)
-                self.intercepts[idx_outside_polytope][cluster].append(SVM_intercept)
+                self.coefficients[idx_outside_polytope][cluster].extend(SVM_coefficient)
+                self.intercepts[idx_outside_polytope][cluster].extend(SVM_intercept)
 
                 # TODO: get rid of
                 self.coef_lists[idx_outside_polytope][cluster][iteration + 1] = SVM_coefficient.copy()
