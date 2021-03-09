@@ -272,7 +272,7 @@ class HYDRA(BaseEM, ClassifierMixin):
             for label in range(self.n_labels):
                 cluster_predictions[label] = SVM_distances[label] / np.sum(SVM_distances[label], 1)[:, None]
 
-        elif self.clustering in ['k_means', 'gaussian_mixture']:
+        elif self.clustering in ['k_means', 'gaussian_mixture', 'DBSCAN']:
             for label in range(self.n_labels):
                 if self.n_clusters_per_label[label] > 1:
                     X_proj = X @ self.orthonormal_basis[label][-1].T
@@ -541,6 +541,7 @@ class HYDRA(BaseEM, ClassifierMixin):
                     covariance_type='spherical', means_init=np.array(centroids)).fit(
                     X_proj[index_positives])
                 Q = self.clustering_method[idx_outside_polytope][consensus].predict_proba(X_proj)
+                print(Q.shape)
                 self.clustering_method[idx_outside_polytope][-1] = copy.deepcopy(
                     self.clustering_method[idx_outside_polytope][consensus])
 
@@ -643,8 +644,10 @@ class HYDRA(BaseEM, ClassifierMixin):
 
             # check the Clustering Stability \w Adjusted Rand Index for stopping criteria
             cluster_consistency = ARI(np.argmax(S[index_positives], 1), np.argmax(S_hold[index_positives], 1))
+            #print(cluster_consistency)
             if cluster_consistency > self.stability_threshold:
                 break
+        #print('')
         return cluster_index
 
     def clustering_bagging(self, X, y, y_polytope, index_positives, index_negatives, idx_outside_polytope, n_clusters):
