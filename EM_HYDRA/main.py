@@ -4,7 +4,6 @@ from abc import ABCMeta, abstractmethod
 from sklearn.metrics import adjusted_rand_score as ARI
 from EM_HYDRA.DPP_utils import *
 from EM_HYDRA.utils import *
-from sklearn.svm import SVC
 
 import logging
 import copy

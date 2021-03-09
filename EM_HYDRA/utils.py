@@ -3,7 +3,7 @@ from scipy.special import logsumexp
 import scipy
 from EM_HYDRA.sinkornknopp import *
 from sklearn.cluster import KMeans
-import cvxpy as cp
+from sklearn.svm import SVC
 from sklearn.cluster import SpectralClustering
 from sklearn.mixture import GaussianMixture
 
