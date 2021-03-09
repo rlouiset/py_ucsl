@@ -549,8 +549,6 @@ class HYDRA(BaseEM, ClassifierMixin):
             self.orthonormal_basis[idx_outside_polytope][-1] = np.array(basis).copy()
             X_proj = X @ self.orthonormal_basis[idx_outside_polytope][consensus].T
 
-            print(X_proj.shape)
-
             centroids = [np.mean(S[index_positives, cluster_i][:, None] * X_proj[index_positives, :], 0) for cluster_i
                          in
                          range(self.n_clusters_per_label[idx_outside_polytope])]
@@ -673,10 +671,8 @@ class HYDRA(BaseEM, ClassifierMixin):
 
             # check the Clustering Stability \w Adjusted Rand Index for stopping criteria
             cluster_consistency = ARI(np.argmax(S[index_positives], 1), np.argmax(S_hold[index_positives], 1))
-            print(cluster_consistency)
             if cluster_consistency > self.stability_threshold:
                 break
-        print('')
         return cluster_index
 
     def clustering_bagging(self, X, y, y_polytope, index_positives, index_negatives, idx_outside_polytope, n_clusters):
