@@ -449,10 +449,10 @@ class HYDRA(BaseEM, ClassifierMixin):
                 cluster_assignment = np.ascontiguousarray(S[:, cluster])
                 SVM_coefficient, SVM_intercept = launch_svc(X, y_polytope, cluster_assignment, self.kernel, self.C)
 
-                print(len(self.coefficients[idx_outside_polytope][cluster]))
-
                 self.coefficients[idx_outside_polytope][cluster].extend(SVM_coefficient)
                 self.intercepts[idx_outside_polytope][cluster] = SVM_intercept
+
+                print(len(self.coefficients[idx_outside_polytope][cluster]))
 
                 # TODO: get rid of
                 self.coef_lists[idx_outside_polytope][cluster][iteration + 1] = SVM_coefficient.copy()
