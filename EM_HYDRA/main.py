@@ -106,8 +106,8 @@ class HYDRA(BaseEM, ClassifierMixin):
             self.training_label_mapping = training_label_mapping
 
         # define clustering parameters
-        self.barycenters = {label: {cluster: None for cluster in range(n_clusters_per_label[label])} for label in
-                            range(self.n_labels)}
+        self.cluster_labels_ = {label: None for label in range(self.n_labels)}
+        self.barycenters = {label: None for label in range(self.n_labels)}
         self.coefficients = {label: {cluster_i: None for cluster_i in range(n_clusters_per_label[label])} for label in
                              range(self.n_labels)}
         self.intercepts = {label: {cluster_i: None for cluster_i in range(n_clusters_per_label[label])} for label in
@@ -274,6 +274,13 @@ class HYDRA(BaseEM, ClassifierMixin):
                             n_classes=self.n_clusters_per_label[label])
                     elif self.clustering == 'gaussian_mixture':
                         cluster_predictions[label] = self.clustering_method[label][-1].predict_proba(X_proj)
+                    elif self.clustering == 'DBSCAN':
+                        Q_distances = np.zeros((len(X_proj), len(self.barycenters[label])))
+                        for cluster in range(len(self.barycenters[label])):
+                            Q_distances[:, cluster] = np.linalg.norm(
+                                X_proj - self.barycenters[label][cluster][None, :], 1)
+                        Q_distances /= np.sum(Q_distances, 1)[:, None]
+                        cluster_predictions[label] = 1 - Q_distances
                 else:
                     cluster_predictions[label] = np.ones((len(X), 1))
         return cluster_predictions
@@ -302,8 +309,7 @@ class HYDRA(BaseEM, ClassifierMixin):
 
         for consensus in range(n_consensus):
             # first we initialize the clustering matrix S, with the initialization strategy set in self.initialization
-            S, cluster_index = self.initialize_clustering(X, y_polytope, index_positives, index_negatives,
-                                                          n_clusters, idx_outside_polytope)
+            S, cluster_index = self.initialize_clustering(X, y_polytope, index_positives, index_negatives, n_clusters, idx_outside_polytope)
             if self.negative_weighting in ['all']:
                 S[index_negatives] = 1 / n_clusters
             elif self.negative_weighting in ['hard_clustering']:
@@ -314,14 +320,14 @@ class HYDRA(BaseEM, ClassifierMixin):
             # TODO : Get rid of these visualization helps
             self.S_lists[idx_outside_polytope][0] = S.copy()
 
-            cluster_index = self.run_EM(X, y_polytope, S, cluster_index, index_positives, index_negatives,
+            cluster_index = self.run_EM(X, y, y_polytope, S, cluster_index, index_positives, index_negatives,
                                         idx_outside_polytope, n_clusters, consensus)
 
             # update the cluster index for the consensus clustering
             self.clustering_assignments[idx_outside_polytope][:, consensus] = cluster_index
 
         if n_consensus > 1:
-            self.clustering_bagging(X, y_polytope, index_positives, index_negatives, idx_outside_polytope, n_clusters)
+            self.clustering_bagging(X, y, y_polytope, index_positives, index_negatives, idx_outside_polytope, n_clusters)
 
     def predict_clusters_proba_for_negative_points(self, X, idx_outside_polytope, n_clusters):
         """Predict positive and negative points clustering probabilities.
@@ -343,6 +349,8 @@ class HYDRA(BaseEM, ClassifierMixin):
             X_proj = X @ self.orthonormal_basis[idx_outside_polytope][consensus].T
             if self.clustering in ['k_means', 'gaussian_mixture']:
                 X_clustering_assignments[:, consensus] = self.clustering_method[idx_outside_polytope][consensus].predict(X_proj)
+            elif self.clustering in ['DBSCAN']:
+                X_clustering_assignments[:, consensus] = self.clustering_method[idx_outside_polytope][consensus].fit_predict(X_proj)
         similarity_matrix = compute_similarity_matrix(self.clustering_assignments[idx_outside_polytope],
                                                       clustering_assignments_to_pred=X_clustering_assignments)
 
@@ -527,13 +535,13 @@ class HYDRA(BaseEM, ClassifierMixin):
                 for cluster in range(np.max(Q_positives)+1) :
                     Q_distances[:, cluster] = np.linalg.norm(X_proj-np.mean(X_proj[index_positives][Q_positives==cluster], 0)[None,:], 1)
                 Q_distances /= np.sum(Q_distances, 1)[:, None]
-                Q = 1 - Q
+                Q = 1 - Q_distances
 
         S = Q.copy()
         cluster_index = np.argmax(Q[index_positives], axis=1)
         return S, cluster_index
 
-    def run_EM(self, X, y_polytope, S, cluster_index, index_positives, index_negatives, idx_outside_polytope,
+    def run_EM(self, X, y, y_polytope, S, cluster_index, index_positives, index_negatives, idx_outside_polytope,
                n_clusters, consensus):
         """Perform a bagging of the previously obtained clusterings and compute new hyperplanes.
         Parameters
@@ -602,7 +610,7 @@ class HYDRA(BaseEM, ClassifierMixin):
                 break
         return cluster_index
 
-    def clustering_bagging(self, X, y_polytope, index_positives, index_negatives, idx_outside_polytope, n_clusters):
+    def clustering_bagging(self, X, y, y_polytope, index_positives, index_negatives, idx_outside_polytope, n_clusters):
         """Perform a bagging of the previously obtained clustering and compute new hyperplanes.
         Parameters
         ----------
@@ -653,5 +661,9 @@ class HYDRA(BaseEM, ClassifierMixin):
             if self.positive_weighting in ['hard_clustering']:
                 S[index_positives] = np.rint(S[index_positives])
 
-            self.run_EM(X, y_polytope, S, consensus_cluster_index, index_positives, index_negatives,
+            cluster_index = self.run_EM(X, y, y_polytope, S, consensus_cluster_index, index_positives, index_negatives,
                         idx_outside_polytope, n_clusters, -1)
+
+            self.cluster_labels_[idx_outside_polytope] = cluster_index
+            X_proj = X @ self.orthonormal_basis[idx_outside_polytope][-1].T
+            self.barycenters[idx_outside_polytope] = [np.mean(X_proj[index_positives][cluster_index==cluster], 0)[None,:] for cluster in range(np.max(cluster_index)+1)]
