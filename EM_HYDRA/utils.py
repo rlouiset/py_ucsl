@@ -221,32 +221,42 @@ def compute_spectral_clustering_consensus(clustering_results, n_clusters):
     return spectral_clustering_method.labels_
 
 
-def optimize_HYDRA_dual(self, X, y_polytope, S):
-    # first we define number of samples, number of clusters etc...
-    n_samples = X.shape[0]
-    n_clusters = S.shape[1]
-    diag_y = np.eye(n_samples, n_samples) * y_polytope[:, None]
-    y_polytope_repeat = np.repeat(y_polytope[:, None], S.shape[1], axis=1)
+def launch_svc(X, y, sample_weight=None, kernel='linear', C=1):
+    """Fit the classification SVMs according to the given training data.
+    Parameters
+    ----------
+    X : array-like, shape (n_samples, n_features)
+        Training vectors.
+    y : array-like, shape (n_samples,)
+        Target values.
+    sample_weight : array-like, shape (n_samples,)
+        Training sample weights.
+    kernel : string,
+        kernel used for SVM.
+    C : float,
+        SVM hyperparameter C
+    Returns
+    -------
+    SVM_coefficient : array-like, shape (1, n_features)
+        The coefficient of the resulting SVM.
+    SVM_intercept : array-like, shape (1,)
+        The intercept of the resulting SVM.
+    """
 
-    # then we define the Variables and Parameters
-    lambda_dual_matrix = cp.Variable(shape=S.shape, nonneg=True)
-    S_parameter = cp.Parameter(shape=S.shape, value=S, nonneg=True)
-    y_polytope_parameter = cp.Parameter(shape=y_polytope_repeat.shape, value=y_polytope_repeat)
-    K = diag_y @ X @ X.T @ diag_y
-    K_parameter = cp.Parameter(shape=K.shape, PSD=True, value=K)
+    # fit the different SVM/hyperplanes
+    SVM_classifier = SVC(kernel=kernel, C=C)
+    SVM_classifier.fit(X, y, sample_weight=sample_weight)
 
-    # we define the objective function
-    obj = - cp.sum(lambda_dual_matrix)
-    for k in range(n_clusters):
-        lambda_column = lambda_dual_matrix[:, k][:, None]
-        obj += cp.quad_form(lambda_column, K_parameter)
+    # get SVM intercept value
+    SVM_intercept = SVM_classifier.intercept_
 
-    # We set the constraints
-    const = [cp.multiply(y_polytope_parameter, lambda_dual_matrix) >= np.zeros((n_samples, n_clusters)),
-             lambda_dual_matrix >= np.zeros(lambda_dual_matrix.shape),
-             self.C * S_parameter >= lambda_dual_matrix]
+    # get SVM hyperplane coefficient
+    if kernel == 'rbf':
+        X_support = X[SVM_classifier.support_]
+        y_support = y[SVM_classifier.support_]
+        SVM_coefficient = SVM_classifier.dual_coef_ @ np.einsum('i,ij->ij', y_support, X_support)
+    else:
+        SVM_coefficient = SVM_classifier.coef_
 
-    # we run the problem minimizer
-    prob = cp.Problem(cp.Minimize(obj), const)
-    prob.solve(solver=cp.ECOS)
-    return lambda_dual_matrix.value
+    return SVM_coefficient, SVM_intercept
+
