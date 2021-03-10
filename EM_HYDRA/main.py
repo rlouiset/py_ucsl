@@ -323,10 +323,11 @@ class HYDRA(BaseEM, ClassifierMixin):
 
         for consensus in range(n_consensus):
             # first we initialize the clustering matrix S, with the initialization strategy set in self.initialization
+            print(self.multiclass_config)
+            print(len(index_positives))
+            print(len(index_negatives))
             S, cluster_index, n_clusters = self.initialize_clustering(X, y_polytope, index_positives, index_negatives, n_clusters, idx_outside_polytope)
             print(len(S))
-            print(len(S[index_positives]))
-            print(len(S[index_negatives]))
             if self.negative_weighting in ['all']:
                 S[index_negatives] = 1 / n_clusters
             elif self.negative_weighting in ['hard_clustering']:
@@ -371,8 +372,7 @@ class HYDRA(BaseEM, ClassifierMixin):
             elif self.clustering in ['DBSCAN']:
                 X_clustering_assignments[:, consensus] = self.clustering_method[idx_outside_polytope][
                     consensus].fit_predict(X_proj)
-        similarity_matrix = compute_similarity_matrix(self.clustering_assignments[idx_outside_polytope],
-                                                      clustering_assignments_to_pred=X_clustering_assignments)
+        similarity_matrix = compute_similarity_matrix(self.clustering_assignments[idx_outside_polytope], clustering_assignments_to_pred=X_clustering_assignments)
 
         Q = np.zeros((len(X), n_clusters))
         y_clusters_train_ = self.y_clusters_pred[idx_outside_polytope]
@@ -606,9 +606,6 @@ class HYDRA(BaseEM, ClassifierMixin):
         S : array-like, shape (n_samples, n_samples)
             Cluster prediction matrix.
         """
-        print(len(S))
-        print(len(S[index_positives]))
-        print(len(S[index_negatives]))
         for iteration in range(self.n_iterations):
             # check for degenerate clustering for positive labels (warning) and negatives (might be normal)
             for cluster in range(self.n_clusters_per_label[idx_outside_polytope]):
