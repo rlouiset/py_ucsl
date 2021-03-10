@@ -158,11 +158,9 @@ class HYDRA(BaseEM, ClassifierMixin):
         y_train_copy = y_train.copy()
         for original_label, new_label in self.training_label_mapping.items():
             y_train_copy[y_train == original_label] = new_label
-        print(y_train_copy)
 
         # cluster each label one by one and confine the other inside the polytope
         for label in range(self.n_labels):
-            print(label)
             self.run(X_train, y_train_copy, self.n_clusters_per_label[label], idx_outside_polytope=label)
 
         return self
@@ -301,8 +299,6 @@ class HYDRA(BaseEM, ClassifierMixin):
         return cluster_predictions
 
     def run(self, X, y, n_clusters, idx_outside_polytope):
-        print(idx_outside_polytope)
-
         # set label idx_outside_polytope outside of the polytope by setting it to positive labels
         y_polytope = np.copy(y)
         # if label is inside of the polytope, the distance is negative and the label is not divided into
@@ -310,10 +306,14 @@ class HYDRA(BaseEM, ClassifierMixin):
         # if label is outside of the polytope, the distance is positive and the label is clustered
         y_polytope[y_polytope == idx_outside_polytope] = 1
 
-        print(len(y_polytope))
-
         index_positives = np.where(y_polytope == 1)[0]  # index for Positive labels (outside polytope)
         index_negatives = np.where(y_polytope == -1)[0]  # index for Negative labels (inside polytope)
+
+        if idx_outside_polytope == 8 :
+            print(y_polytope)
+            print(len(y_polytope))
+            print(len(index_negatives))
+            print(len(index_positives))
 
         if n_clusters == 1:
             # by default, when we do not want to cluster a label, we train a simple linear SVM
@@ -328,11 +328,7 @@ class HYDRA(BaseEM, ClassifierMixin):
 
         for consensus in range(n_consensus):
             # first we initialize the clustering matrix S, with the initialization strategy set in self.initialization
-            print(self.multiclass_config)
-            print(len(index_positives))
-            print(len(index_negatives))
             S, cluster_index, n_clusters = self.initialize_clustering(X, y_polytope, index_positives, index_negatives, n_clusters, idx_outside_polytope)
-            print(len(S))
             if self.negative_weighting in ['all']:
                 S[index_negatives] = 1 / n_clusters
             elif self.negative_weighting in ['hard_clustering']:
