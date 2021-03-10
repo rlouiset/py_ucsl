@@ -161,7 +161,6 @@ class HYDRA(BaseEM, ClassifierMixin):
 
         # cluster each label one by one and confine the other inside the polytope
         for label in range(self.n_labels):
-            print(label)
             self.run(X_train, y_train_copy, self.n_clusters_per_label[label], idx_outside_polytope=label)
 
         return self
@@ -432,7 +431,6 @@ class HYDRA(BaseEM, ClassifierMixin):
         if self.initialization in ["gaussian_mixture"]:
             GMM = GaussianMixture(n_components=self.n_clusters_per_label[idx_outside_polytope], n_init=1).fit(X[index_positives])
             S = GMM.predict_proba(X)
-            print(S[:5])
 
         if self.initialization in ['DBSCAN']:
             dbscan = DBSCAN()
@@ -605,6 +603,9 @@ class HYDRA(BaseEM, ClassifierMixin):
         S : array-like, shape (n_samples, n_samples)
             Cluster prediction matrix.
         """
+        print(len(S))
+        print(len(S[index_positives]))
+        print(len(S[index_negatives]))
         for iteration in range(self.n_iterations):
             # check for degenerate clustering for positive labels (warning) and negatives (might be normal)
             for cluster in range(self.n_clusters_per_label[idx_outside_polytope]):
@@ -647,7 +648,6 @@ class HYDRA(BaseEM, ClassifierMixin):
             # decide the convergence based on the clustering stability
             S_hold = S.copy()
             S, cluster_index, n_clusters = self.expectation_step(X, S, index_positives, idx_outside_polytope, n_clusters, consensus)
-            print(S[:5])
 
             # applying the negative weighting set as input
             if self.negative_weighting in ['all']:
