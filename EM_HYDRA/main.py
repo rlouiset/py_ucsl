@@ -454,7 +454,7 @@ class HYDRA(BaseEM, ClassifierMixin):
             S = GMM.predict_proba(X)
 
         if self.initialization in ['DBSCAN']:
-            dbscan = DBSCAN()
+            dbscan = DBSCAN(eps=0.1)
             S_positives = dbscan.fit_predict(X[index_positives])
             print(S_positives)
             S_distances = np.zeros((len(X), np.max(S_positives) + 1))
