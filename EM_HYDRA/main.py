@@ -545,6 +545,7 @@ class HYDRA(BaseEM, ClassifierMixin):
                         basis.append(w / np.linalg.norm(w))
                 elif np.linalg.norm(w) > 1e-2:
                     basis.append(w / np.linalg.norm(w))
+            print('')
 
             self.orthonormal_basis[idx_outside_polytope][consensus] = np.array(basis)
             self.orthonormal_basis[idx_outside_polytope][-1] = np.array(basis).copy()
