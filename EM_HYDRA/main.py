@@ -38,8 +38,10 @@ class BaseEM(BaseEstimator, metaclass=ABCMeta):
         self.n_labels = n_labels
         if n_clusters_per_label is None:
             self.n_clusters_per_label = {label: 2 for label in range(n_labels)}
+            self.adpaptive_clustering = True
         else:
             self.n_clusters_per_label = n_clusters_per_label
+            self.adpaptive_clustering = False
 
         # define what type of initialization, clustering, classification and consensus one wants to use
         self.initialization = initialization
@@ -462,7 +464,11 @@ class HYDRA(BaseEM, ClassifierMixin):
             S = self.initialization_matrixes[idx_outside_polytope]
 
         cluster_index = np.argmax(S[index_positives], axis=1)
-        return S, cluster_index, max(S.shape[1], 2)
+
+        if self.adpaptive_clustering :
+            n_clusters = max(S.shape[1], 2)
+
+        return S, cluster_index, n_clusters
 
     def maximization_step(self, X, y_polytope, S, idx_outside_polytope, n_clusters, iteration):
         if self.classification == "max_margin":
@@ -584,7 +590,10 @@ class HYDRA(BaseEM, ClassifierMixin):
 
         S = Q.copy()
         cluster_index = np.argmax(Q[index_positives], axis=1)
-        return S, cluster_index, max(S.shape[1], 2)
+
+        if self.adpaptive_clustering :
+            n_clusters = max(S.shape[1], 2)
+        return S, cluster_index, n_clusters
 
     def run_EM(self, X, y, y_polytope, S, cluster_index, index_positives, index_negatives, idx_outside_polytope,
                n_clusters, consensus):
@@ -625,8 +634,6 @@ class HYDRA(BaseEM, ClassifierMixin):
                     S, cluster_index, n_clusters = self.initialize_clustering(X, y_polytope, index_positives,
                                                                               index_negatives,
                                                                               n_clusters, idx_outside_polytope)
-                    print(n_clusters)
-
                 if np.max(S[index_negatives, cluster]) < 0.5:
                     logging.debug(
                         "Cluster too far, one cluster have no negative points anymore, in consensus : %d" % (
