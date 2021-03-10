@@ -456,6 +456,7 @@ class HYDRA(BaseEM, ClassifierMixin):
         if self.initialization in ['DBSCAN']:
             dbscan = DBSCAN()
             S_positives = dbscan.fit_predict(X[index_positives])
+            print(S_positives)
             S_distances = np.zeros((len(X), np.max(S_positives) + 1))
             for cluster in range(np.max(S_positives) + 1):
                 S_distances[:, cluster] = np.linalg.norm(
