@@ -38,10 +38,13 @@ class BaseEM(BaseEstimator, metaclass=ABCMeta):
         self.n_labels = n_labels
         if n_clusters_per_label is None:
             self.n_clusters_per_label = {label: 2 for label in range(n_labels)}
-            self.adpaptive_clustering = True
+            self.adaptive_clustering = True
+        elif clustering in ['dbscan'] :
+            self.n_clusters_per_label = n_clusters_per_label
+            self.adaptive_clustering = True
         else:
             self.n_clusters_per_label = n_clusters_per_label
-            self.adpaptive_clustering = False
+            self.adaptive_clustering = False
 
         # define what type of initialization, clustering, classification and consensus one wants to use
         self.initialization = initialization
@@ -465,7 +468,7 @@ class HYDRA(BaseEM, ClassifierMixin):
 
         cluster_index = np.argmax(S[index_positives], axis=1)
 
-        if self.adpaptive_clustering :
+        if self.adaptive_clustering :
             n_clusters = max(S.shape[1], 2)
 
         return S, cluster_index, n_clusters
@@ -589,7 +592,7 @@ class HYDRA(BaseEM, ClassifierMixin):
         S = Q.copy()
         cluster_index = np.argmax(Q[index_positives], axis=1)
 
-        if self.adpaptive_clustering :
+        if self.adaptive_clustering :
             n_clusters = max(S.shape[1], 2)
         return S, cluster_index, n_clusters
 
@@ -662,7 +665,7 @@ class HYDRA(BaseEM, ClassifierMixin):
 
             # decide the convergence based on the clustering stability
             S_hold = S.copy()
-            S, cluster_index, n_clusters = self.expectation_step(X, S, index_positives, idx_outside_polytope, consensus)
+            S, cluster_index, n_clusters = self.expectation_step(X, S, index_positives, idx_outside_polytope, n_clusters, consensus)
 
             # applying the negative weighting set as input
             if self.negative_weighting in ['all']:
