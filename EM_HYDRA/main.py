@@ -489,7 +489,7 @@ class HYDRA(BaseEM, ClassifierMixin):
                 # TODO: get rid of
                 self.coef_lists[idx_outside_polytope][cluster][iteration + 1] = logistic_coefficient.copy()
 
-    def expectation_step(self, X, S, index_positives, idx_outside_polytope, consensus):
+    def expectation_step(self, X, S, index_positives, idx_outside_polytope, n_clusters, consensus):
         """Update clustering method (update clustering distribution matrix S).
         Parameters
         ----------
@@ -514,7 +514,7 @@ class HYDRA(BaseEM, ClassifierMixin):
         Q = S.copy()
         if self.clustering == 'original':
             SVM_distances = np.zeros(S.shape)
-            for cluster in range(self.n_clusters_per_label[idx_outside_polytope]):
+            for cluster in range(n_clusters):
                 # Apply the data again the trained model to get the final SVM scores
                 SVM_coefficient = self.coefficients[idx_outside_polytope][cluster]
                 SVM_intercept = self.intercepts[idx_outside_polytope][cluster]
@@ -527,7 +527,7 @@ class HYDRA(BaseEM, ClassifierMixin):
         if self.clustering in ['k_means', 'gaussian_mixture', 'DBSCAN']:
             # get directions
             directions = []
-            for cluster in range(self.n_clusters_per_label[idx_outside_polytope]):
+            for cluster in range(n_clusters):
                 directions.extend(self.coefficients[idx_outside_polytope][cluster])
             norm_directions = [np.linalg.norm(direction) for direction in directions]
             directions = np.array(directions) / np.array(norm_directions)[:, None]
@@ -557,22 +557,20 @@ class HYDRA(BaseEM, ClassifierMixin):
 
             centroids = [np.mean(S[index_positives, cluster_i][:, None] * X_proj[index_positives, :], 0) for cluster_i
                          in
-                         range(self.n_clusters_per_label[idx_outside_polytope])]
+                         range(n_clusters)]
 
             if self.clustering == 'k_means':
                 self.clustering_method[idx_outside_polytope][consensus] = KMeans(
-                    n_clusters=self.n_clusters_per_label[idx_outside_polytope],
+                    n_clusters=n_clusters,
                     init=np.array(centroids), n_init=1).fit(X_proj[index_positives])
                 Q = one_hot_encode(self.clustering_method[idx_outside_polytope][consensus].predict(X_proj),
-                                   n_classes=self.n_clusters_per_label[idx_outside_polytope])
+                                   n_classes=n_clusters)
                 self.clustering_method[idx_outside_polytope][-1] = copy.deepcopy(
                     self.clustering_method[idx_outside_polytope][consensus])
 
             if self.clustering == 'gaussian_mixture':
                 self.clustering_method[idx_outside_polytope][consensus] = GaussianMixture(
-                    n_components=self.n_clusters_per_label[idx_outside_polytope],
-                    covariance_type='spherical', means_init=np.array(centroids)).fit(
-                    X_proj[index_positives])
+                    n_components=n_clusters, covariance_type='spherical', means_init=np.array(centroids)).fit(X_proj[index_positives])
                 Q = self.clustering_method[idx_outside_polytope][consensus].predict_proba(X_proj)
                 self.clustering_method[idx_outside_polytope][-1] = copy.deepcopy(
                     self.clustering_method[idx_outside_polytope][consensus])
