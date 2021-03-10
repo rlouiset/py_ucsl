@@ -1,4 +1,4 @@
-from main import *
+from UCSL_classifier import *
 from base import *
 
 HYDRA_method = HYDRA()
