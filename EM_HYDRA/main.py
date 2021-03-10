@@ -159,13 +159,9 @@ class HYDRA(BaseEM, ClassifierMixin):
         for original_label, new_label in self.training_label_mapping.items():
             y_train_copy[y_train == original_label] = new_label
 
-        if self.n_labels > 1 :
-            # cluster each label one by one and confine the other inside the polytope
-            for label in range(self.n_labels):
-                self.run(X_train, y_train_copy, self.n_clusters_per_label[label], idx_outside_polytope=label)
-        else :
-            # if n_labels == 1, then we have a regression problem
-            self.run_regression(X_train, y_train_copy, self.n_clusters_per_label[0])
+        # cluster each label one by one and confine the other inside the polytope
+        for label in range(self.n_labels):
+            self.run(X_train, y_train_copy, self.n_clusters_per_label[label], idx_outside_polytope=label)
 
         return self
 
@@ -302,23 +298,6 @@ class HYDRA(BaseEM, ClassifierMixin):
                     cluster_predictions[label] = np.ones((len(X), 1))
         return cluster_predictions
 
-    def run_regression(self, X, y, n_clusters):
-        n_consensus = self.n_consensus
-        for consensus in range(n_consensus):
-            # first we initialize the clustering matrix S, with the initialization strategy set in self.initialization
-            S, cluster_index, n_clusters = self.initialize_clustering(X, y, None, None, 0, n_clusters)
-            if self.positive_weighting in ['hard_clustering']:
-                S = np.rint(S)
-
-            cluster_index = self.run_EM(X, y, y, S, cluster_index, None, None, 0, n_clusters, consensus)
-
-            # update the cluster index for the consensus clustering
-            self.clustering_assignments[0][:, consensus] = cluster_index
-
-        if n_consensus > 1:
-            self.clustering_bagging(X, y, y, None, None, 0,
-                                    n_clusters)
-
     def run(self, X, y, n_clusters, idx_outside_polytope):
         # set label idx_outside_polytope outside of the polytope by setting it to positive labels
         y_polytope = np.copy(y)
@@ -356,7 +335,7 @@ class HYDRA(BaseEM, ClassifierMixin):
             self.S_lists[idx_outside_polytope][0] = S.copy()
 
             cluster_index = self.run_EM(X, y, y_polytope, S, cluster_index, index_positives, index_negatives,
-                                        idx_outside_polytope, n_clusters, consensus)
+                                        idx_outside_polytope, n_clusters, self.stability_threshold, consensus)
 
             # update the cluster index for the consensus clustering
             self.clustering_assignments[idx_outside_polytope][:, consensus] = cluster_index
@@ -597,7 +576,7 @@ class HYDRA(BaseEM, ClassifierMixin):
         return S, cluster_index, n_clusters
 
     def run_EM(self, X, y, y_polytope, S, cluster_index, index_positives, index_negatives, idx_outside_polytope,
-               n_clusters, consensus):
+               n_clusters, stability_threshold, consensus):
         """Perform a bagging of the previously obtained clusterings and compute new hyperplanes.
         Parameters
         ----------
@@ -681,7 +660,7 @@ class HYDRA(BaseEM, ClassifierMixin):
             # check the Clustering Stability \w Adjusted Rand Index for stopping criteria
             cluster_consistency = ARI(np.argmax(S[index_positives], 1), np.argmax(S_hold[index_positives], 1))
             print(cluster_consistency)
-            if cluster_consistency > self.stability_threshold:
+            if cluster_consistency > stability_threshold:
                 break
         print('')
         return cluster_index
@@ -738,7 +717,7 @@ class HYDRA(BaseEM, ClassifierMixin):
                 S[index_positives] = np.rint(S[index_positives])
 
             cluster_index = self.run_EM(X, y, y_polytope, S, consensus_cluster_index, index_positives, index_negatives,
-                                        idx_outside_polytope, n_clusters, -1)
+                                        idx_outside_polytope, n_clusters, 0.99, -1)
 
             self.cluster_labels_[idx_outside_polytope] = cluster_index
             X_proj = X @ self.orthonormal_basis[idx_outside_polytope][-1].T
