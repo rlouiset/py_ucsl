@@ -161,6 +161,7 @@ class HYDRA(BaseEM, ClassifierMixin):
 
         # cluster each label one by one and confine the other inside the polytope
         for label in range(self.n_labels):
+            print(label)
             self.run(X_train, y_train_copy, self.n_clusters_per_label[label], idx_outside_polytope=label)
 
         return self
@@ -431,6 +432,7 @@ class HYDRA(BaseEM, ClassifierMixin):
         if self.initialization in ["gaussian_mixture"]:
             GMM = GaussianMixture(n_components=self.n_clusters_per_label[idx_outside_polytope], n_init=1).fit(X[index_positives])
             S = GMM.predict_proba(X)
+            print(S[:5])
 
         if self.initialization in ['DBSCAN']:
             dbscan = DBSCAN()
@@ -660,7 +662,7 @@ class HYDRA(BaseEM, ClassifierMixin):
 
             # check the Clustering Stability \w Adjusted Rand Index for stopping criteria
             cluster_consistency = ARI(np.argmax(S[index_positives], 1), np.argmax(S_hold[index_positives], 1))
-            print(cluster_consistency)
+            print('cluster_consistency : ', cluster_consistency)
             if cluster_consistency > stability_threshold:
                 break
         print('')
