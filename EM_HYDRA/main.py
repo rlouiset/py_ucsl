@@ -158,6 +158,7 @@ class HYDRA(BaseEM, ClassifierMixin):
         y_train_copy = y_train.copy()
         for original_label, new_label in self.training_label_mapping.items():
             y_train_copy[y_train == original_label] = new_label
+        print(y_train_copy)
 
         # cluster each label one by one and confine the other inside the polytope
         for label in range(self.n_labels):
@@ -300,12 +301,16 @@ class HYDRA(BaseEM, ClassifierMixin):
         return cluster_predictions
 
     def run(self, X, y, n_clusters, idx_outside_polytope):
+        print(idx_outside_polytope)
+
         # set label idx_outside_polytope outside of the polytope by setting it to positive labels
         y_polytope = np.copy(y)
         # if label is inside of the polytope, the distance is negative and the label is not divided into
         y_polytope[y_polytope != idx_outside_polytope] = -1
         # if label is outside of the polytope, the distance is positive and the label is clustered
         y_polytope[y_polytope == idx_outside_polytope] = 1
+
+        print(len(y_polytope))
 
         index_positives = np.where(y_polytope == 1)[0]  # index for Positive labels (outside polytope)
         index_negatives = np.where(y_polytope == -1)[0]  # index for Negative labels (inside polytope)
@@ -344,7 +349,7 @@ class HYDRA(BaseEM, ClassifierMixin):
             # update the cluster index for the consensus clustering
             self.clustering_assignments[idx_outside_polytope][:, consensus] = cluster_index
 
-        if n_consensus > 1:
+        if n_consensus > 1 :
             self.clustering_bagging(X, y, y_polytope, index_positives, index_negatives, idx_outside_polytope,
                                     n_clusters)
 
