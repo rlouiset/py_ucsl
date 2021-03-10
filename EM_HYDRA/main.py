@@ -582,6 +582,7 @@ class HYDRA(BaseEM, ClassifierMixin):
                 self.clustering_method[idx_outside_polytope][consensus] = DBSCAN()
                 Q_positives = self.clustering_method[idx_outside_polytope][consensus].fit_predict(
                     X_proj[index_positives])
+                print(Q_positives)
                 Q_distances = np.zeros((len(X_proj), np.max(Q_positives) + 1))
                 for cluster in range(np.max(Q_positives) + 1):
                     Q_distances[:, cluster] = np.linalg.norm(
@@ -666,8 +667,6 @@ class HYDRA(BaseEM, ClassifierMixin):
             # decide the convergence based on the clustering stability
             S_hold = S.copy()
             S, cluster_index, n_clusters = self.expectation_step(X, S, index_positives, idx_outside_polytope, n_clusters, consensus)
-
-            print(np.argmax(S[index_positives], 1))
 
             # applying the negative weighting set as input
             if self.negative_weighting in ['all']:
