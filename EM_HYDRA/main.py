@@ -625,6 +625,7 @@ class HYDRA(BaseEM, ClassifierMixin):
                     S, cluster_index, n_clusters = self.initialize_clustering(X, y_polytope, index_positives,
                                                                               index_negatives,
                                                                               n_clusters, idx_outside_polytope)
+                    print(n_clusters)
 
                 if np.max(S[index_negatives, cluster]) < 0.5:
                     logging.debug(
