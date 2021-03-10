@@ -667,7 +667,7 @@ class HYDRA(BaseEM, ClassifierMixin):
             S_hold = S.copy()
             S, cluster_index, n_clusters = self.expectation_step(X, S, index_positives, idx_outside_polytope, n_clusters, consensus)
 
-            print(np.argmax(S[index_positives]))
+            print(np.argmax(S[index_positives], 1))
 
             # applying the negative weighting set as input
             if self.negative_weighting in ['all']:
