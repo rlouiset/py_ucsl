@@ -462,7 +462,7 @@ class HYDRA(BaseEM, ClassifierMixin):
             S = self.initialization_matrixes[idx_outside_polytope]
 
         cluster_index = np.argmax(S[index_positives], axis=1)
-        return S, cluster_index, S.shape[1]
+        return S, cluster_index, max(S.shape[1], 2)
 
     def maximization_step(self, X, y_polytope, S, idx_outside_polytope, n_clusters, iteration):
         if self.classification == "max_margin":
@@ -584,7 +584,7 @@ class HYDRA(BaseEM, ClassifierMixin):
 
         S = Q.copy()
         cluster_index = np.argmax(Q[index_positives], axis=1)
-        return S, cluster_index, S.shape[1]
+        return S, cluster_index, max(S.shape[1], 2)
 
     def run_EM(self, X, y, y_polytope, S, cluster_index, index_positives, index_negatives, idx_outside_polytope,
                n_clusters, consensus):
