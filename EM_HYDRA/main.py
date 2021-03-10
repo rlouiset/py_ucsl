@@ -306,6 +306,7 @@ class HYDRA(BaseEM, ClassifierMixin):
         # if label is inside of the polytope, the distance is negative and the label is not divided into
         y_polytope[y_polytope != idx_outside_polytope] = -1
         print(y_polytope[:10])
+        print('')
         # if label is outside of the polytope, the distance is positive and the label is clustered
         y_polytope[y_polytope == idx_outside_polytope] = 1
 
