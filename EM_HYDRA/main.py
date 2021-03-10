@@ -210,8 +210,8 @@ class HYDRA(BaseEM, ClassifierMixin):
                 y_pred[:, 1] = sum(
                     [np.rint(cluster_predictions[1])[:, cluster] * SVM_distances[1][:, cluster] for cluster in
                      range(self.n_clusters_per_label[1])])
-                # y_pred[:, 1] -= sum([cluster_predictions[0][:, cluster] * SVM_distances[0][:, cluster] for cluster in
-                #                     range(self.n_clusters_per_label[0])])
+                y_pred[:, 1] -= sum([cluster_predictions[0][:, cluster] * SVM_distances[0][:, cluster] for cluster in
+                                     range(self.n_clusters_per_label[0])])
                 # compute probabilities \w sigmoid
                 y_pred[:, 1] = sigmoid(y_pred[:, 1] / np.max(y_pred[:, 1]))
                 y_pred[:, 0] = 1 - y_pred[:, 1]
@@ -657,10 +657,8 @@ class HYDRA(BaseEM, ClassifierMixin):
 
             # check the Clustering Stability \w Adjusted Rand Index for stopping criteria
             cluster_consistency = ARI(np.argmax(S[index_positives], 1), np.argmax(S_hold[index_positives], 1))
-            print('cluster_consistency : ', cluster_consistency)
             if cluster_consistency > stability_threshold:
                 break
-        print('')
         return cluster_index
 
     def clustering_bagging(self, X, y, y_polytope, index_positives, index_negatives, idx_outside_polytope, n_clusters):
