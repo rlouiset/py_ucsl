@@ -454,9 +454,8 @@ class HYDRA(BaseEM, ClassifierMixin):
             S = GMM.predict_proba(X)
 
         if self.initialization in ['DBSCAN']:
-            dbscan = DBSCAN(eps=0.5, min_samples=2)
+            dbscan = DBSCAN()
             S_positives = dbscan.fit_predict(X[index_positives])
-            print(S_positives)
             S_distances = np.zeros((len(X), np.max(S_positives) + 1))
             for cluster in range(np.max(S_positives) + 1):
                 S_distances[:, cluster] = np.linalg.norm(
@@ -583,7 +582,6 @@ class HYDRA(BaseEM, ClassifierMixin):
                 self.clustering_method[idx_outside_polytope][consensus] = DBSCAN()
                 Q_positives = self.clustering_method[idx_outside_polytope][consensus].fit_predict(
                     X_proj[index_positives])
-                print(Q_positives)
                 Q_distances = np.zeros((len(X_proj), np.max(Q_positives) + 1))
                 for cluster in range(np.max(Q_positives) + 1):
                     Q_distances[:, cluster] = np.linalg.norm(
