@@ -299,14 +299,10 @@ class HYDRA(BaseEM, ClassifierMixin):
         return cluster_predictions
 
     def run(self, X, y, n_clusters, idx_outside_polytope):
-        print(idx_outside_polytope)
         # set label idx_outside_polytope outside of the polytope by setting it to positive labels
         y_polytope = np.copy(y)
-        print(y_polytope[:10])
         # if label is inside of the polytope, the distance is negative and the label is not divided into
         y_polytope[y_polytope != idx_outside_polytope] = -1
-        print(y_polytope[:10])
-        print('')
         # if label is outside of the polytope, the distance is positive and the label is clustered
         y_polytope[y_polytope == idx_outside_polytope] = 1
 
