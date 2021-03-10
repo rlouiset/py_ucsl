@@ -645,6 +645,7 @@ class HYDRA(BaseEM, ClassifierMixin):
             # decide the convergence based on the clustering stability
             S_hold = S.copy()
             S, cluster_index, n_clusters = self.expectation_step(X, S, index_positives, idx_outside_polytope, n_clusters, consensus)
+            print(S[:5])
 
             # applying the negative weighting set as input
             if self.negative_weighting in ['all']:
