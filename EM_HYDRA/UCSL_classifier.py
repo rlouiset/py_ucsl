@@ -5,8 +5,6 @@ from EM_HYDRA.DPP_utils import *
 from EM_HYDRA.utils import *
 from EM_HYDRA.base import *
 
-from sklearn.cluster import DBSCAN
-
 import logging
 import copy
 
@@ -101,8 +99,8 @@ class UCSL_C(BaseEM, ClassifierMixin):
 
         # TODO : Get rid of these visualization helps
         self.S_lists = {label: dict() for label in range(self.n_labels)}
-        self.coef_lists = {label: {cluster_i: dict() for cluster_i in range(n_clusters_per_label[label])} for label in
-                           range(self.n_labels)}
+        self.coefficient_lists = {label: {cluster_i: dict() for cluster_i in range(n_clusters_per_label[label])} for label in
+                                  range(self.n_labels)}
         self.intercept_lists = {label: {cluster_i: dict() for cluster_i in range(n_clusters_per_label[label])} for label
                                 in range(self.n_labels)}
 
@@ -402,7 +400,7 @@ class UCSL_C(BaseEM, ClassifierMixin):
                 self.coefficients[idx_outside_polytope][cluster].extend(SVM_coefficient)
                 self.intercepts[idx_outside_polytope][cluster] = SVM_intercept
                 # TODO: get rid of
-                self.coef_lists[idx_outside_polytope][cluster][iteration + 1] = SVM_coefficient.copy()
+                self.coefficient_lists[idx_outside_polytope][cluster][iteration + 1] = SVM_coefficient.copy()
                 self.intercept_lists[idx_outside_polytope][cluster][iteration + 1] = SVM_intercept.copy()
 
         elif self.classification == "logistic":
@@ -412,7 +410,7 @@ class UCSL_C(BaseEM, ClassifierMixin):
                 self.coefficients[idx_outside_polytope][cluster].extend(logistic_coefficient)
                 self.intercepts[idx_outside_polytope][cluster] = logistic_intercept
                 # TODO: get rid of
-                self.coef_lists[idx_outside_polytope][cluster][iteration + 1] = logistic_coefficient.copy()
+                self.coefficient_lists[idx_outside_polytope][cluster][iteration + 1] = logistic_coefficient.copy()
 
     def expectation_step(self, X, S, index_positives, idx_outside_polytope, n_clusters, consensus):
         """Update clustering method (update clustering distribution matrix S).
@@ -473,13 +471,11 @@ class UCSL_C(BaseEM, ClassifierMixin):
             basis = []
             for v in directions:
                 w = v - np.sum(np.dot(v, b) * b for b in basis)
-                print(np.linalg.norm(w))
                 if len(basis) >= 2:
                     if np.linalg.norm(w) * self.noise_tolerance_threshold > 1:
                         basis.append(w / np.linalg.norm(w))
                 elif np.linalg.norm(w) > 1e-2:
                     basis.append(w / np.linalg.norm(w))
-            print('')
 
             self.orthonormal_basis[idx_outside_polytope][consensus] = np.array(basis)
             self.orthonormal_basis[idx_outside_polytope][-1] = np.array(basis).copy()
@@ -528,11 +524,13 @@ class UCSL_C(BaseEM, ClassifierMixin):
 
     def run_EM(self, X, y, y_polytope, S, cluster_index, index_positives, index_negatives, idx_outside_polytope,
                n_clusters, stability_threshold, consensus):
-        """Perform a bagging of the previously obtained clusterings and compute new hyperplanes.
+        """Perform a bagging of the previously obtained clustering and compute new hyperplanes.
         Parameters
         ----------
         X : array-like, shape (n_samples, n_features)
             Training vectors.
+        y : array-like, shape (n_samples,)
+            Original target values.
         y_polytope : array-like, shape (n_samples,)
             Target values.
         S : array-like, shape (n_samples, n_samples)
@@ -657,8 +655,10 @@ class UCSL_C(BaseEM, ClassifierMixin):
         ----------
         X : array-like, shape (n_samples, n_features)
             Training vectors.
+        y : array-like, shape (n_samples,)
+            Original target values.
         y_polytope : array-like, shape (n_samples,)
-            Target values.
+            Modified target values.
         index_positives : array-like, shape (n_positives_samples,)
             indexes of the positive labels being clustered
         index_negatives : array-like, shape (n_positives_samples,)
@@ -690,7 +690,7 @@ class UCSL_C(BaseEM, ClassifierMixin):
                 self.intercepts[idx_outside_polytope][cluster] = SVM_intercept
 
                 # TODO: get rid of
-                self.coef_lists[idx_outside_polytope][cluster][-1] = SVM_coefficient.copy()
+                self.coefficient_lists[idx_outside_polytope][cluster][-1] = SVM_coefficient.copy()
                 self.intercept_lists[idx_outside_polytope][cluster][-1] = SVM_intercept.copy()
 
         else:
