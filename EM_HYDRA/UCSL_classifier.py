@@ -99,7 +99,8 @@ class UCSL_C(BaseEM, ClassifierMixin):
 
         # TODO : Get rid of these visualization helps
         self.S_lists = {label: dict() for label in range(self.n_labels)}
-        self.coefficient_lists = {label: {cluster_i: dict() for cluster_i in range(n_clusters_per_label[label])} for label in
+        self.coefficient_lists = {label: {cluster_i: dict() for cluster_i in range(n_clusters_per_label[label])} for
+                                  label in
                                   range(self.n_labels)}
         self.intercept_lists = {label: {cluster_i: dict() for cluster_i in range(n_clusters_per_label[label])} for label
                                 in range(self.n_labels)}
@@ -263,9 +264,9 @@ class UCSL_C(BaseEM, ClassifierMixin):
                     elif self.clustering == 'custom':
                         Q_distances = np.zeros((len(X_proj), len(self.barycenters[label])))
                         for cluster in range(len(self.barycenters[label])):
-                            if X_proj.shape[1] > 1 :
+                            if X_proj.shape[1] > 1:
                                 Q_distances[:, cluster] = np.linalg.norm(X_proj - self.barycenters[label][cluster][None, :], 1)
-                            else :
+                            else:
                                 Q_distances[:, cluster] = (X_proj - self.barycenters[label][cluster][None, :])[:, 0]
                         Q_distances /= np.sum(Q_distances, 1)[:, None]
                         cluster_predictions[label] = 1 - Q_distances
@@ -476,7 +477,7 @@ class UCSL_C(BaseEM, ClassifierMixin):
                 if len(basis) >= 2:
                     if np.linalg.norm(w) * self.noise_tolerance_threshold > 1:
                         basis.append(w / np.linalg.norm(w))
-                elif np.linalg.norm(w) > 1e-4:
+                elif np.linalg.norm(w) > 1e-2:
                     basis.append(w / np.linalg.norm(w))
 
             self.orthonormal_basis[idx_outside_polytope][consensus] = np.array(basis)
@@ -508,14 +509,14 @@ class UCSL_C(BaseEM, ClassifierMixin):
                 self.clustering_method[idx_outside_polytope][consensus] = copy.deepcopy(self.custom_clustering_method)
                 Q_positives = self.clustering_method[idx_outside_polytope][consensus].fit_predict(
                     X_proj[index_positives])
-                print(Q_positives)
-                print('')
                 Q_distances = np.zeros((len(X_proj), np.max(Q_positives) + 1))
                 for cluster in range(np.max(Q_positives) + 1):
                     Q_distances[:, cluster] = np.linalg.norm(
                         X_proj - np.mean(X_proj[index_positives][Q_positives == cluster], 0)[None, :], 1)
                 Q_distances /= np.sum(Q_distances, 1)[:, None]
                 Q = 1 - Q_distances
+                print(Q)
+                print('')
 
         # define matrix clustering
         S = Q.copy()
@@ -593,7 +594,8 @@ class UCSL_C(BaseEM, ClassifierMixin):
 
                     index_positives = np.where(y_polytope == 1)[0]  # index for Positive labels (outside polytope)
                     index_negatives = np.where(y_polytope == -1)[0]  # index for Negative labels (inside polytope)
-                    self.maximization_step(X_polytope, y_polytope, S_polytope, idx_outside_polytope, n_clusters, iteration)
+                    self.maximization_step(X_polytope, y_polytope, S_polytope, idx_outside_polytope, n_clusters,
+                                           iteration)
             else:
                 self.maximization_step(X, y_polytope, S, idx_outside_polytope, n_clusters, iteration)
 
@@ -615,10 +617,8 @@ class UCSL_C(BaseEM, ClassifierMixin):
 
             # check the Clustering Stability \w Adjusted Rand Index for stopping criteria
             cluster_consistency = ARI(np.argmax(S[index_positives], 1), np.argmax(S_hold[index_positives], 1))
-            print(cluster_consistency)
             if cluster_consistency > stability_threshold:
                 break
-        print('')
         return cluster_index
 
     def predict_clusters_proba_from_cluster_labels(self, X, idx_outside_polytope, n_clusters):
