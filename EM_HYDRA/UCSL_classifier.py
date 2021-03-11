@@ -575,8 +575,8 @@ class UCSL_C(BaseEM, ClassifierMixin):
                     S[index_negatives, cluster] = 1 / n_clusters
 
             # re-init directions for each clusters
-            for cluster in range(n_clusters):
-                self.coefficients[idx_outside_polytope][cluster] = []
+            self.coefficients[idx_outside_polytope] = {cluster_i: [] for cluster_i in range(n_clusters)}
+            self.intercepts[idx_outside_polytope] = {cluster_i: [] for cluster_i in range(n_clusters)}
             # differentiate one_vs_one and one_vs_rest case
             if self.multiclass_config == 'one_vs_one':
                 for label in [label for label in range(self.n_labels) if label != idx_outside_polytope]:
