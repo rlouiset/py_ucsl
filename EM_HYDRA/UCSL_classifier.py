@@ -709,6 +709,7 @@ class UCSL_C(BaseEM, ClassifierMixin):
             # save barycenters and final predictions
             self.cluster_labels_[idx_outside_polytope] = cluster_index
             X_proj = X @ self.orthonormal_basis[idx_outside_polytope][-1].T
+            print(X_proj.shape)
             self.barycenters[idx_outside_polytope] = [
                 np.mean(X_proj[index_positives][cluster_index == cluster], 0)[None, :] for cluster in
                 range(np.max(cluster_index) + 1)]
