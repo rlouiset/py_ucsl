@@ -21,10 +21,6 @@ class UCSL_C(BaseEM, ClassifierMixin):
     C : float, optional (default=1)
         SVM tolerance parameter (Maximization step), if too tiny, risk of overfit.
         If none is given, 1 will be used.
-    kernel : string, optional (default="linear")
-        Specifies the kernel type to be used in the algorithm.
-        It must be one of "linear", "poly", "rbf", "sigmoid" or ‘precomputed’.
-        If none is given, "linear" will be used.
     initialization : string, optional (default="DPP")
         Initialization of each consensus run,
         If not specified, "Determinental Point Process" will be used.
@@ -409,7 +405,7 @@ class UCSL_C(BaseEM, ClassifierMixin):
                 self.coef_lists[idx_outside_polytope][cluster][iteration + 1] = SVM_coefficient.copy()
                 self.intercept_lists[idx_outside_polytope][cluster][iteration + 1] = SVM_intercept.copy()
 
-        elif self.classification == "logistic_regression":
+        elif self.classification == "logistic":
             for cluster in range(n_clusters):
                 cluster_assignment = np.ascontiguousarray(S[:, cluster])
                 logistic_coefficient, logistic_intercept = launch_logistic(X, y_polytope, cluster_assignment)
