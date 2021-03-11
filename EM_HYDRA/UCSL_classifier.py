@@ -513,7 +513,8 @@ class UCSL_C(BaseEM, ClassifierMixin):
                 for cluster in range(np.max(Q_positives) + 1):
                     print(np.mean(X_proj[index_positives][Q_positives == cluster], 0))
                     Q_distances[:, cluster] = np.linalg.norm(X_proj - np.mean(X_proj[index_positives][Q_positives == cluster], 0)[None, :], 1)
-                print(Q_distances)
+                print(X_proj)
+                #print(Q_distances)
                 print(debug)
                 Q_distances = Q_distances / np.sum(Q_distances, 1)[:, None]
                 Q = 1 - Q_distances
