@@ -38,20 +38,26 @@ class UCSL_C(BaseEM, ClassifierMixin):
 
     def __init__(self, stability_threshold=0.95, noise_tolerance_threshold=10, C=1,
                  n_consensus=10, n_iterations=10, n_labels=2, n_clusters_per_label=None, multiclass_config=None,
-                 initialization="DPP", clustering='original', consensus='spectral_clustering',
-                 classification='max_margin',
-                 custom_clustering_method=None, custom_classification_method=None,
+                 initialization="DPP", clustering='HYDRA', consensus='spectral_clustering', maximization='max_margin',
+                 custom_clustering_method=None, custom_maximization_method=None,
                  negative_weighting='all', positive_weighting='hard_clustering',
                  training_label_mapping=None, custom_initialization_matrixes=None):
 
         super().__init__(initialization=initialization, clustering=clustering, consensus=consensus,
-                         classification=classification,
+                         maximization=maximization,
                          stability_threshold=stability_threshold, noise_tolerance_threshold=noise_tolerance_threshold,
                          custom_clustering_method=custom_clustering_method,
-                         custom_classification_method=custom_classification_method,
+                         custom_maximization_method=custom_maximization_method,
                          custom_initialization_matrixes=custom_initialization_matrixes,
-                         n_consensus=n_consensus, n_iterations=n_iterations,
-                         negative_weighting=negative_weighting, positive_weighting=positive_weighting)
+                         n_consensus=n_consensus, n_iterations=n_iterations)
+
+        # define what are the weightings we want for each label
+        assert (negative_weighting in ['hard_clustering', 'soft_clustering', 'all']), \
+            "negative_weighting must be one of 'hard_clustering', 'soft_clustering'"
+        assert (positive_weighting in ['hard_clustering', 'soft_clustering']), \
+            "positive_weighting must be one of 'hard_clustering', 'soft_clustering'"
+        self.negative_weighting = negative_weighting
+        self.positive_weighting = positive_weighting
 
         # define the mapping of labels before fitting the algorithm
         # for example, one may want to merge 2 labels together before fitting to check if clustering separate them well
@@ -78,7 +84,6 @@ class UCSL_C(BaseEM, ClassifierMixin):
                 else:
                     self.n_clusters_per_label[label] = 8
                     self.adaptive_clustering_per_label[label] = True
-
 
         # check the value of multi_class config and according to the number of labels
         if n_labels == 2:
@@ -113,8 +118,8 @@ class UCSL_C(BaseEM, ClassifierMixin):
         self.barycenters = {label: None for label in range(self.n_labels)}
 
         # define orthonormal directions basis and clustering methods at each consensus step
-        self.orthonormal_basis = {label: [None for c in range(n_consensus)] for label in range(self.n_labels)}
-        self.clustering_method = {label: [None for c in range(n_consensus)] for label in range(self.n_labels)}
+        self.orthonormal_basis = {label: {c: {} for c in range(n_consensus)} for label in range(self.n_labels)}
+        self.clustering_method = {label: {c: {} for c in range(n_consensus)} for label in range(self.n_labels)}
 
     def fit(self, X_train, y_train):
         """Fit the HYDRA model according to the given training data.
@@ -166,7 +171,7 @@ class UCSL_C(BaseEM, ClassifierMixin):
         """
         y_pred = np.zeros((len(X), self.n_labels))
 
-        if self.classification in ['max_margin']:
+        if self.maximization in ['max_margin']:
             hp_distances = self.compute_distances_to_hyperplanes(X)
             if self.clustering in ['HYDRA']:
                 # merge each label distances and compute the probability \w sigmoid function
@@ -372,8 +377,7 @@ class UCSL_C(BaseEM, ClassifierMixin):
             S = one_hot_encode(KM.predict(X))
 
         if self.initialization in ["gaussian_mixture"]:
-            GMM = GaussianMixture(n_components=self.n_clusters_per_label[idx_outside_polytope], n_init=1).fit(
-                X[index_positives])
+            GMM = GaussianMixture(n_components=self.n_clusters_per_label[idx_outside_polytope], n_init=1).fit(X[index_positives])
             S = GMM.predict_proba(X)
 
         if self.initialization in ['custom']:
@@ -396,7 +400,7 @@ class UCSL_C(BaseEM, ClassifierMixin):
         return S, cluster_index, n_clusters
 
     def maximization_step(self, X, y_polytope, S, idx_outside_polytope, n_clusters, iteration):
-        if self.classification == "max_margin":
+        if self.maximization == "max_margin":
             for cluster in range(n_clusters):
                 cluster_assignment = np.ascontiguousarray(S[:, cluster])
                 SVM_coefficient, SVM_intercept = launch_svc(X, y_polytope, cluster_assignment, C=self.C)
@@ -406,7 +410,7 @@ class UCSL_C(BaseEM, ClassifierMixin):
                 self.coefficient_lists[idx_outside_polytope][cluster][iteration + 1] = SVM_coefficient.copy()
                 self.intercept_lists[idx_outside_polytope][cluster][iteration + 1] = SVM_intercept.copy()
 
-        elif self.classification == "logistic":
+        elif self.maximization == "logistic":
             for cluster in range(n_clusters):
                 cluster_assignment = np.ascontiguousarray(S[:, cluster])
                 logistic_coefficient, logistic_intercept = launch_logistic(X, y_polytope, cluster_assignment)
@@ -484,24 +488,17 @@ class UCSL_C(BaseEM, ClassifierMixin):
             self.orthonormal_basis[idx_outside_polytope][-1] = np.array(basis).copy()
             X_proj = X @ self.orthonormal_basis[idx_outside_polytope][consensus].T
 
-            centroids = [np.mean(S[index_positives, cluster_i][:, None] * X_proj[index_positives, :], 0) for cluster_i
-                         in
-                         range(n_clusters)]
+            centroids = [np.mean(S[index_positives, cluster][:, None] * X_proj[index_positives, :], 0) for cluster in range(n_clusters)]
 
             if self.clustering == 'k_means':
                 self.clustering_method[idx_outside_polytope][consensus] = KMeans(
-                    n_clusters=n_clusters,
-                    init=np.array(centroids), n_init=1).fit(X_proj[index_positives])
-                Q = one_hot_encode(self.clustering_method[idx_outside_polytope][consensus].predict(X_proj),
-                                   n_classes=n_clusters)
-                print(np.argmax(Q, 1))
-                self.clustering_method[idx_outside_polytope][-1] = copy.deepcopy(
-                    self.clustering_method[idx_outside_polytope][consensus])
+                    n_clusters=n_clusters, init=np.array(centroids), n_init=1).fit(X_proj[index_positives])
+                Q = one_hot_encode(self.clustering_method[idx_outside_polytope][consensus].predict(X_proj), n_classes=n_clusters)
+                self.clustering_method[idx_outside_polytope][-1] = copy.deepcopy(self.clustering_method[idx_outside_polytope][consensus])
 
             if self.clustering == 'gaussian_mixture':
                 self.clustering_method[idx_outside_polytope][consensus] = GaussianMixture(
-                    n_components=n_clusters, covariance_type='full', means_init=np.array(centroids)).fit(
-                    X_proj[index_positives])
+                    n_components=n_clusters, covariance_type='full', means_init=np.array(centroids)).fit(X_proj[index_positives])
                 Q = self.clustering_method[idx_outside_polytope][consensus].predict_proba(X_proj)
                 self.clustering_method[idx_outside_polytope][-1] = copy.deepcopy(
                     self.clustering_method[idx_outside_polytope][consensus])
@@ -521,7 +518,6 @@ class UCSL_C(BaseEM, ClassifierMixin):
 
         if self.adaptive_clustering_per_label[idx_outside_polytope]:
             n_clusters = max(S.shape[1], 2)
-            print(n_clusters)
 
         return S, cluster_index, n_clusters
 
@@ -638,11 +634,9 @@ class UCSL_C(BaseEM, ClassifierMixin):
         for consensus in range(self.n_consensus):
             X_proj = X @ self.orthonormal_basis[idx_outside_polytope][consensus].T
             if self.clustering in ['k_means', 'gaussian_mixture']:
-                X_clustering_assignments[:, consensus] = self.clustering_method[idx_outside_polytope][
-                    consensus].predict(X_proj)
+                X_clustering_assignments[:, consensus] = self.clustering_method[idx_outside_polytope][consensus].predict(X_proj)
             elif self.clustering in ['custom']:
-                X_clustering_assignments[:, consensus] = self.clustering_method[idx_outside_polytope][
-                    consensus].fit_predict(X_proj)
+                X_clustering_assignments[:, consensus] = self.clustering_method[idx_outside_polytope][consensus].fit_predict(X_proj)
         similarity_matrix = compute_similarity_matrix(self.clustering_assignments[idx_outside_polytope],
                                                       clustering_assignments_to_pred=X_clustering_assignments)
 

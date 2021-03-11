@@ -7,10 +7,8 @@ class BaseEM(BaseEstimator, metaclass=ABCMeta):
 
     @abstractmethod
     def __init__(self, stability_threshold, noise_tolerance_threshold,
-                 n_consensus, n_iterations,
-                 initialization, clustering, classification, consensus,
-                 negative_weighting, positive_weighting,
-                 custom_clustering_method, custom_classification_method, custom_initialization_matrixes):
+                 n_consensus, n_iterations, initialization, clustering, maximization, consensus,
+                 custom_clustering_method, custom_maximization_method, custom_initialization_matrixes):
 
         # define hyperparameters such as stability_threshold or noise_tolerance_threshold
         assert (0 < stability_threshold <= 1), "The stability_threshold value is invalid. It must be between 0 and 1."
@@ -41,23 +39,16 @@ class BaseEM(BaseEstimator, metaclass=ABCMeta):
             self.custom_clustering_method = custom_clustering_method
         self.clustering = clustering
 
-        assert (classification in ['max_margin', 'logistic', 'custom']), \
+        assert (maximization in ['max_margin', 'logistic', 'custom']), \
             "Classification must be one of 'max_margin', 'logistic', 'custom'"
-        if classification == 'custom' :
-            assert (custom_classification_method is not None), \
-                "if classification is custom you have to pass a custom_classification_method different from None"
-            self.custom_classification_method = custom_classification_method
-        self.classification = classification
+        if maximization == 'custom' :
+            assert (custom_maximization_method is not None), \
+                "if maximization is custom you have to pass a custom_maximization_method different from None"
+            self.custom_classification_method = custom_maximization_method
+        self.maximization = maximization
 
         assert (consensus in ['spectral_clustering']), \
             "Classification must be one of 'spectral_clustering'"
         self.consensus = consensus
 
-        # define what are the weightings we want for each label
-        assert (negative_weighting in ['hard_clustering', 'soft_clustering', 'all']), \
-            "negative_weighting must be one of 'hard_clustering', 'soft_clustering'"
-        assert (positive_weighting in ['hard_clustering', 'soft_clustering']), \
-            "positive_weighting must be one of 'hard_clustering', 'soft_clustering'"
-        self.negative_weighting = negative_weighting
-        self.positive_weighting = positive_weighting
 
