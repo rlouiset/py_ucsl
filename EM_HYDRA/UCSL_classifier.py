@@ -683,7 +683,7 @@ class UCSL_C(BaseEM, ClassifierMixin):
 
             for cluster in range(n_clusters):
                 cluster_assignment = np.ascontiguousarray(S[:, cluster])
-                SVM_coefficient, SVM_intercept = launch_svc(X, y_polytope, cluster_assignment, self.C)
+                SVM_coefficient, SVM_intercept = launch_svc(X, y_polytope, cluster_assignment, C=self.C)
                 self.coefficients[idx_outside_polytope][cluster] = SVM_coefficient
                 self.intercepts[idx_outside_polytope][cluster] = SVM_intercept
 
