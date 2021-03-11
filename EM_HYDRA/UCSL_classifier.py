@@ -609,10 +609,8 @@ class UCSL_C(BaseEM, ClassifierMixin):
 
             # check the Clustering Stability \w Adjusted Rand Index for stopping criteria
             cluster_consistency = ARI(np.argmax(S[index_positives], 1), np.argmax(S_hold[index_positives], 1))
-            print(cluster_consistency)
             if cluster_consistency > stability_threshold:
                 break
-        print('')
         return cluster_index
 
     def predict_clusters_proba_from_cluster_labels(self, X, idx_outside_polytope, n_clusters):
@@ -643,7 +641,7 @@ class UCSL_C(BaseEM, ClassifierMixin):
                                                       clustering_assignments_to_pred=X_clustering_assignments)
 
         Q = np.zeros((len(X), n_clusters))
-        y_clusters_train_ = self.y_clusters_pred[idx_outside_polytope]
+        y_clusters_train_ = self.cluster_labels_[idx_outside_polytope]
         for cluster in range(n_clusters):
             Q[:, cluster] = np.mean(similarity_matrix[y_clusters_train_ == cluster], 0)
         Q /= np.sum(Q, 1)[:, None]
