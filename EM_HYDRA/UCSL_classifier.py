@@ -264,6 +264,9 @@ class UCSL_C(BaseEM, ClassifierMixin):
                     elif self.clustering == 'custom':
                         Q_distances = np.zeros((len(X_proj), len(self.barycenters[label])))
                         for cluster in range(len(self.barycenters[label])):
+                            print((X_proj - self.barycenters[label][cluster][None, :]).shape)
+                            print(np.sum(np.abs(X_proj - self.barycenters[label][cluster][None, :]), 1).shape)
+                            print(Q_distances[:, cluster].shape)
                             if X_proj.shape[1] > 1:
                                 Q_distances[:, cluster] = np.sum(np.abs(X_proj - self.barycenters[label][cluster][None, :]), 1)
                             else:
@@ -613,8 +616,10 @@ class UCSL_C(BaseEM, ClassifierMixin):
 
             # check the Clustering Stability \w Adjusted Rand Index for stopping criteria
             cluster_consistency = ARI(np.argmax(S[index_positives], 1), np.argmax(S_hold[index_positives], 1))
+            print(cluster_consistency)
             if cluster_consistency > stability_threshold:
                 break
+        print('')
         return cluster_index
 
     def predict_clusters_proba_from_cluster_labels(self, X, idx_outside_polytope, n_clusters):
