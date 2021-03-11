@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.special import logsumexp
 import scipy
-from EM_HYDRA.sinkornknopp import *
+from UCSL.sinkornknopp import *
 from sklearn.cluster import KMeans
 from sklearn.svm import SVC, SVR
 from sklearn.cluster import SpectralClustering

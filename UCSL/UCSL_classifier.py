@@ -1,9 +1,9 @@
 from sklearn.base import ClassifierMixin
 
 from sklearn.metrics import adjusted_rand_score as ARI
-from EM_HYDRA.DPP_utils import *
-from EM_HYDRA.utils import *
-from EM_HYDRA.base import *
+from UCSL.DPP_utils import *
+from UCSL.utils import *
+from UCSL.base import *
 
 import logging
 import copy
