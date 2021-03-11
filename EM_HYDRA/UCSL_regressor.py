@@ -239,6 +239,12 @@ class UCSL_R(BaseEM, RegressorMixin):
                 logistic_coefficient, logistic_intercept = launch_logistic(X, y, cluster_assignment)
                 self.coefficients[cluster].extend(logistic_coefficient)
                 self.intercepts[cluster] = logistic_intercept
+        if self.maximization == "svr":
+            for cluster in range(n_clusters):
+                cluster_assignment = np.ascontiguousarray(S[:, cluster])
+                logistic_coefficient, logistic_intercept = launch_svr(X, y, cluster_assignment)
+                self.coefficients[cluster].extend(logistic_coefficient)
+                self.intercepts[cluster] = logistic_intercept
 
     def expectation_step(self, X, S, n_clusters, consensus):
         """Update clustering method (update clustering distribution matrix S).
@@ -261,7 +267,7 @@ class UCSL_R(BaseEM, RegressorMixin):
             clusters predictions argmax for positive samples.
         """
         Q = S.copy()
-        if self.clustering == 'original':
+        if self.clustering == 'HYDRA':
             SVM_distances = np.zeros(S.shape)
             for cluster in range(n_clusters):
                 # Apply the data again the trained model to get the final SVM scores
