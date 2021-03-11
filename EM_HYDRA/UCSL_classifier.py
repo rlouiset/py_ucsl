@@ -57,7 +57,6 @@ class UCSL_C(BaseEM, ClassifierMixin):
                          custom_classification_method=custom_classification_method,
                          custom_initialization_matrixes=custom_initialization_matrixes,
                          n_consensus=n_consensus, n_iterations=n_iterations,
-                         n_labels=n_labels, n_clusters_per_label=n_clusters_per_label,
                          negative_weighting=negative_weighting, positive_weighting=positive_weighting)
 
         # define the mapping of labels before fitting the algorithm
@@ -589,7 +588,7 @@ class UCSL_C(BaseEM, ClassifierMixin):
 
                     index_positives = np.where(y_polytope == 1)[0]  # index for Positive labels (outside polytope)
                     index_negatives = np.where(y_polytope == -1)[0]  # index for Negative labels (inside polytope)
-                    self.maximization_step(X_polytope, y_polytope, S_polytope, idx_outside_polytope, n_clusters,iteration)
+                    self.maximization_step(X_polytope, y_polytope, S_polytope, idx_outside_polytope, n_clusters, iteration)
             else:
                 self.maximization_step(X, y_polytope, S, idx_outside_polytope, n_clusters, iteration)
 
@@ -672,7 +671,8 @@ class UCSL_C(BaseEM, ClassifierMixin):
         None
         """
         # perform consensus clustering
-        consensus_cluster_index = compute_spectral_clustering_consensus(self.clustering_assignments[idx_outside_polytope], n_clusters)
+        consensus_cluster_index = compute_spectral_clustering_consensus(
+            self.clustering_assignments[idx_outside_polytope], n_clusters)
         # save clustering predictions computed by bagging step
         self.cluster_labels_[idx_outside_polytope] = consensus_cluster_index
 
@@ -702,7 +702,8 @@ class UCSL_C(BaseEM, ClassifierMixin):
             if self.positive_weighting in ['hard_clustering']:
                 S[index_positives] = np.rint(S[index_positives])
 
-            cluster_index = self.run_EM(X, y, y_polytope, S, consensus_cluster_index, index_positives, index_negatives, idx_outside_polytope, n_clusters, 0.99, -1)
+            cluster_index = self.run_EM(X, y, y_polytope, S, consensus_cluster_index, index_positives, index_negatives,
+                                        idx_outside_polytope, n_clusters, 0.99, -1)
 
             # save barycenters and final predictions
             self.cluster_labels_[idx_outside_polytope] = cluster_index
