@@ -1,6 +1,7 @@
 from sklearn.base import RegressorMixin
 
 from sklearn.metrics import adjusted_rand_score as ARI
+from sklearn.mixture import GaussianMixture
 from UCSL.utils import *
 from UCSL.base import *
 
