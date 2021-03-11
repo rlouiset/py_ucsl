@@ -88,6 +88,7 @@ class UCSL_C(BaseEM, ClassifierMixin):
         # check the value of multi_class config and according to the number of labels
         if n_labels == 2:
             assert multiclass_config is None, 'Number of labels is 2, yet "multiclass_config" parameter is not None'
+            self.multiclass_config = None
         else:
             assert multiclass_config in ["ovo", "ovr"], 'Number of labels is higher than 2 yet "multiclass_config" ' \
                                                         'different from "ovo" or "ovr"'
