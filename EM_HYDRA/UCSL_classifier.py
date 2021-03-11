@@ -511,11 +511,9 @@ class UCSL_C(BaseEM, ClassifierMixin):
                     X_proj[index_positives])
                 Q_distances = np.zeros((len(X_proj), np.max(Q_positives) + 1))
                 for cluster in range(np.max(Q_positives) + 1):
-                    print(np.mean(X_proj[index_positives][Q_positives == cluster], 0))
                     Q_distances[:, cluster] = np.sum(np.abs(X_proj - np.mean(X_proj[index_positives][Q_positives == cluster], 0)[None, :]), 1)
-                    print((X_proj - np.mean(X_proj[index_positives][Q_positives == cluster], 0)[None, :])*100)
                 print('')
-                #print(Q_distances)
+                print(Q_distances)
                 print(debug)
                 Q_distances = Q_distances / np.sum(Q_distances, 1)[:, None]
                 Q = 1 - Q_distances
