@@ -508,6 +508,8 @@ class UCSL_C(BaseEM, ClassifierMixin):
                 self.clustering_method[idx_outside_polytope][consensus] = copy.deepcopy(self.custom_clustering_method)
                 Q_positives = self.clustering_method[idx_outside_polytope][consensus].fit_predict(
                     X_proj[index_positives])
+                print(Q_positives)
+                print('')
                 Q_distances = np.zeros((len(X_proj), np.max(Q_positives) + 1))
                 for cluster in range(np.max(Q_positives) + 1):
                     Q_distances[:, cluster] = np.linalg.norm(
