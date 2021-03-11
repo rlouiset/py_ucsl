@@ -39,8 +39,8 @@ class BaseEM(BaseEstimator, metaclass=ABCMeta):
             self.custom_clustering_method = custom_clustering_method
         self.clustering = clustering
 
-        assert (maximization in ['max_margin', 'logistic', 'custom']), \
-            "maximization must be one of 'max_margin', 'logistic', 'custom', 'svr"
+        assert (maximization in ['max_margin', 'logistic', 'svr', 'custom']), \
+            "maximization must be one of 'max_margin', 'logistic', 'svr', 'custom'"
         if maximization == 'custom' :
             assert (custom_maximization_method is not None), \
                 "if maximization is custom you have to pass a custom_maximization_method different from None"
