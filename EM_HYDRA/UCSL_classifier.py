@@ -380,8 +380,7 @@ class UCSL_C(BaseEM, ClassifierMixin):
             S_positives = custom_clustering_method_.fit_predict(X[index_positives])
             S_distances = np.zeros((len(X), np.max(S_positives) + 1))
             for cluster in range(np.max(S_positives) + 1):
-                S_distances[:, cluster] = np.linalg.norm(
-                    X - np.mean(X[index_positives][S_positives == cluster], 0)[None, :], 1)
+                S_distances[:, cluster] = np.sum(np.abs(X - np.mean(X[index_positives][S_positives == cluster], 0)[None, :]), 1)
             S_distances /= np.sum(S_distances, 1)[:, None]
             S = 1 - S
 
@@ -514,8 +513,6 @@ class UCSL_C(BaseEM, ClassifierMixin):
                     Q_distances[:, cluster] = np.sum(np.abs(X_proj - np.mean(X_proj[index_positives][Q_positives == cluster], 0)[None, :]), 1)
                 Q_distances = Q_distances / np.sum(Q_distances, 1)[:, None]
                 Q = 1 - Q_distances
-                print(Q)
-                print('')
 
         # define matrix clustering
         S = Q.copy()
