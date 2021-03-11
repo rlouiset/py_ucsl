@@ -165,15 +165,15 @@ class UCSL_C(BaseEM, ClassifierMixin):
         y_pred = np.zeros((len(X), self.n_labels))
 
         if self.classification in ['max_margin']:
-            SVM_distances = self.compute_distances_to_hyperplanes(X)
+            hp_distances = self.compute_distances_to_hyperplanes(X)
             if self.clustering in ['HYDRA']:
                 # merge each label distances and compute the probability \w sigmoid function
                 if self.n_labels == 2:
-                    y_pred[:, 1] = sigmoid(np.max(SVM_distances[1], 1) - np.max(SVM_distances[0], 1))
+                    y_pred[:, 1] = sigmoid(np.max(hp_distances[1], 1) - np.max(hp_distances[0], 1))
                     y_pred[:, 0] = 1 - y_pred[:, 1]
                 else:
                     for label in range(self.n_labels):
-                        y_pred[:, label] = np.max(SVM_distances[label], 1)
+                        y_pred[:, label] = np.max(hp_distances[label], 1)
                     y_pred = py_softmax(y_pred, axis=1)
 
             else:
@@ -181,9 +181,9 @@ class UCSL_C(BaseEM, ClassifierMixin):
                 cluster_predictions = self.predict_clusters(X)
                 if self.n_labels == 2:
                     y_pred[:, 1] = sum(
-                        [np.rint(cluster_predictions[1])[:, cluster] * SVM_distances[1][:, cluster] for cluster in
+                        [np.rint(cluster_predictions[1])[:, cluster] * hp_distances[1][:, cluster] for cluster in
                          range(self.n_clusters_per_label[1])])
-                    y_pred[:, 1] -= sum([cluster_predictions[0][:, cluster] * SVM_distances[0][:, cluster] for cluster in
+                    y_pred[:, 1] -= sum([cluster_predictions[0][:, cluster] * hp_distances[0][:, cluster] for cluster in
                                          range(self.n_clusters_per_label[0])])
                     # compute probabilities \w sigmoid
                     y_pred[:, 1] = sigmoid(y_pred[:, 1] / np.max(y_pred[:, 1]))
@@ -191,7 +191,7 @@ class UCSL_C(BaseEM, ClassifierMixin):
                 else:
                     for label in range(self.n_labels):
                         y_pred[:, label] = sum(
-                            [cluster_predictions[label][:, cluster] * SVM_distances[label][:, cluster] for cluster in
+                            [cluster_predictions[label][:, cluster] * hp_distances[label][:, cluster] for cluster in
                              range(self.n_clusters_per_label[label])])
                     y_pred = py_softmax(y_pred, axis=1)
 
@@ -263,8 +263,10 @@ class UCSL_C(BaseEM, ClassifierMixin):
                     elif self.clustering == 'custom':
                         Q_distances = np.zeros((len(X_proj), len(self.barycenters[label])))
                         for cluster in range(len(self.barycenters[label])):
-                            print(self.barycenters[label][0].shape)
-                            Q_distances[:, cluster] = np.linalg.norm(X_proj - self.barycenters[label][cluster][None, :], 1)
+                            if X_proj.shape[1] > 1 :
+                                Q_distances[:, cluster] = np.linalg.norm(X_proj - self.barycenters[label][cluster][None, :], 1)
+                            else :
+                                Q_distances[:, cluster] = (X_proj - self.barycenters[label][cluster][None, :])[:, 0]
                         Q_distances /= np.sum(Q_distances, 1)[:, None]
                         cluster_predictions[label] = 1 - Q_distances
                 else:
