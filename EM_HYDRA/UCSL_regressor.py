@@ -170,7 +170,7 @@ class UCSL_R(BaseEM, RegressorMixin):
     def run(self, X, y, n_clusters):
         if n_clusters == 1:
             # by default, when we do not want to cluster a label, we train a simple linear SVM
-            SVM_coefficient, SVM_intercept = launch_svc(X, y, C=self.C)
+            SVM_coefficient, SVM_intercept = launch_svr(X, y, C=self.C)
             self.coefficients[0] = SVM_coefficient
             self.intercepts[0] = SVM_intercept
             n_consensus = 0

@@ -3,7 +3,7 @@ from scipy.special import logsumexp
 import scipy
 from EM_HYDRA.sinkornknopp import *
 from sklearn.cluster import KMeans
-from sklearn.svm import SVC
+from sklearn.svm import SVC, SVR
 from sklearn.cluster import SpectralClustering
 from sklearn.mixture import GaussianMixture
 from sklearn.linear_model import LogisticRegression
@@ -252,12 +252,41 @@ def launch_svc(X, y, sample_weight=None, kernel='linear', C=1):
     SVM_intercept = SVM_classifier.intercept_
 
     # get SVM hyperplane coefficient
-    if kernel == 'rbf':
-        X_support = X[SVM_classifier.support_]
-        y_support = y[SVM_classifier.support_]
-        SVM_coefficient = SVM_classifier.dual_coef_ @ np.einsum('i,ij->ij', y_support, X_support)
-    else:
-        SVM_coefficient = SVM_classifier.coef_
+    SVM_coefficient = SVM_classifier.coef_
+
+    return SVM_coefficient, SVM_intercept
+
+def launch_svr(X, y, sample_weight=None, kernel='linear', C=1):
+    """Fit the classification SVMs according to the given training data.
+    Parameters
+    ----------
+    X : array-like, shape (n_samples, n_features)
+        Training vectors.
+    y : array-like, shape (n_samples,)
+        Target values.
+    sample_weight : array-like, shape (n_samples,)
+        Training sample weights.
+    kernel : string,
+        kernel used for SVM.
+    C : float,
+        SVM hyperparameter C
+    Returns
+    -------
+    SVM_coefficient : array-like, shape (1, n_features)
+        The coefficient of the resulting SVM.
+    SVM_intercept : array-like, shape (1,)
+        The intercept of the resulting SVM.
+    """
+
+    # fit the different SVM/hyperplanes
+    SVM_regressor = SVR(kernel=kernel, C=C)
+    SVM_regressor.fit(X, y, sample_weight=sample_weight)
+
+    # get SVM intercept value
+    SVM_intercept = SVM_regressor.intercept_
+
+    # get SVM hyperplane coefficient
+    SVM_coefficient = SVM_regressor.coef_
 
     return SVM_coefficient, SVM_intercept
 
