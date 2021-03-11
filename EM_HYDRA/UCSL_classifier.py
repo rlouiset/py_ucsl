@@ -263,7 +263,7 @@ class UCSL_C(BaseEM, ClassifierMixin):
                     elif self.clustering == 'custom':
                         Q_distances = np.zeros((len(X_proj), len(self.barycenters[label])))
                         for cluster in range(len(self.barycenters[label])):
-                            print(self.barycenters[label].shape)
+                            print(self.barycenters[label][0].shape)
                             Q_distances[:, cluster] = np.linalg.norm(X_proj - self.barycenters[label][cluster][None, :], 1)
                         Q_distances /= np.sum(Q_distances, 1)[:, None]
                         cluster_predictions[label] = 1 - Q_distances
