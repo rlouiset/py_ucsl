@@ -97,10 +97,6 @@ class UCSL_C(BaseEM, ClassifierMixin):
             if multiclass_config == "ovr":
                 self.multiclass_config = "one_vs_rest"
 
-        # define clustering parameters
-        self.cluster_labels_ = {label: None for label in range(self.n_labels)}
-        self.barycenters = {label: None for label in range(self.n_labels)}
-
         # store directions from the Maximization method and store intercepts (only useful for HYDRA)
         self.coefficients = {label: {cluster_i: [] for cluster_i in range(n_clusters_per_label[label])} for label in
                              range(self.n_labels)}
@@ -115,8 +111,10 @@ class UCSL_C(BaseEM, ClassifierMixin):
                                 in range(self.n_labels)}
 
         # store intermediate and consensus results in dictionaries
-        self.y_clusters_pred = {label: None for label in range(self.n_labels)}
+        self.cluster_labels_ = {label: None for label in range(self.n_labels)}
         self.clustering_assignments = {label: None for label in range(self.n_labels)}
+        # define barycenters saving dictionaries
+        self.barycenters = {label: None for label in range(self.n_labels)}
 
         # define orthonormal directions basis and clustering methods at each consensus step
         self.orthonormal_basis = {label: [None for c in range(n_consensus)] for label in range(self.n_labels)}
