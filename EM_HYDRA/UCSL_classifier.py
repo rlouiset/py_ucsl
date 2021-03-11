@@ -494,6 +494,7 @@ class UCSL_C(BaseEM, ClassifierMixin):
                     init=np.array(centroids), n_init=1).fit(X_proj[index_positives])
                 Q = one_hot_encode(self.clustering_method[idx_outside_polytope][consensus].predict(X_proj),
                                    n_classes=n_clusters)
+                print(np.argmax(Q, 1))
                 self.clustering_method[idx_outside_polytope][-1] = copy.deepcopy(
                     self.clustering_method[idx_outside_polytope][consensus])
 
@@ -508,7 +509,6 @@ class UCSL_C(BaseEM, ClassifierMixin):
             if self.clustering in ['custom']:
                 self.clustering_method[idx_outside_polytope][consensus] = copy.deepcopy(self.custom_clustering_method)
                 Q_positives = self.clustering_method[idx_outside_polytope][consensus].fit_predict(X_proj[index_positives])
-                print(Q_positives)
                 Q_distances = np.zeros((len(X_proj), np.max(Q_positives) + 1))
                 for cluster in range(np.max(Q_positives) + 1):
                     Q_distances[:, cluster] = np.sum(np.abs(X_proj - np.mean(X_proj[index_positives][Q_positives == cluster], 0)[None, :]), 1)
@@ -521,6 +521,7 @@ class UCSL_C(BaseEM, ClassifierMixin):
 
         if self.adaptive_clustering_per_label[idx_outside_polytope]:
             n_clusters = max(S.shape[1], 2)
+            print(n_clusters)
 
         return S, cluster_index, n_clusters
 
