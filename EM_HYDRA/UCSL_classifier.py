@@ -264,11 +264,13 @@ class UCSL_C(BaseEM, ClassifierMixin):
                     elif self.clustering == 'custom':
                         Q_distances = np.zeros((len(X_proj), len(self.barycenters[label])))
                         for cluster in range(len(self.barycenters[label])):
-                            print((X_proj - self.barycenters[label][cluster][None, :]).shape)
+                            print(X_proj.shape)
+                            print(self.barycenters[label][cluster].shape)
+                            print((X_proj - self.barycenters[label][cluster]).shape)
                             print(np.sum(np.abs(X_proj - self.barycenters[label][cluster][None, :]), 1).shape)
                             print(Q_distances[:, cluster].shape)
                             if X_proj.shape[1] > 1:
-                                Q_distances[:, cluster] = np.sum(np.abs(X_proj - self.barycenters[label][cluster][None, :]), 1)
+                                Q_distances[:, cluster] = np.sum(np.abs(X_proj - self.barycenters[label][cluster]), 1)
                             else:
                                 Q_distances[:, cluster] = (X_proj - self.barycenters[label][cluster][None, :])[:, 0]
                         Q_distances /= np.sum(Q_distances, 1)[:, None]
