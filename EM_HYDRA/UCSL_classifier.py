@@ -507,8 +507,8 @@ class UCSL_C(BaseEM, ClassifierMixin):
 
             if self.clustering in ['custom']:
                 self.clustering_method[idx_outside_polytope][consensus] = copy.deepcopy(self.custom_clustering_method)
-                Q_positives = self.clustering_method[idx_outside_polytope][consensus].fit_predict(
-                    X_proj[index_positives])
+                Q_positives = self.clustering_method[idx_outside_polytope][consensus].fit_predict(X_proj[index_positives])
+                print(Q_positives)
                 Q_distances = np.zeros((len(X_proj), np.max(Q_positives) + 1))
                 for cluster in range(np.max(Q_positives) + 1):
                     Q_distances[:, cluster] = np.sum(np.abs(X_proj - np.mean(X_proj[index_positives][Q_positives == cluster], 0)[None, :]), 1)
