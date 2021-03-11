@@ -54,7 +54,7 @@ class BaseEM(BaseEstimator, metaclass=ABCMeta):
         self.consensus = consensus
 
         # define what are the weightings we want for each label
-        assert (negative_weighting in ['hard_clustering', 'soft_clustering']), \
+        assert (negative_weighting in ['hard_clustering', 'soft_clustering', 'all']), \
             "negative_weighting must be one of 'hard_clustering', 'soft_clustering'"
         assert (positive_weighting in ['hard_clustering', 'soft_clustering']), \
             "positive_weighting must be one of 'hard_clustering', 'soft_clustering'"
