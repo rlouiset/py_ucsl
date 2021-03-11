@@ -79,6 +79,7 @@ class UCSL_C(BaseEM, ClassifierMixin):
                     self.n_clusters_per_label[label] = 8
                     self.adaptive_clustering_per_label[label] = True
 
+
         # check the value of multi_class config and according to the number of labels
         if n_labels == 2:
             assert multiclass_config is None, 'Number of labels is 2, yet "multiclass_config" parameter is not None'
@@ -92,17 +93,17 @@ class UCSL_C(BaseEM, ClassifierMixin):
                 self.multiclass_config = "one_vs_rest"
 
         # store directions from the Maximization method and store intercepts (only useful for HYDRA)
-        self.coefficients = {label: {cluster_i: [] for cluster_i in range(n_clusters_per_label[label])} for label in
+        self.coefficients = {label: {cluster_i: [] for cluster_i in range(self.n_clusters_per_label[label])} for label in
                              range(self.n_labels)}
-        self.intercepts = {label: {cluster_i: [] for cluster_i in range(n_clusters_per_label[label])} for label in
+        self.intercepts = {label: {cluster_i: [] for cluster_i in range(self.n_clusters_per_label[label])} for label in
                            range(self.n_labels)}
 
         # TODO : Get rid of these visualization helps
         self.S_lists = {label: dict() for label in range(self.n_labels)}
-        self.coefficient_lists = {label: {cluster_i: dict() for cluster_i in range(n_clusters_per_label[label])} for
+        self.coefficient_lists = {label: {cluster_i: dict() for cluster_i in range(self.n_clusters_per_label[label])} for
                                   label in
                                   range(self.n_labels)}
-        self.intercept_lists = {label: {cluster_i: dict() for cluster_i in range(n_clusters_per_label[label])} for label
+        self.intercept_lists = {label: {cluster_i: dict() for cluster_i in range(self.n_clusters_per_label[label])} for label
                                 in range(self.n_labels)}
 
         # store intermediate and consensus results in dictionaries
