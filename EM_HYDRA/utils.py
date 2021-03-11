@@ -243,6 +243,8 @@ def launch_svc(X, y, sample_weight=None, kernel='linear', C=1):
     SVM_intercept : array-like, shape (1,)
         The intercept of the resulting SVM.
     """
+    print(C)
+    print(sample_weight)
 
     # fit the different SVM/hyperplanes
     SVM_classifier = SVC(kernel=kernel, C=C)
