@@ -301,14 +301,11 @@ class UCSL_R(BaseEM, RegressorMixin):
             basis = []
             for v in directions:
                 w = v - np.sum(np.dot(v, b) * b for b in basis)
-                print(np.linalg.norm(w))
                 if len(basis) >= 2:
                     if np.linalg.norm(w) * self.noise_tolerance_threshold > 1:
                         basis.append(w / np.linalg.norm(w))
                 elif np.linalg.norm(w) > 1e-2:
                     basis.append(w / np.linalg.norm(w))
-            print(basis)
-            print('')
 
             self.orthonormal_basis[consensus] = np.array(basis)
             self.orthonormal_basis[-1] = np.array(basis).copy()
