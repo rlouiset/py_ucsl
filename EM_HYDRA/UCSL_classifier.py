@@ -469,14 +469,17 @@ class UCSL_C(BaseEM, ClassifierMixin):
                 scores.append(np.mean(scores_i))
             directions = directions[np.array(scores).argsort()[::-1], :]
 
+            # orthonormalize coefficient/direction basis
             basis = []
             for v in directions:
                 w = v - np.sum(np.dot(v, b) * b for b in basis)
+                print(np.linalg.norm(w))
                 if len(basis) >= 2:
                     if np.linalg.norm(w) * self.noise_tolerance_threshold > 1:
                         basis.append(w / np.linalg.norm(w))
                 elif np.linalg.norm(w) > 1e-2:
                     basis.append(w / np.linalg.norm(w))
+            print('')
 
             self.orthonormal_basis[idx_outside_polytope][consensus] = np.array(basis)
             self.orthonormal_basis[idx_outside_polytope][-1] = np.array(basis).copy()
@@ -514,6 +517,7 @@ class UCSL_C(BaseEM, ClassifierMixin):
                 Q_distances /= np.sum(Q_distances, 1)[:, None]
                 Q = 1 - Q_distances
 
+        # define matrix clustering
         S = Q.copy()
         cluster_index = np.argmax(Q[index_positives], axis=1)
 
@@ -609,10 +613,8 @@ class UCSL_C(BaseEM, ClassifierMixin):
 
             # check the Clustering Stability \w Adjusted Rand Index for stopping criteria
             cluster_consistency = ARI(np.argmax(S[index_positives], 1), np.argmax(S_hold[index_positives], 1))
-            print(cluster_consistency)
             if cluster_consistency > stability_threshold:
                 break
-        print('')
         return cluster_index
 
     def predict_clusters_proba_from_cluster_labels(self, X, idx_outside_polytope, n_clusters):
