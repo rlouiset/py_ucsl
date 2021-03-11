@@ -519,7 +519,7 @@ class UCSL_C(BaseEM, ClassifierMixin):
         S = Q.copy()
         cluster_index = np.argmax(Q[index_positives], axis=1)
 
-        if self.adaptive_clustering_per_label:
+        if self.adaptive_clustering_per_label[idx_outside_polytope]:
             n_clusters = max(S.shape[1], 2)
 
         return S, cluster_index, n_clusters
