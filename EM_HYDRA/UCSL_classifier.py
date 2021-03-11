@@ -169,36 +169,37 @@ class UCSL_C(BaseEM, ClassifierMixin):
             Predictions of the probabilities of the query points belonging to labels.
         """
         y_pred = np.zeros((len(X), self.n_labels))
-        SVM_distances = self.compute_distances_to_hyperplanes(X)
 
-        if self.clustering in ['HYDRA']:
-            # merge each label distances and compute the probability \w sigmoid function
-            if self.n_labels == 2:
-                y_pred[:, 1] = sigmoid(np.max(SVM_distances[1], 1) - np.max(SVM_distances[0], 1))
-                y_pred[:, 0] = 1 - y_pred[:, 1]
-            else:
-                for label in range(self.n_labels):
-                    y_pred[:, label] = np.max(SVM_distances[label], 1)
-                y_pred = py_softmax(y_pred, axis=1)
+        if self.classification in ['max_margin']:
+            SVM_distances = self.compute_distances_to_hyperplanes(X)
+            if self.clustering in ['HYDRA']:
+                # merge each label distances and compute the probability \w sigmoid function
+                if self.n_labels == 2:
+                    y_pred[:, 1] = sigmoid(np.max(SVM_distances[1], 1) - np.max(SVM_distances[0], 1))
+                    y_pred[:, 0] = 1 - y_pred[:, 1]
+                else:
+                    for label in range(self.n_labels):
+                        y_pred[:, label] = np.max(SVM_distances[label], 1)
+                    y_pred = py_softmax(y_pred, axis=1)
 
-        else:
-            # compute the predictions \w.r.t cluster previously found
-            cluster_predictions = self.predict_clusters(X)
-            if self.n_labels == 2:
-                y_pred[:, 1] = sum(
-                    [np.rint(cluster_predictions[1])[:, cluster] * SVM_distances[1][:, cluster] for cluster in
-                     range(self.n_clusters_per_label[1])])
-                y_pred[:, 1] -= sum([cluster_predictions[0][:, cluster] * SVM_distances[0][:, cluster] for cluster in
-                                     range(self.n_clusters_per_label[0])])
-                # compute probabilities \w sigmoid
-                y_pred[:, 1] = sigmoid(y_pred[:, 1] / np.max(y_pred[:, 1]))
-                y_pred[:, 0] = 1 - y_pred[:, 1]
             else:
-                for label in range(self.n_labels):
-                    y_pred[:, label] = sum(
-                        [cluster_predictions[label][:, cluster] * SVM_distances[label][:, cluster] for cluster in
-                         range(self.n_clusters_per_label[label])])
-                y_pred = py_softmax(y_pred, axis=1)
+                # compute the predictions \w.r.t cluster previously found
+                cluster_predictions = self.predict_clusters(X)
+                if self.n_labels == 2:
+                    y_pred[:, 1] = sum(
+                        [np.rint(cluster_predictions[1])[:, cluster] * SVM_distances[1][:, cluster] for cluster in
+                         range(self.n_clusters_per_label[1])])
+                    y_pred[:, 1] -= sum([cluster_predictions[0][:, cluster] * SVM_distances[0][:, cluster] for cluster in
+                                         range(self.n_clusters_per_label[0])])
+                    # compute probabilities \w sigmoid
+                    y_pred[:, 1] = sigmoid(y_pred[:, 1] / np.max(y_pred[:, 1]))
+                    y_pred[:, 0] = 1 - y_pred[:, 1]
+                else:
+                    for label in range(self.n_labels):
+                        y_pred[:, label] = sum(
+                            [cluster_predictions[label][:, cluster] * SVM_distances[label][:, cluster] for cluster in
+                             range(self.n_clusters_per_label[label])])
+                    y_pred = py_softmax(y_pred, axis=1)
 
         return y_pred
 
@@ -411,8 +412,9 @@ class UCSL_C(BaseEM, ClassifierMixin):
         elif self.classification == "logistic_regression":
             for cluster in range(n_clusters):
                 cluster_assignment = np.ascontiguousarray(S[:, cluster])
-                logistic_coefficient = launch_logistic(X, y_polytope, cluster_assignment)
+                logistic_coefficient, logistic_intercept = launch_logistic(X, y_polytope, cluster_assignment)
                 self.coefficients[idx_outside_polytope][cluster].extend(logistic_coefficient)
+                self.intercepts[idx_outside_polytope][cluster] = logistic_intercept
                 # TODO: get rid of
                 self.coef_lists[idx_outside_polytope][cluster][iteration + 1] = logistic_coefficient.copy()
 
@@ -429,6 +431,8 @@ class UCSL_C(BaseEM, ClassifierMixin):
             indexes of the positive labels being clustered
         idx_outside_polytope : int
             label that is being clustered
+        n_clusters : int
+            the number of clusters
         consensus : int
             which consensus is being run ?
         Returns

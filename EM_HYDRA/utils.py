@@ -282,7 +282,8 @@ def launch_logistic(X, y, sample_weight=None):
     logistic = LogisticRegression()
     logistic.fit(X, y, sample_weight=sample_weight)
 
-    # get logistic coefficient
+    # get logistic coefficient and intercept
     logistic_coefficient = logistic.coef_
+    logistic_intercept = logistic.intercept_
 
-    return logistic_coefficient
+    return logistic_coefficient, logistic_intercept
