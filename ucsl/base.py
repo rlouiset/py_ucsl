@@ -26,7 +26,7 @@ class BaseEM(BaseEstimator, metaclass=ABCMeta):
         # define what type of initialization, clustering, classification and consensus one wants to use
         assert (initialization in ['k_means', 'gaussian_mixture', 'DPP', 'precomputed']), \
             "Initialization must be one of 'k_means', 'gaussian_mixture', 'DPP', 'precomputed'"
-        if initialization == 'custom' :
+        if initialization == 'precomputed' :
             assert (custom_initialization_matrixes is not None), \
                 "if initialization is custom you have to pass a initialization_matrixes different from None"
             self.custom_initialization_matrixes = custom_initialization_matrixes
