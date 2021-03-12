@@ -499,7 +499,7 @@ class UCSL_C(BaseEM, ClassifierMixin):
 
             if self.clustering == 'gaussian_mixture':
                 self.clustering_method[idx_outside_polytope][consensus] = GaussianMixture(
-                    n_components=n_clusters, covariance_type='diag', means_init=np.array(centroids)).fit(X_proj[index_positives])
+                    n_components=n_clusters, covariance_type='full', means_init=np.array(centroids)).fit(X_proj[index_positives])
                 Q = self.clustering_method[idx_outside_polytope][consensus].predict_proba(X_proj)
                 self.clustering_method[idx_outside_polytope][-1] = copy.deepcopy(
                     self.clustering_method[idx_outside_polytope][consensus])
