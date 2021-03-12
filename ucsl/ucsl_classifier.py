@@ -174,7 +174,7 @@ class UCSL_C(BaseEM, ClassifierMixin):
 
         if self.maximization in ['max_margin']:
             hp_distances = self.compute_distances_to_hyperplanes(X)
-            if self.clustering in ['ucsl']:
+            if self.clustering in ['HYDRA']:
                 # merge each label distances and compute the probability \w sigmoid function
                 if self.n_labels == 2:
                     y_pred[:, 1] = sigmoid(np.max(hp_distances[1], 1) - np.max(hp_distances[0], 1))
@@ -240,7 +240,7 @@ class UCSL_C(BaseEM, ClassifierMixin):
         cluster_predictions = {label: np.zeros((len(X), self.n_clusters_per_label[label])) for label in
                                range(self.n_labels)}
 
-        if self.clustering in ['ucsl']:
+        if self.clustering in ['HYDRA']:
             SVM_distances = {label: np.zeros((len(X), self.n_clusters_per_label[label])) for label in
                              range(self.n_labels)}
 
@@ -445,7 +445,7 @@ class UCSL_C(BaseEM, ClassifierMixin):
             clusters predictions argmax for positive samples.
         """
         Q = S.copy()
-        if self.clustering == 'original':
+        if self.clustering == 'HYDRA':
             SVM_distances = np.zeros(S.shape)
             for cluster in range(n_clusters):
                 # Apply the data again the trained model to get the final SVM scores
@@ -676,7 +676,7 @@ class UCSL_C(BaseEM, ClassifierMixin):
         # save clustering predictions computed by bagging step
         self.cluster_labels_[idx_outside_polytope] = consensus_cluster_index
 
-        if self.clustering == 'ucsl':
+        if self.clustering == 'HYDRA':
             # initialize the consensus clustering vector
             S = np.ones((len(X), n_clusters)) / n_clusters
             S[index_positives] *= 0
