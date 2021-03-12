@@ -489,6 +489,8 @@ class UCSL_C(BaseEM, ClassifierMixin):
             self.orthonormal_basis[idx_outside_polytope][-1] = np.array(basis).copy()
             X_proj = X @ self.orthonormal_basis[idx_outside_polytope][consensus].T
 
+            print(X_proj.shape)
+
             centroids = [np.mean(S[index_positives, cluster][:, None] * X_proj[index_positives, :], 0) for cluster in range(n_clusters)]
 
             if self.clustering == 'k_means':
@@ -516,6 +518,8 @@ class UCSL_C(BaseEM, ClassifierMixin):
         # define matrix clustering
         S = Q.copy()
         cluster_index = np.argmax(Q[index_positives], axis=1)
+        print(cluster_index)
+        print('')
 
         if self.adaptive_clustering_per_label[idx_outside_polytope]:
             n_clusters = max(S.shape[1], 2)
@@ -578,7 +582,9 @@ class UCSL_C(BaseEM, ClassifierMixin):
             # differentiate one_vs_one and one_vs_rest case
             if self.multiclass_config == 'one_vs_one':
                 for label in [label for label in range(self.n_labels) if label != idx_outside_polytope]:
+                    print(label)
                     index_polytope = np.array([i for (i, y_i) in enumerate(y) if y_i in [label, idx_outside_polytope]])
+                    print(index_polytope)
                     S_polytope = S.copy()[index_polytope]
                     X_polytope = X.copy()[index_polytope]
                     y_polytope = y.copy()[index_polytope]
@@ -591,6 +597,7 @@ class UCSL_C(BaseEM, ClassifierMixin):
                     index_negatives = np.where(y_polytope == -1)[0]  # index for Negative labels (inside polytope)
                     self.maximization_step(X_polytope, y_polytope, S_polytope, idx_outside_polytope, n_clusters,
                                            iteration)
+                print('')
             else:
                 self.maximization_step(X, y_polytope, S, idx_outside_polytope, n_clusters, iteration)
 
