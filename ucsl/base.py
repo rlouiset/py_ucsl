@@ -32,8 +32,8 @@ class BaseEM(BaseEstimator, metaclass=ABCMeta):
             self.custom_initialization_matrixes = custom_initialization_matrixes
         self.initialization = initialization
 
-        assert (clustering in ['k_means', 'gaussian_mixture', 'ucsl', 'custom']), \
-            "Clustering must be one of 'k_means', 'gaussian_mixture', 'ucsl', 'custom'"
+        assert (clustering in ['k_means', 'gaussian_mixture', 'HYDRA', 'custom']), \
+            "Clustering must be one of 'k_means', 'gaussian_mixture', 'HYDRA', 'custom'"
         if clustering == 'custom' :
             assert (custom_clustering_method is not None), \
                 "if clustering is custom you have to pass a custom_clustering_method different from None"
