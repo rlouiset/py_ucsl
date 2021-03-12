@@ -60,13 +60,6 @@ class UCSL_C(BaseEM, ClassifierMixin):
         self.negative_weighting = negative_weighting
         self.positive_weighting = positive_weighting
 
-        # define the mapping of labels before fitting the algorithm
-        # for example, one may want to merge 2 labels together before fitting to check if clustering separate them well
-        if training_label_mapping is None:
-            self.training_label_mapping = {label: label for label in range(self.n_labels)}
-        else:
-            self.training_label_mapping = training_label_mapping
-
         # define C hyperparameter if the classification method is max-margin
         self.C = C
 
@@ -85,6 +78,13 @@ class UCSL_C(BaseEM, ClassifierMixin):
                 else:
                     self.n_clusters_per_label[label] = 8
                     self.adaptive_clustering_per_label[label] = True
+
+        # define the mapping of labels before fitting the algorithm
+        # for example, one may want to merge 2 labels together before fitting to check if clustering separate them well
+        if training_label_mapping is None:
+            self.training_label_mapping = {label: label for label in range(self.n_labels)}
+        else:
+            self.training_label_mapping = training_label_mapping
 
         # check the value of multi_class config and according to the number of labels
         if n_labels == 2:
