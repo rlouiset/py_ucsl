@@ -516,8 +516,6 @@ class UCSL_C(BaseEM, ClassifierMixin):
         # define matrix clustering
         S = Q.copy()
         cluster_index = np.argmax(Q[index_positives], axis=1)
-        print(cluster_index)
-        print('')
 
         if self.adaptive_clustering_per_label[idx_outside_polytope]:
             n_clusters = max(S.shape[1], 2)
@@ -675,7 +673,6 @@ class UCSL_C(BaseEM, ClassifierMixin):
         # perform consensus clustering
         consensus_cluster_index = compute_spectral_clustering_consensus(
             self.clustering_assignments[idx_outside_polytope], n_clusters)
-        print('CONSENSUS : ', consensus_cluster_index)
         # save clustering predictions computed by bagging step
         self.cluster_labels_[idx_outside_polytope] = consensus_cluster_index
 
