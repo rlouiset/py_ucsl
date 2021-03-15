@@ -37,7 +37,7 @@ class UCSL_C(BaseEM, ClassifierMixin):
         If not specified, ucsl original "all" will be used.
     """
 
-    def __init__(self, stability_threshold=0.95, noise_tolerance_threshold=10, C=1,
+    def __init__(self, stability_threshold=0.95, noise_tolerance_threshold=10, C=1, covariance_type='full',
                  n_consensus=10, n_iterations=10, n_labels=2, n_clusters_per_label=None, multiclass_config=None,
                  initialization="DPP", clustering='ucsl', consensus='spectral_clustering', maximization='max_margin',
                  custom_clustering_method=None, custom_maximization_method=None,
@@ -62,6 +62,7 @@ class UCSL_C(BaseEM, ClassifierMixin):
 
         # define C hyperparameter if the classification method is max-margin
         self.C = C
+        self.covariance_type=covariance_type
 
         # define n_labels and n_clusters per label
         assert (n_labels >= 2), "The number of labels must be at least 2"
@@ -499,7 +500,7 @@ class UCSL_C(BaseEM, ClassifierMixin):
 
             if self.clustering == 'gaussian_mixture':
                 self.clustering_method[idx_outside_polytope][consensus] = GaussianMixture(
-                    n_components=n_clusters, covariance_type='diag', means_init=np.array(centroids)).fit(X_proj[index_positives])
+                    n_components=n_clusters, covariance_type=self.covariance_type, means_init=np.array(centroids)).fit(X_proj[index_positives])
                 Q = self.clustering_method[idx_outside_polytope][consensus].predict_proba(X_proj)
                 self.clustering_method[idx_outside_polytope][-1] = copy.deepcopy(
                     self.clustering_method[idx_outside_polytope][consensus])

@@ -39,7 +39,7 @@ class UCSL_R(BaseEM, RegressorMixin):
     def __init__(self, stability_threshold=0.95, noise_tolerance_threshold=10, C=1, n_consensus=10, n_iterations=10,
                  initialization="gaussian_mixture", clustering='gaussian_mixture', consensus='spectral_clustering',
                  maximization='svr', custom_clustering_method=None, custom_maximization_method=None, n_clusters=2,
-                 weighting='soft_clustering', custom_initialization_matrixes=None):
+                 weighting='soft_clustering', custom_initialization_matrixes=None, covariance_type='full'):
 
         super().__init__(initialization=initialization, clustering=clustering, consensus=consensus, maximization=maximization,
                          stability_threshold=stability_threshold, noise_tolerance_threshold=noise_tolerance_threshold,
@@ -50,6 +50,7 @@ class UCSL_R(BaseEM, RegressorMixin):
 
         # define C hyper-parameter if the classification method is max-margin
         self.C = C
+        self.covariance_type=covariance_type
 
         # define what are the weightings we want=
         assert (weighting in ['hard_clustering', 'soft_clustering']), \
@@ -323,7 +324,7 @@ class UCSL_R(BaseEM, RegressorMixin):
 
             if self.clustering == 'gaussian_mixture':
                 self.clustering_method[consensus] = GaussianMixture(
-                    n_components=n_clusters, covariance_type='full', means_init=np.array(centroids)).fit(X_proj)
+                    n_components=n_clusters, covariance_type=self.covariance_type, means_init=np.array(centroids)).fit(X_proj)
                 Q = self.clustering_method[consensus].predict_proba(X_proj)
                 self.clustering_method[-1] = copy.deepcopy(self.clustering_method[consensus])
 
