@@ -175,7 +175,7 @@ def launch_logistic(X, y, sample_weight=None):
     """
 
     # fit the different logistic classifier
-    logistic = LogisticRegression()
+    logistic = LogisticRegression(max_iter=1000)
     logistic.fit(X, y, sample_weight=sample_weight)
 
     # get logistic coefficient and intercept
