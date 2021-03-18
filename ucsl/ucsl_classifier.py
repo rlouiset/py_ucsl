@@ -706,7 +706,7 @@ class UCSL_C(BaseEM, ClassifierMixin):
                 S[index_positives] = np.rint(S[index_positives])
 
             cluster_index = self.run_EM(X, y, y_polytope, S, consensus_cluster_index, index_positives, index_negatives,
-                                        idx_outside_polytope, n_clusters, 0.85, -1)
+                                        idx_outside_polytope, n_clusters, 0.9, -1)
 
             # save barycenters and final predictions
             self.cluster_labels_[idx_outside_polytope] = cluster_index
