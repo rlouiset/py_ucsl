@@ -555,6 +555,12 @@ class UCSL_C(BaseEM, ClassifierMixin):
         S : array-like, shape (n_samples, n_samples)
             Cluster prediction matrix.
         """
+        best_cluster_consistency = 1
+        if consensus == -1 :
+            save_stabler_coefficients = True
+            consensus = self.n_consensus + 1
+            best_cluster_consistency = 0
+
         for iteration in range(self.n_iterations):
             # check for degenerate clustering for positive labels (warning) and negatives (might be normal)
             for cluster in range(self.n_clusters_per_label[idx_outside_polytope]):
@@ -614,6 +620,10 @@ class UCSL_C(BaseEM, ClassifierMixin):
             # check the Clustering Stability \w Adjusted Rand Index for stopping criteria
             cluster_consistency = ARI(np.argmax(S[index_positives], 1), np.argmax(S_hold[index_positives], 1))
             print(cluster_consistency)
+            if cluster_consistency > best_cluster_consistency :
+                best_cluster_consistency = cluster_consistency
+                self.orthonormal_basis[idx_outside_polytope][-1] = self.orthonormal_basis[idx_outside_polytope][consensus].copy()
+                self.clustering_method[idx_outside_polytope][-1] = self.clustering_method[idx_outside_polytope][consensus].copy()
             if cluster_consistency > stability_threshold:
                 break
         print('')
