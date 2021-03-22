@@ -622,8 +622,8 @@ class UCSL_C(BaseEM, ClassifierMixin):
             print(cluster_consistency)
             if cluster_consistency > best_cluster_consistency :
                 best_cluster_consistency = cluster_consistency
-                self.coefficients[idx_outside_polytope][-1] = copy.deepcopy(self.coefficients[idx_outside_polytope][consensus])
-                self.intercepts[idx_outside_polytope][-1] = copy.deepcopy(self.intercepts[idx_outside_polytope][consensus])
+                self.coefficients[idx_outside_polytope][-1] = copy.deepcopy(self.coefficients[idx_outside_polytope])
+                self.intercepts[idx_outside_polytope][-1] = copy.deepcopy(self.intercepts[idx_outside_polytope])
                 self.orthonormal_basis[idx_outside_polytope][-1] = copy.deepcopy(self.orthonormal_basis[idx_outside_polytope][consensus])
                 self.clustering_method[idx_outside_polytope][-1] = copy.deepcopy(self.clustering_method[idx_outside_polytope][consensus])
             if cluster_consistency > stability_threshold:
