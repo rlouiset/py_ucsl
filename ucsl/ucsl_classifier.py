@@ -173,7 +173,7 @@ class UCSL_C(BaseEM, ClassifierMixin):
         """
         y_pred = np.zeros((len(X), self.n_labels))
 
-        if self.maximization in ['max_margin', 'logistic_regression']:
+        if self.maximization in ['max_margin', 'logistic']:
             hp_distances = self.compute_distances_to_hyperplanes(X)
             if self.clustering in ['HYDRA']:
                 # merge each label distances and compute the probability \w sigmoid function
