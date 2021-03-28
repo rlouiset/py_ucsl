@@ -379,7 +379,7 @@ class UCSL_C(BaseEM, ClassifierMixin):
             S = one_hot_encode(KM.predict(X))
 
         if self.initialization in ["gaussian_mixture"]:
-            GMM = GaussianMixture(n_components=self.n_clusters_per_label[idx_outside_polytope], n_init=1).fit(X[index_positives])
+            GMM = GaussianMixture(n_components=self.n_clusters_per_label[idx_outside_polytope], n_init=1, covariance_type=self.covariance_type).fit(X[index_positives])
             S = GMM.predict_proba(X)
 
         if self.initialization in ['custom']:
