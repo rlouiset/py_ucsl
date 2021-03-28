@@ -497,7 +497,7 @@ class UCSL_C(BaseEM, ClassifierMixin):
                     n_clusters=n_clusters, init=np.array(centroids), n_init=1).fit(X_proj[index_positives])
                 Q_positives = self.clustering_method[idx_outside_polytope][consensus].fit_predict(X_proj[index_positives])
                 Q_distances = np.zeros((len(X_proj), np.max(Q_positives) + 1))
-                print(self.clustering_method[idx_outside_polytope][consensus].labels_.shape)
+                print(self.clustering_method[idx_outside_polytope][consensus].centroids_.shape)
                 for cluster in range(np.max(Q_positives) + 1):
                     Q_distances[:, cluster] = np.sum(np.abs(X_proj - self.clustering_method[idx_outside_polytope][consensus].labels_[cluster]), 1)
                 Q_distances = Q_distances / np.sum(Q_distances, 1)[:, None]
