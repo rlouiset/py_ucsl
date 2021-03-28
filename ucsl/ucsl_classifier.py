@@ -379,7 +379,7 @@ class UCSL_C(BaseEM, ClassifierMixin):
             S = one_hot_encode(KM.predict(X))
 
         if self.initialization in ["gaussian_mixture"]:
-            GMM = GaussianMixture(n_components=self.n_clusters_per_label[idx_outside_polytope], n_init=1, covariance_type=self.covariance_type).fit(X[index_positives])
+            GMM = GaussianMixture(n_components=self.n_clusters_per_label[idx_outside_polytope], n_init=1).fit(X[index_positives])
             S = GMM.predict_proba(X)
 
         if self.initialization in ['custom']:
@@ -722,7 +722,7 @@ class UCSL_C(BaseEM, ClassifierMixin):
                 S[index_positives] = np.rint(S[index_positives])
 
             cluster_index = self.run_EM(X, y, y_polytope, S, consensus_cluster_index, index_positives, index_negatives,
-                                        idx_outside_polytope, n_clusters, 0.99, -1)
+                                        idx_outside_polytope, n_clusters, 0.9, -1)
 
             # save barycenters and final predictions
             self.cluster_labels_[idx_outside_polytope] = cluster_index
