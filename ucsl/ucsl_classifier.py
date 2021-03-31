@@ -375,11 +375,11 @@ class UCSL_C(BaseEM, ClassifierMixin):
             S[index_positives] = cpu_sk(prob, 1)
 
         if self.initialization in ["k_means"]:
-            KM = KMeans(n_clusters=self.n_clusters_per_label[idx_outside_polytope], n_init=1).fit(X[index_positives])
+            KM = KMeans(n_clusters=self.n_clusters_per_label[idx_outside_polytope], init="random" , n_init=1).fit(X[index_positives])
             S = one_hot_encode(KM.predict(X))
 
         if self.initialization in ["gaussian_mixture"]:
-            GMM = GaussianMixture(n_components=self.n_clusters_per_label[idx_outside_polytope], n_init=1).fit(X[index_positives])
+            GMM = GaussianMixture(n_components=self.n_clusters_per_label[idx_outside_polytope], init_params="random", n_init=1, covariance_type=self.covariance_type).fit(X[index_positives])
             S = GMM.predict_proba(X)
 
         if self.initialization in ['custom']:
@@ -597,7 +597,6 @@ class UCSL_C(BaseEM, ClassifierMixin):
                     y_polytope[y_polytope == label] = -1
                     # if label is outside of the polytope, the distance is positive and the label is clustered
                     y_polytope[y_polytope == idx_outside_polytope] = 1
-
                     self.maximization_step(X_polytope, y_polytope, S_polytope, idx_outside_polytope, n_clusters, iteration)
             else:
                 self.maximization_step(X, y_polytope, S, idx_outside_polytope, n_clusters, iteration)
