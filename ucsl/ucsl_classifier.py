@@ -598,17 +598,13 @@ class UCSL_C(BaseEM, ClassifierMixin):
                     # if label is outside of the polytope, the distance is positive and the label is clustered
                     y_polytope[y_polytope == idx_outside_polytope] = 1
 
-                    index_positives = np.where(y_polytope == 1)[0]  # index for Positive labels (outside polytope)
-                    index_negatives = np.where(y_polytope == -1)[0]  # index for Negative labels (inside polytope)
-                    self.maximization_step(X_polytope, y_polytope, S_polytope, idx_outside_polytope, n_clusters,
-                                           iteration)
+                    self.maximization_step(X_polytope, y_polytope, S_polytope, idx_outside_polytope, n_clusters, iteration)
             else:
                 self.maximization_step(X, y_polytope, S, idx_outside_polytope, n_clusters, iteration)
 
             # decide the convergence based on the clustering stability
             S_hold = S.copy()
-            S, cluster_index, n_clusters = self.expectation_step(X, S, index_positives, idx_outside_polytope,
-                                                                 n_clusters, consensus)
+            S, cluster_index, n_clusters = self.expectation_step(X, S, index_positives, idx_outside_polytope, n_clusters, consensus)
 
             # applying the negative weighting set as input
             if self.negative_weighting in ['all']:
