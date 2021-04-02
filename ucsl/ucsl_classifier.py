@@ -37,11 +37,11 @@ class UCSL_C(BaseEM, ClassifierMixin):
         If not specified, ucsl original "all" will be used.
     """
 
-    def __init__(self, stability_threshold=0.95, noise_tolerance_threshold=10, C=1, covariance_type='full',
+    def __init__(self, stability_threshold=0.85, noise_tolerance_threshold=10, C=0.1, covariance_type='full',
                  n_consensus=10, n_iterations=10, n_labels=2, n_clusters_per_label=None, multiclass_config=None,
-                 initialization="DPP", clustering='ucsl', consensus='spectral_clustering', maximization='max_margin',
+                 initialization="gaussian_mixture", clustering='gaussian_mixture', consensus='spectral_clustering', maximization='logistic',
                  custom_clustering_method=None, custom_maximization_method=None,
-                 negative_weighting='all', positive_weighting='hard_clustering',
+                 negative_weighting='soft_clustering', positive_weighting='hard_clustering',
                  training_label_mapping=None, custom_initialization_matrixes=None):
 
         super().__init__(initialization=initialization, clustering=clustering, consensus=consensus,
@@ -306,8 +306,7 @@ class UCSL_C(BaseEM, ClassifierMixin):
 
         for consensus in range(n_consensus):
             # first we initialize the clustering matrix S, with the initialization strategy set in self.initialization
-            S, cluster_index, n_clusters = self.initialize_clustering(X, y_polytope, index_positives, index_negatives,
-                                                                      n_clusters, idx_outside_polytope)
+            S, cluster_index, n_clusters = self.initialize_clustering(X, y_polytope, index_positives, index_negatives, n_clusters, idx_outside_polytope)
             if self.negative_weighting in ['all']:
                 S[index_negatives] = 1 / n_clusters
             elif self.negative_weighting in ['hard_clustering']:
@@ -618,7 +617,6 @@ class UCSL_C(BaseEM, ClassifierMixin):
 
             # check the Clustering Stability \w Adjusted Rand Index for stopping criteria
             cluster_consistency = ARI(np.argmax(S[index_positives], 1), np.argmax(S_hold[index_positives], 1))
-            print(cluster_consistency)
             if cluster_consistency > best_cluster_consistency :
                 best_cluster_consistency = cluster_consistency
                 self.coefficients[idx_outside_polytope][-1] = copy.deepcopy(self.coefficients[idx_outside_polytope])
@@ -627,7 +625,6 @@ class UCSL_C(BaseEM, ClassifierMixin):
                 self.clustering_method[idx_outside_polytope][-1] = copy.deepcopy(self.clustering_method[idx_outside_polytope][consensus])
             if cluster_consistency > stability_threshold:
                 break
-        print('')
         return cluster_index
 
     def predict_clusters_proba_from_cluster_labels(self, X, idx_outside_polytope, n_clusters):
