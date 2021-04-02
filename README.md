@@ -1,11 +1,13 @@
-Uncovering Clusters driven by Supervised Learning
+UCSL : Unsupervised Clustering driven by Supervised Learning
 ===============================
 
-This repository contains codes and examples for Uncovering Clusters driven by Supervised Learning (UCSL) algorithm.
+This repository contains codes and examples for UCSL : Unsupervised Clustering driven by Supervised Learning (UCSL) algorithm.
 
-Basically, we aim at uncovering subtypes during a supervised task (classification or regression).
+We aim at unsupervisedly identify subtypes and drive it with a supervised task (classification or regression).
 
 The algorithm is implemented in a pedagogical, easy-to-use sklearn fashion with fit(), fit_predict(), predict() and predict_clusters() functions.
+
+Method codes are available in "ucsl" directory, examples implemented in notebook are implemented in "examples" directory.
 
 Installation
 ------------
