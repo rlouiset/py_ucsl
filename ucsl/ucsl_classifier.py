@@ -371,7 +371,7 @@ class UCSL_C(BaseEM, ClassifierMixin):
                     W[Widx[i], :].transpose())
 
             prob = py_softmax(prob, 1)
-            S[index_positives] = cpu_sk(prob, 1)
+            S[index_positives] = prob
 
         if self.initialization in ["k_means"]:
             KM = KMeans(n_clusters=self.n_clusters_per_label[idx_outside_polytope], init="random" , n_init=1).fit(X[index_positives])
