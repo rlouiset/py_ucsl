@@ -617,7 +617,7 @@ class UCSL_C(BaseEM, ClassifierMixin):
 
             # check the Clustering Stability \w Adjusted Rand Index for stopping criteria
             cluster_consistency = ARI(np.argmax(S[index_positives], 1), np.argmax(S_hold[index_positives], 1))
-            print(cluster_consistency)
+            #print(cluster_consistency)
             if cluster_consistency > best_cluster_consistency :
                 best_cluster_consistency = cluster_consistency
                 self.coefficients[idx_outside_polytope][-1] = copy.deepcopy(self.coefficients[idx_outside_polytope])
@@ -626,7 +626,7 @@ class UCSL_C(BaseEM, ClassifierMixin):
                 self.clustering_method[idx_outside_polytope][-1] = copy.deepcopy(self.clustering_method[idx_outside_polytope][consensus])
             if cluster_consistency > stability_threshold:
                 break
-        print('')
+        #print('')
         return cluster_index
 
     def predict_clusters_proba_from_cluster_labels(self, X, idx_outside_polytope, n_clusters):
