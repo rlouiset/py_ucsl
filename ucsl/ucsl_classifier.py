@@ -102,7 +102,7 @@ class UCSL_C(BaseEM, ClassifierMixin):
             y_train_copy[y_train == original_label] = new_label
 
         # run the algorithm
-        self.run(X_train, y_train_copy, self.n_clusters, idx_outside_polytope=self.label_to_cluster)
+        self.run(X_train, y_train_copy, idx_outside_polytope=self.label_to_cluster)
 
         return self
 
@@ -288,7 +288,7 @@ class UCSL_C(BaseEM, ClassifierMixin):
         if self.maximization == "max_margin":
             for cluster in range(n_clusters):
                 cluster_assignment = np.ascontiguousarray(S[:, cluster])
-                SVM_coefficient, SVM_intercept = launch_svc(X, y_polytope, cluster_assignment, C=self.C)
+                SVM_coefficient, SVM_intercept = launch_svc(X, y_polytope, cluster_assignment)
                 self.coefficients[cluster].extend(SVM_coefficient)
                 self.intercepts[cluster] = SVM_intercept
 
