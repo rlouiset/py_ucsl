@@ -285,20 +285,26 @@ class UCSL_C(BaseEM, ClassifierMixin):
         return S, cluster_index
 
     def maximization_step(self, X, y_polytope, S):
-        print(self.maximization)
-        if self.maximization == "max_margin":
+        if self.maximization == "svc":
             for cluster in range(self.n_clusters):
                 cluster_assignment = np.ascontiguousarray(S[:, cluster])
                 SVM_coefficient, SVM_intercept = launch_svc(X, y_polytope, cluster_assignment)
                 self.coefficients[cluster] = SVM_coefficient
                 self.intercepts[cluster] = SVM_intercept
 
-        elif self.maximization == "logistic":
+        elif self.maximization == "lr":
             for cluster in range(self.n_clusters):
                 cluster_assignment = np.ascontiguousarray(S[:, cluster])
                 logistic_coefficient, logistic_intercept = launch_logistic(X, y_polytope, cluster_assignment)
                 self.coefficients[cluster] = logistic_coefficient
                 self.intercepts[cluster] = logistic_intercept
+
+        else :
+            for cluster in range(self.n_clusters):
+                cluster_assignment = np.ascontiguousarray(S[:, cluster])
+                self.maximization.fit(X, y_polytope, sample_weight=cluster_assignment)
+                self.coefficients[cluster] = self.maximization.coef_
+                self.intercepts[cluster] = self.maximization.intercept_
 
     def expectation_step(self, X, S, index_positives, consensus):
         """Update clustering method (update clustering distribution matrix S).
@@ -320,46 +326,20 @@ class UCSL_C(BaseEM, ClassifierMixin):
         cluster_index : array-like, shape (n_positives_samples, )
             clusters predictions argmax for positive samples.
         """
-
-        print(self.coefficients)
-
-        # get directions
-        directions = []
+        # get directions basis
+        directions_basis = []
         for cluster in range(self.n_clusters):
-            directions.extend(self.coefficients[cluster])
-        norm_directions = [np.linalg.norm(direction) for direction in directions]
-        directions = np.array(directions) / np.array(norm_directions)[:, None]
+            directions_basis.extend(self.coefficients[cluster])
+        norm_directions = [np.linalg.norm(direction) for direction in directions_basis]
+        directions_basis = np.array(directions_basis) / np.array(norm_directions)[:, None]
 
-        print(directions.shape)
-
-        # compute the most important vectors because Graam-Schmidt is not invariant by permutation when the matrix is not square
-        scores = []
-        for i, direction_i in enumerate(directions):
-            scores_i = []
-            for j, direction_j in enumerate(directions):
-                if i != j:
-                    scores_i.append(np.linalg.norm(direction_i - (np.dot(direction_i, direction_j) * direction_j)))
-            scores.append(np.mean(scores_i))
-        directions = directions[np.array(scores).argsort()[::-1], :]
-
-        print(directions.shape)
-
-        # orthonormalize coefficient/direction basis
-        basis = []
-        for v in directions:
-            w = v - np.sum(np.dot(v, b) * b for b in basis)
-            if len(basis) >= 2:
-                if np.linalg.norm(w) * self.noise_tolerance_threshold > 1:
-                    basis.append(w / np.linalg.norm(w))
-            elif np.linalg.norm(w) > 1e-2:
-                basis.append(w / np.linalg.norm(w))
-
-        self.orthonormal_basis[consensus] = np.array(basis)
-        self.orthonormal_basis[-1] = np.array(basis).copy()
-        print(np.array(basis).shape)
-        print(self.orthonormal_basis[consensus].shape)
+        # apply graam-schmidt algorithm
+        orthonormalized_basis = self.graam_schmidt(directions_basis)
+        self.orthonormal_basis[consensus] = orthonormalized_basis
+        self.orthonormal_basis[-1] = np.array(orthonormalized_basis).copy()
         X_proj = X @ self.orthonormal_basis[consensus].T
 
+        # get centroids or barycenters
         centroids = [np.mean(S[index_positives, cluster][:, None] * X_proj[index_positives, :], 0) for cluster in range(self.n_clusters)]
 
         if self.clustering == 'k_means':
@@ -371,14 +351,12 @@ class UCSL_C(BaseEM, ClassifierMixin):
             Q_distances = Q_distances / np.sum(Q_distances, 1)[:, None]
             Q = 1 - Q_distances
 
-        if self.clustering == 'gaussian_mixture':
-            self.clustering_method[consensus] = GaussianMixture(
-                n_components=self.n_clusters, covariance_type="spherical", means_init=np.array(centroids)).fit(X_proj[index_positives])
+        elif self.clustering == 'gaussian_mixture':
+            self.clustering_method[consensus] = GaussianMixture(n_components=self.n_clusters, covariance_type="spherical", means_init=np.array(centroids)).fit(X_proj[index_positives])
             Q = self.clustering_method[consensus].predict_proba(X_proj)
-            self.clustering_method[-1] = copy.deepcopy(
-                self.clustering_method[consensus])
+            self.clustering_method[-1] = copy.deepcopy(self.clustering_method[consensus])
 
-        else :
+        else:
             self.clustering_method[consensus] = copy.deepcopy(self.clustering)
             Q_positives = self.clustering_method[consensus].fit_predict(X_proj[index_positives])
             Q_distances = np.zeros((len(X_proj), np.max(Q_positives) + 1))
@@ -392,6 +370,28 @@ class UCSL_C(BaseEM, ClassifierMixin):
         cluster_index = np.argmax(Q[index_positives], axis=1)
 
         return S, cluster_index
+
+    def graam_schmidt(self, directions_basis):
+        # compute the most important vectors because Graam-Schmidt is not invariant by permutation when the matrix is not square
+        scores = []
+        for i, direction_i in enumerate(directions_basis):
+            scores_i = []
+            for j, direction_j in enumerate(directions_basis):
+                if i != j:
+                    scores_i.append(np.linalg.norm(direction_i - (np.dot(direction_i, direction_j) * direction_j)))
+            scores.append(np.mean(scores_i))
+        directions = directions_basis[np.array(scores).argsort()[::-1], :]
+
+        # orthonormalize coefficient/direction basis
+        basis = []
+        for v in directions:
+            w = v - np.sum(np.dot(v, b) * b for b in basis)
+            if len(basis) >= 2:
+                if np.linalg.norm(w) * self.noise_tolerance_threshold > 1:
+                    basis.append(w / np.linalg.norm(w))
+            elif np.linalg.norm(w) > 1e-2:
+                basis.append(w / np.linalg.norm(w))
+        return np.array(basis)
 
     def run_EM(self, X, y_polytope, S, cluster_index, index_positives, index_negatives, consensus):
         """Perform a bagging of the previously obtained clustering and compute new hyperplanes.
@@ -443,7 +443,6 @@ class UCSL_C(BaseEM, ClassifierMixin):
             self.intercepts = {cluster_i: [] for cluster_i in range(self.n_clusters)}
             # run maximization step
             self.maximization_step(X, y_polytope, S)
-            print(self.maximization)
 
             # decide the convergence based on the clustering stability
             S_hold = S.copy()
