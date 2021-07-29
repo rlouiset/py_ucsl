@@ -216,7 +216,6 @@ class UCSL_C(BaseEM, ClassifierMixin):
         return cluster_predictions
 
     def run(self, X, y, idx_outside_polytope):
-        print(np.unique(y))
         # set label idx_outside_polytope outside of the polytope by setting it to positive labels
         y_polytope = np.copy(y)
         # if label is inside of the polytope, the distance is negative and the label is not divided into
@@ -226,8 +225,6 @@ class UCSL_C(BaseEM, ClassifierMixin):
 
         index_positives = np.where(y_polytope == 1)[0]  # index for Positive labels (outside polytope)
         index_negatives = np.where(y_polytope == -1)[0]  # index for Negative labels (inside polytope)
-
-        print(index_positives)
 
         n_consensus = self.n_consensus
         # define the clustering assignment matrix (each column correspond to one consensus run)
@@ -324,8 +321,6 @@ class UCSL_C(BaseEM, ClassifierMixin):
         cluster_index : array-like, shape (n_positives_samples, )
             clusters predictions argmax for positive samples.
         """
-        Q = S.copy()
-
         # get directions
         directions = []
         for cluster in range(self.n_clusters):
@@ -343,6 +338,8 @@ class UCSL_C(BaseEM, ClassifierMixin):
             scores.append(np.mean(scores_i))
         directions = directions[np.array(scores).argsort()[::-1], :]
 
+        print(directions.shape)
+
         # orthonormalize coefficient/direction basis
         basis = []
         for v in directions:
@@ -355,13 +352,14 @@ class UCSL_C(BaseEM, ClassifierMixin):
 
         self.orthonormal_basis[consensus] = np.array(basis)
         self.orthonormal_basis[-1] = np.array(basis).copy()
+        print(np.array(basis).shape)
+        print(self.orthonormal_basis[consensus].shape)
         X_proj = X @ self.orthonormal_basis[consensus].T
 
         centroids = [np.mean(S[index_positives, cluster][:, None] * X_proj[index_positives, :], 0) for cluster in range(self.n_clusters)]
 
         if self.clustering == 'k_means':
-            self.clustering_method[consensus] = KMeans(
-                n_clusters=self.n_clusters, init=np.array(centroids), n_init=1).fit(X_proj[index_positives])
+            self.clustering_method[consensus] = KMeans(n_clusters=self.n_clusters, init=np.array(centroids), n_init=1).fit(X_proj[index_positives])
             Q_positives = self.clustering_method[consensus].fit_predict(X_proj[index_positives])
             Q_distances = np.zeros((len(X_proj), np.max(Q_positives) + 1))
             for cluster in range(np.max(Q_positives) + 1):
