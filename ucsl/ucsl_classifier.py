@@ -96,12 +96,14 @@ class UCSL_C(BaseEM, ClassifierMixin):
         -------
         self
         """
+        print(training_label_mapping)
         # apply label mapping (in our case we merged "BIPOLAR" and "SCHIZOPHRENIA" into "MENTAL DISEASE" for our xp)
         y_train_copy = y_train.copy()
         for original_label, new_label in self.training_label_mapping.items():
             y_train_copy[y_train == original_label] = new_label
 
         # run the algorithm
+        print(self.label_to_cluster)
         self.run(X_train, y_train_copy, idx_outside_polytope=self.label_to_cluster)
 
         return self
