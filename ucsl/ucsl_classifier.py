@@ -285,6 +285,7 @@ class UCSL_C(BaseEM, ClassifierMixin):
         return S, cluster_index
 
     def maximization_step(self, X, y_polytope, S, n_clusters):
+        print(self.maximization)
         if self.maximization == "max_margin":
             for cluster in range(n_clusters):
                 cluster_assignment = np.ascontiguousarray(S[:, cluster])
@@ -427,9 +428,7 @@ class UCSL_C(BaseEM, ClassifierMixin):
             # check for degenerate clustering for positive labels (warning) and negatives (might be normal)
             for cluster in range(self.n_clusters):
                 if np.count_nonzero(S[index_positives, cluster]) == 0:
-                    logging.debug(
-                        "Cluster dropped, one cluster have no positive points anymore, in iteration : %d" % (
-                                iteration - 1))
+                    logging.debug( "Cluster dropped, one cluster have no positive points anymore, in iteration : %d" % (iteration - 1))
                     logging.debug("Re-initialization of the clustering...")
                     S, cluster_index = self.initialize_clustering(X, y_polytope, index_positives)
                 if np.max(S[index_negatives, cluster]) < 0.5:
