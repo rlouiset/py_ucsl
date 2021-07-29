@@ -235,9 +235,9 @@ class UCSL_C(BaseEM, ClassifierMixin):
 
         for consensus in range(n_consensus):
             # first we initialize the clustering matrix S, with the initialization strategy set in self.initialization
-            S, cluster_index, n_clusters = self.initialize_clustering(X, y_polytope, index_positives)
+            S, cluster_index = self.initialize_clustering(X, y_polytope, index_positives)
             if self.negative_weighting in ['uniform']:
-                S[index_negatives] = 1 / n_clusters
+                S[index_negatives] = 1 / self.n_clusters
             elif self.negative_weighting in ['hard']:
                 S[index_negatives] = np.rint(S[index_negatives])
             if self.positive_weighting in ['hard']:
@@ -430,7 +430,7 @@ class UCSL_C(BaseEM, ClassifierMixin):
                         "Cluster dropped, one cluster have no positive points anymore, in iteration : %d" % (
                                 iteration - 1))
                     logging.debug("Re-initialization of the clustering...")
-                    S, cluster_index, n_clusters = self.initialize_clustering(X, y_polytope, index_positives)
+                    S, cluster_index = self.initialize_clustering(X, y_polytope, index_positives)
                 if np.max(S[index_negatives, cluster]) < 0.5:
                     logging.debug(
                         "Cluster too far, one cluster have no negative points anymore, in consensus : %d" % (
