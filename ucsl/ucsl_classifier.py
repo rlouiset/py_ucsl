@@ -442,7 +442,7 @@ class UCSL_C(BaseEM, ClassifierMixin):
             self.coefficients = {cluster_i: [] for cluster_i in range(self.n_clusters)}
             self.intercepts = {cluster_i: [] for cluster_i in range(self.n_clusters)}
             # run maximization step
-            self.maximization_step(X, y_polytope, S, iteration)
+            self.maximization_step(X, y_polytope, S)
             print(self.maximization)
 
             # decide the convergence based on the clustering stability
