@@ -214,6 +214,7 @@ class UCSL_C(BaseEM, ClassifierMixin):
         return cluster_predictions
 
     def run(self, X, y, idx_outside_polytope):
+        print(np.unique(y))
         # set label idx_outside_polytope outside of the polytope by setting it to positive labels
         y_polytope = np.copy(y)
         # if label is inside of the polytope, the distance is negative and the label is not divided into
@@ -223,6 +224,8 @@ class UCSL_C(BaseEM, ClassifierMixin):
 
         index_positives = np.where(y_polytope == 1)[0]  # index for Positive labels (outside polytope)
         index_negatives = np.where(y_polytope == -1)[0]  # index for Negative labels (inside polytope)
+
+        print(index_positives)
 
         n_consensus = self.n_consensus
         # define the clustering assignment matrix (each column correspond to one consensus run)
