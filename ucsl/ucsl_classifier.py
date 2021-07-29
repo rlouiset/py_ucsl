@@ -37,20 +37,29 @@ class UCSL_C(BaseEM, ClassifierMixin):
         If not specified, ucsl original "all" will be used.
     """
 
-    def __init__(self, stability_threshold=0.85, noise_tolerance_threshold=10, C=0.1, covariance_type='full',
-                 n_consensus=10, n_iterations=10, n_labels=2, n_clusters_per_label=None, multiclass_config=None,
-                 initialization="gaussian_mixture", clustering='gaussian_mixture', consensus='spectral_clustering', maximization='logistic',
-                 custom_clustering_method=None, custom_maximization_method=None,
+    def __init__(self, stability_threshold=0.85, noise_tolerance_threshold=10,
+                 n_consensus=10, n_iterations=10,
+                 n_clusters=2, label_to_cluster=1,
+                 clustering='gaussian_mixture', maximization='logistic',
                  negative_weighting='soft_clustering', positive_weighting='hard_clustering',
-                 training_label_mapping=None, custom_initialization_matrixes=None):
+                 training_label_mapping=None):
 
-        super().__init__(initialization=initialization, clustering=clustering, consensus=consensus,
-                         maximization=maximization,
+        super().__init__(clustering=clustering, maximization=maximization,
                          stability_threshold=stability_threshold, noise_tolerance_threshold=noise_tolerance_threshold,
-                         custom_clustering_method=custom_clustering_method,
-                         custom_maximization_method=custom_maximization_method,
-                         custom_initialization_matrixes=custom_initialization_matrixes,
                          n_consensus=n_consensus, n_iterations=n_iterations)
+
+        # define the number of clusters needed
+        self.n_clusters = n_clusters
+
+        # define which label we want to cluster
+        self.label_to_cluster = label_to_cluster
+
+        # define the mapping of labels before fitting the algorithm
+        # for example, one may want to merge 2 labels together before fitting to check if clustering separate them well
+        if training_label_mapping is None:
+            self.training_label_mapping = {label: label for label in range(2)}
+        else:
+            self.training_label_mapping = training_label_mapping
 
         # define what are the weightings we want for each label
         assert (negative_weighting in ['hard_clustering', 'soft_clustering', 'all']), \
@@ -60,68 +69,20 @@ class UCSL_C(BaseEM, ClassifierMixin):
         self.negative_weighting = negative_weighting
         self.positive_weighting = positive_weighting
 
-        # define C hyperparameter if the classification method is max-margin
-        self.C = C
-        self.covariance_type=covariance_type
-
-        # define n_labels and n_clusters per label
-        assert (n_labels >= 2), "The number of labels must be at least 2"
-        self.n_labels = n_labels
-        if n_clusters_per_label is None:
-            self.n_clusters_per_label = {label: 8 for label in range(n_labels)}  # set number of labels to 8 by default
-            self.adaptive_clustering_per_label = {label: True for label in range(n_labels)}
-        else:
-            self.n_clusters_per_label, self.adaptive_clustering_per_label = {}, {}
-            for label in range(n_labels):
-                if n_clusters_per_label[label] is not None:
-                    self.n_clusters_per_label[label] = n_clusters_per_label[label]
-                    self.adaptive_clustering_per_label[label] = False
-                else:
-                    self.n_clusters_per_label[label] = 8
-                    self.adaptive_clustering_per_label[label] = True
-
-        # define the mapping of labels before fitting the algorithm
-        # for example, one may want to merge 2 labels together before fitting to check if clustering separate them well
-        if training_label_mapping is None:
-            self.training_label_mapping = {label: label for label in range(self.n_labels)}
-        else:
-            self.training_label_mapping = training_label_mapping
-
-        # check the value of multi_class config and according to the number of labels
-        if n_labels == 2:
-            assert multiclass_config is None, 'Number of labels is 2, yet "multiclass_config" parameter is not None'
-            self.multiclass_config = None
-        else:
-            assert multiclass_config in ["ovo", "ovr"], 'Number of labels is higher than 2 yet "multiclass_config" ' \
-                                                        'different from "ovo" or "ovr"'
-            if multiclass_config == "ovo":
-                self.multiclass_config = "one_vs_one"
-            if multiclass_config == "ovr":
-                self.multiclass_config = "one_vs_rest"
-
         # store directions from the Maximization method and store intercepts (only useful for ucsl)
-        self.coefficients = {label: {cluster_i: [] for cluster_i in range(self.n_clusters_per_label[label])} for label in
-                             range(self.n_labels)}
-        self.intercepts = {label: {cluster_i: [] for cluster_i in range(self.n_clusters_per_label[label])} for label in
-                           range(self.n_labels)}
-
-        # TODO : Get rid of these visualization helps
-        self.S_lists = {label: dict() for label in range(self.n_labels)}
-        self.coefficient_lists = {label: {cluster_i: dict() for cluster_i in range(self.n_clusters_per_label[label])} for
-                                  label in
-                                  range(self.n_labels)}
-        self.intercept_lists = {label: {cluster_i: dict() for cluster_i in range(self.n_clusters_per_label[label])} for label
-                                in range(self.n_labels)}
+        self.coefficients = {cluster_i: [] for cluster_i in range(self.n_clusters)}
+        self.intercepts = {cluster_i: [] for cluster_i in range(self.n_clusters)}
 
         # store intermediate and consensus results in dictionaries
-        self.cluster_labels_ = {label: None for label in range(self.n_labels)}
-        self.clustering_assignments = {label: None for label in range(self.n_labels)}
+        self.cluster_labels_ = None
+        self.clustering_assignments = None
+
         # define barycenters saving dictionaries
-        self.barycenters = {label: None for label in range(self.n_labels)}
+        self.barycenters = None
 
         # define orthonormal directions basis and clustering methods at each consensus step
-        self.orthonormal_basis = {label: {c: {} for c in range(n_consensus)} for label in range(self.n_labels)}
-        self.clustering_method = {label: {c: {} for c in range(n_consensus)} for label in range(self.n_labels)}
+        self.orthonormal_basis = {c: {} for c in range(n_consensus)}
+        self.clustering_method = {c: {} for c in range(n_consensus)}
 
     def fit(self, X_train, y_train):
         """Fit the ucsl model according to the given training data.
@@ -140,9 +101,8 @@ class UCSL_C(BaseEM, ClassifierMixin):
         for original_label, new_label in self.training_label_mapping.items():
             y_train_copy[y_train == original_label] = new_label
 
-        # cluster each label one by one and confine the other inside the polytope
-        for label in range(self.n_labels):
-            self.run(X_train, y_train_copy, self.n_clusters_per_label[label], idx_outside_polytope=label)
+        # run the algorithm
+        self.run(X_train, y_train_copy, self.n_clusters, idx_outside_polytope=self.label_to_cluster)
 
         return self
 
@@ -160,7 +120,7 @@ class UCSL_C(BaseEM, ClassifierMixin):
         y_pred = self.predict_proba(X)
         return np.argmax(y_pred, 1)
 
-    def predict_proba(self, X):
+    def predict_classif_proba(self, X):
         """Predict using the ucsl model.
         Parameters
         ----------
@@ -218,13 +178,13 @@ class UCSL_C(BaseEM, ClassifierMixin):
             Predictions of the point/hyperplane margin for each cluster of each label.
         """
         # first compute points distances to hyperplane
-        SVM_distances = {label: np.zeros((len(X), self.n_clusters_per_label[label])) for label in range(self.n_labels)}
+        SVM_distances = np.zeros((len(X), self.n_clusters))
 
-        for label in range(self.n_labels):
-            for cluster_i in range(self.n_clusters_per_label[label]):
-                SVM_coefficient = self.coefficients[label][cluster_i]
-                SVM_intercept = self.intercepts[label][cluster_i]
-                SVM_distances[label][:, cluster_i] = X @ SVM_coefficient[0] + SVM_intercept[0]
+        for cluster_i in range(self.n_clusters):
+            SVM_coefficient = self.coefficients[cluster_i]
+            SVM_intercept = self.intercepts[cluster_i]
+            SVM_distances[:, cluster_i] = X @ SVM_coefficient[0] + SVM_intercept[0]
+
         return SVM_distances
 
     def predict_clusters(self, X):
@@ -238,48 +198,19 @@ class UCSL_C(BaseEM, ClassifierMixin):
         cluster_predictions : dict of arrays, length (n_labels) , shape per key:(n_samples, n_clusters[key])
             Dict containing clustering predictions for each label, the dictionary keys are the labels
         """
-        cluster_predictions = {label: np.zeros((len(X), self.n_clusters_per_label[label])) for label in
-                               range(self.n_labels)}
+        cluster_predictions = np.zeros((len(X), self.n_clusters))
 
-        if self.clustering in ['HYDRA']:
-            SVM_distances = {label: np.zeros((len(X), self.n_clusters_per_label[label])) for label in
-                             range(self.n_labels)}
+        X_proj = X @ self.orthonormal_basis[-1].T
 
-            for label in range(self.n_labels):
-                # fulfill the SVM score matrix
-                for cluster in range(self.n_clusters_per_label[label]):
-                    SVM_coefficient = self.coefficients[label][cluster]
-                    SVM_intercept = self.intercepts[label][cluster]
-                    SVM_distances[label][:, cluster] = 1 + X @ SVM_coefficient[0] + SVM_intercept[0]
+        Q_distances = np.zeros((len(X_proj), len(self.barycenters)))
+        for cluster in range(len(self.barycenters)):
+            if X_proj.shape[1] > 1:
+                Q_distances[:, cluster] = np.sum(np.abs(X_proj - self.barycenters[cluster]), 1)
+            else:
+                Q_distances[:, cluster] = (X_proj - self.barycenters[cluster][None, :])[:, 0]
+        Q_distances /= np.sum(Q_distances, 1)[:, None]
+        cluster_predictions = 1 - Q_distances
 
-                # compute clustering conditional probabilities as in the original ucsl paper : P(cluster=i|y=label)
-                SVM_distances[label] -= np.min(SVM_distances[label])
-                SVM_distances[label] += 1e-3
-
-            for label in range(self.n_labels):
-                cluster_predictions[label] = SVM_distances[label] / np.sum(SVM_distances[label], 1)[:, None]
-
-        elif self.clustering in ['k_means', 'gaussian_mixture', 'custom']:
-            for label in range(self.n_labels):
-                if self.n_clusters_per_label[label] > 1:
-                    X_proj = X @ self.orthonormal_basis[label][-1].T
-                    if self.clustering == 'k_means':
-                        cluster_predictions[label] = one_hot_encode(
-                            self.clustering_method[label][-1].predict(X_proj).astype(np.int),
-                            n_classes=self.n_clusters_per_label[label])
-                    elif self.clustering == 'gaussian_mixture':
-                        cluster_predictions[label] = self.clustering_method[label][-1].predict_proba(X_proj)
-                    elif self.clustering == 'custom':
-                        Q_distances = np.zeros((len(X_proj), len(self.barycenters[label])))
-                        for cluster in range(len(self.barycenters[label])):
-                            if X_proj.shape[1] > 1:
-                                Q_distances[:, cluster] = np.sum(np.abs(X_proj - self.barycenters[label][cluster]), 1)
-                            else:
-                                Q_distances[:, cluster] = (X_proj - self.barycenters[label][cluster][None, :])[:, 0]
-                        Q_distances /= np.sum(Q_distances, 1)[:, None]
-                        cluster_predictions[label] = 1 - Q_distances
-                else:
-                    cluster_predictions[label] = np.ones((len(X), 1))
         return cluster_predictions
 
     def run(self, X, y, n_clusters, idx_outside_polytope):
@@ -293,29 +224,19 @@ class UCSL_C(BaseEM, ClassifierMixin):
         index_positives = np.where(y_polytope == 1)[0]  # index for Positive labels (outside polytope)
         index_negatives = np.where(y_polytope == -1)[0]  # index for Negative labels (inside polytope)
 
-        if n_clusters == 1:
-            # by default, when we do not want to cluster a label, we train a simple linear SVM
-            SVM_coefficient, SVM_intercept = launch_svc(X, y_polytope, C=self.C)
-            self.coefficients[idx_outside_polytope][0] = SVM_coefficient
-            self.intercepts[idx_outside_polytope][0] = SVM_intercept
-            n_consensus = 0
-        else:
-            n_consensus = self.n_consensus
-            # define the clustering assignment matrix (each column correspond to one consensus run)
-            self.clustering_assignments[idx_outside_polytope] = np.zeros((len(index_positives), n_consensus))
+        n_consensus = self.n_consensus
+        # define the clustering assignment matrix (each column correspond to one consensus run)
+        self.clustering_assignments[idx_outside_polytope] = np.zeros((len(index_positives), n_consensus))
 
         for consensus in range(n_consensus):
             # first we initialize the clustering matrix S, with the initialization strategy set in self.initialization
             S, cluster_index, n_clusters = self.initialize_clustering(X, y_polytope, index_positives, index_negatives, n_clusters, idx_outside_polytope)
-            if self.negative_weighting in ['all']:
+            if self.negative_weighting in ['uniform']:
                 S[index_negatives] = 1 / n_clusters
-            elif self.negative_weighting in ['hard_clustering']:
+            elif self.negative_weighting in ['hard']:
                 S[index_negatives] = np.rint(S[index_negatives])
-            if self.positive_weighting in ['hard_clustering']:
+            if self.positive_weighting in ['hard']:
                 S[index_positives] = np.rint(S[index_positives])
-
-            # TODO : Get rid of these visualization helps
-            self.S_lists[idx_outside_polytope][0] = S.copy()
 
             cluster_index = self.run_EM(X, y, y_polytope, S, cluster_index, index_positives, index_negatives,
                                         idx_outside_polytope, n_clusters, self.stability_threshold, consensus)
@@ -324,8 +245,7 @@ class UCSL_C(BaseEM, ClassifierMixin):
             self.clustering_assignments[idx_outside_polytope][:, consensus] = cluster_index
 
         if n_consensus > 1:
-            self.clustering_bagging(X, y, y_polytope, index_positives, index_negatives, idx_outside_polytope,
-                                    n_clusters)
+            self.clustering_bagging(X, y, y_polytope, index_positives, index_negatives, idx_outside_polytope, n_clusters)
 
     def initialize_clustering(self, X, y_polytope, index_positives, index_negatives, n_clusters, idx_outside_polytope):
         """Perform a bagging of the previously obtained clusterings and compute new hyperplanes.
@@ -374,7 +294,7 @@ class UCSL_C(BaseEM, ClassifierMixin):
             S[index_positives] = prob
 
         if self.initialization in ["k_means"]:
-            KM = KMeans(n_clusters=self.n_clusters_per_label[idx_outside_polytope], init="random" , n_init=1).fit(X[index_positives])
+            KM = KMeans(n_clusters=self.n_clusters_per_label[idx_outside_polytope], init="random", n_init=1).fit(X[index_positives])
             S = one_hot_encode(KM.predict(X))
 
         if self.initialization in ["gaussian_mixture"]:
@@ -407,9 +327,6 @@ class UCSL_C(BaseEM, ClassifierMixin):
                 SVM_coefficient, SVM_intercept = launch_svc(X, y_polytope, cluster_assignment, C=self.C)
                 self.coefficients[idx_outside_polytope][cluster].extend(SVM_coefficient)
                 self.intercepts[idx_outside_polytope][cluster] = SVM_intercept
-                # TODO: get rid of
-                self.coefficient_lists[idx_outside_polytope][cluster][iteration + 1] = SVM_coefficient.copy()
-                self.intercept_lists[idx_outside_polytope][cluster][iteration + 1] = SVM_intercept.copy()
 
         elif self.maximization == "logistic":
             for cluster in range(n_clusters):
@@ -417,8 +334,6 @@ class UCSL_C(BaseEM, ClassifierMixin):
                 logistic_coefficient, logistic_intercept = launch_logistic(X, y_polytope, cluster_assignment)
                 self.coefficients[idx_outside_polytope][cluster].extend(logistic_coefficient)
                 self.intercepts[idx_outside_polytope][cluster] = logistic_intercept
-                # TODO: get rid of
-                self.coefficient_lists[idx_outside_polytope][cluster][iteration + 1] = logistic_coefficient.copy()
 
     def expectation_step(self, X, S, index_positives, idx_outside_polytope, n_clusters, consensus):
         """Update clustering method (update clustering distribution matrix S).
