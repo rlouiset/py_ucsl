@@ -96,7 +96,7 @@ class UCSL_C(BaseEM, ClassifierMixin):
         -------
         self
         """
-        print(training_label_mapping)
+        print(self.training_label_mapping)
         # apply label mapping (in our case we merged "BIPOLAR" and "SCHIZOPHRENIA" into "MENTAL DISEASE" for our xp)
         y_train_copy = y_train.copy()
         for original_label, new_label in self.training_label_mapping.items():
