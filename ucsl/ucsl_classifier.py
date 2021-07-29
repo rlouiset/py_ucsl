@@ -320,7 +320,7 @@ class UCSL_C(BaseEM, ClassifierMixin):
             clusters predictions argmax for positive samples.
         """
 
-        print(self.coefficients.shape)
+        print(self.coefficients)
 
         # get directions
         directions = []
