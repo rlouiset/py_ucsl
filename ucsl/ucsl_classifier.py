@@ -96,14 +96,12 @@ class UCSL_C(BaseEM, ClassifierMixin):
         -------
         self
         """
-        print(self.training_label_mapping)
         # apply label mapping (in our case we merged "BIPOLAR" and "SCHIZOPHRENIA" into "MENTAL DISEASE" for our xp)
         y_train_copy = y_train.copy()
         for original_label, new_label in self.training_label_mapping.items():
             y_train_copy[y_train == original_label] = new_label
 
         # run the algorithm
-        print(self.label_to_cluster)
         self.run(X_train, y_train_copy, idx_outside_polytope=self.label_to_cluster)
 
         return self
@@ -321,12 +319,17 @@ class UCSL_C(BaseEM, ClassifierMixin):
         cluster_index : array-like, shape (n_positives_samples, )
             clusters predictions argmax for positive samples.
         """
+
+        print(self.coefficients.shape)
+
         # get directions
         directions = []
         for cluster in range(self.n_clusters):
             directions.extend(self.coefficients[cluster])
         norm_directions = [np.linalg.norm(direction) for direction in directions]
         directions = np.array(directions) / np.array(norm_directions)[:, None]
+
+        print(directions.shape)
 
         # compute the most important vectors because Graam-Schmidt is not invariant by permutation when the matrix is not square
         scores = []
