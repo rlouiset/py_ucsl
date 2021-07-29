@@ -226,7 +226,7 @@ class UCSL_C(BaseEM, ClassifierMixin):
 
         n_consensus = self.n_consensus
         # define the clustering assignment matrix (each column correspond to one consensus run)
-        self.clustering_assignments[idx_outside_polytope] = np.zeros((len(index_positives), n_consensus))
+        self.clustering_assignments = np.zeros((len(index_positives), n_consensus))
 
         for consensus in range(n_consensus):
             # first we initialize the clustering matrix S, with the initialization strategy set in self.initialization
@@ -242,7 +242,7 @@ class UCSL_C(BaseEM, ClassifierMixin):
                                         idx_outside_polytope, n_clusters, self.stability_threshold, consensus)
 
             # update the cluster index for the consensus clustering
-            self.clustering_assignments[idx_outside_polytope][:, consensus] = cluster_index
+            self.clustering_assignments[:, consensus] = cluster_index
 
         if n_consensus > 1:
             self.clustering_bagging(X, y, y_polytope, index_positives, index_negatives, idx_outside_polytope, n_clusters)
@@ -270,39 +270,16 @@ class UCSL_C(BaseEM, ClassifierMixin):
         """
         S = np.ones((len(y_polytope), n_clusters)) / n_clusters
 
-        if self.initialization == "DPP":
-            num_subject = y_polytope.shape[0]
-            W = np.zeros((num_subject, X.shape[1]))
-            for j in range(num_subject):
-                ipt = np.random.randint(len(index_positives))
-                icn = np.random.randint(len(index_negatives))
-                W[j, :] = X[index_positives[ipt], :] - X[index_negatives[icn], :]
-
-            KW = np.matmul(W, W.transpose())
-            KW = np.divide(KW, np.sqrt(np.multiply(np.diag(KW)[:, np.newaxis], np.diag(KW)[:, np.newaxis].transpose())))
-            evalue, evector = np.linalg.eig(KW)
-            Widx = sample_dpp(np.real(evalue), np.real(evector), n_clusters)
-            prob = np.zeros((len(index_positives), n_clusters))  # only consider the PTs
-
-            for i in range(n_clusters):
-                prob[:, i] = np.matmul(
-                    np.multiply(X[index_positives, :],
-                                np.divide(1, np.linalg.norm(X[index_positives, :], axis=1))[:, np.newaxis]),
-                    W[Widx[i], :].transpose())
-
-            prob = py_softmax(prob, 1)
-            S[index_positives] = prob
-
-        if self.initialization in ["k_means"]:
-            KM = KMeans(n_clusters=self.n_clusters_per_label[idx_outside_polytope], init="random", n_init=1).fit(X[index_positives])
+        if self.clustering in ["k_means"]:
+            KM = KMeans(n_clusters=self.n_clusters, init="random", n_init=1).fit(X[index_positives])
             S = one_hot_encode(KM.predict(X))
 
-        if self.initialization in ["gaussian_mixture"]:
-            GMM = GaussianMixture(n_components=self.n_clusters_per_label[idx_outside_polytope], init_params="random", n_init=1, covariance_type=self.covariance_type).fit(X[index_positives])
+        if self.clustering in ["gaussian_mixture"]:
+            GMM = GaussianMixture(n_components=self.n_clusters, init_params="random", n_init=1, covariance_type="spherical").fit(X[index_positives])
             S = GMM.predict_proba(X)
 
-        if self.initialization in ['custom']:
-            custom_clustering_method_ = copy.deepcopy(self.custom_clustering_method)
+        else :
+            custom_clustering_method_ = copy.deepcopy(self.clustering)
             S_positives = custom_clustering_method_.fit_predict(X[index_positives])
             S_distances = np.zeros((len(X), np.max(S_positives) + 1))
             for cluster in range(np.max(S_positives) + 1):
@@ -310,13 +287,7 @@ class UCSL_C(BaseEM, ClassifierMixin):
             S_distances /= np.sum(S_distances, 1)[:, None]
             S = 1 - S
 
-        if self.initialization == "precomputed":
-            S = self.custom_initialization_matrixes[idx_outside_polytope]
-
         cluster_index = np.argmax(S[index_positives], axis=1)
-
-        if self.adaptive_clustering_per_label[idx_outside_polytope]:
-            n_clusters = max(S.shape[1], 2)
 
         return S, cluster_index, n_clusters
 
