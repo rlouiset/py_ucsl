@@ -284,20 +284,20 @@ class UCSL_C(BaseEM, ClassifierMixin):
 
         return S, cluster_index
 
-    def maximization_step(self, X, y_polytope, S, n_clusters):
+    def maximization_step(self, X, y_polytope, S):
         print(self.maximization)
         if self.maximization == "max_margin":
-            for cluster in range(n_clusters):
+            for cluster in range(self.n_clusters):
                 cluster_assignment = np.ascontiguousarray(S[:, cluster])
                 SVM_coefficient, SVM_intercept = launch_svc(X, y_polytope, cluster_assignment)
-                self.coefficients[cluster].extend(SVM_coefficient)
+                self.coefficients[cluster] = SVM_coefficient
                 self.intercepts[cluster] = SVM_intercept
 
         elif self.maximization == "logistic":
-            for cluster in range(n_clusters):
+            for cluster in range(self.n_clusters):
                 cluster_assignment = np.ascontiguousarray(S[:, cluster])
                 logistic_coefficient, logistic_intercept = launch_logistic(X, y_polytope, cluster_assignment)
-                self.coefficients[cluster].extend(logistic_coefficient)
+                self.coefficients[cluster] = logistic_coefficient
                 self.intercepts[cluster] = logistic_intercept
 
     def expectation_step(self, X, S, index_positives, consensus):
@@ -391,7 +391,7 @@ class UCSL_C(BaseEM, ClassifierMixin):
         S = Q.copy()
         cluster_index = np.argmax(Q[index_positives], axis=1)
 
-        return S, cluster_index, self.n_clusters
+        return S, cluster_index
 
     def run_EM(self, X, y_polytope, S, cluster_index, index_positives, index_negatives, consensus):
         """Perform a bagging of the previously obtained clustering and compute new hyperplanes.
@@ -447,11 +447,11 @@ class UCSL_C(BaseEM, ClassifierMixin):
 
             # decide the convergence based on the clustering stability
             S_hold = S.copy()
-            S, cluster_index, n_clusters = self.expectation_step(X, S, index_positives, consensus)
+            S, cluster_index = self.expectation_step(X, S, index_positives, consensus)
 
             # applying the negative weighting set as input
             if self.negative_weighting in ['uniform']:
-                S[index_negatives] = 1 / n_clusters
+                S[index_negatives] = 1 / self.n_clusters
             elif self.negative_weighting in ['hard']:
                 S[index_negatives] = np.rint(S[index_negatives])
             if self.positive_weighting in ['hard']:
