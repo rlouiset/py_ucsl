@@ -158,7 +158,7 @@ class UCSL_C(BaseEM, ClassifierMixin):
 
         y_pred_proba_clusters = self.predict_clusters(X)
         y_pred_clusters = np.argmax(y_pred_proba_clusters, 1)
-        y_pred_clusters[y_pred_clsf == (1-self.label_to_cluster)] = -1
+        y_pred_clusters[y_pred_clsf == (1 - self.label_to_cluster)] = -1
 
         return y_pred_clsf, y_pred_clusters
 
@@ -198,10 +198,13 @@ class UCSL_C(BaseEM, ClassifierMixin):
         # compute the predictions \w.r.t cluster previously found
         cluster_predictions = self.predict_clusters(X)
 
-        y_pred[:, self.label_to_cluster] = sum( [cluster_predictions[:, cluster] * distances_to_hyperplanes[self.label_to_cluster][:, cluster] for cluster in range(self.n_clusters)])
+        y_pred[:, self.label_to_cluster] = sum(
+            [cluster_predictions[:, cluster] * distances_to_hyperplanes[self.label_to_cluster][:, cluster] for cluster
+             in range(self.n_clusters)])
         # compute probabilities \w sigmoid
-        y_pred[:, self.label_to_cluster] = sigmoid(y_pred[:, self.label_to_cluster] / np.max(y_pred[:, self.label_to_cluster]))
-        y_pred[:, 1-self.label_to_cluster] = 1 - y_pred[:, self.label_to_cluster]
+        y_pred[:, self.label_to_cluster] = sigmoid(
+            y_pred[:, self.label_to_cluster] / np.max(y_pred[:, self.label_to_cluster]))
+        y_pred[:, 1 - self.label_to_cluster] = 1 - y_pred[:, self.label_to_cluster]
 
         return y_pred
 
@@ -220,9 +223,9 @@ class UCSL_C(BaseEM, ClassifierMixin):
         distances_to_hyperplanes = np.zeros((len(X), self.n_clusters))
 
         for cluster_i in range(self.n_clusters):
-            SVM_coefficient = self.coefficients[cluster_i]
-            SVM_intercept = self.intercepts[cluster_i]
-            distances_to_hyperplanes[:, cluster_i] = X @ SVM_coefficient[0] + SVM_intercept[0]
+            coefficient = self.coefficients[cluster_i]
+            intercept = self.intercepts[cluster_i]
+            distances_to_hyperplanes[:, cluster_i] = X @ coefficient[0] + intercept[0]
 
         return distances_to_hyperplanes
 
@@ -304,15 +307,17 @@ class UCSL_C(BaseEM, ClassifierMixin):
             S = one_hot_encode(KM.predict(X))
 
         if self.clustering in ["gaussian_mixture"]:
-            GMM = GaussianMixture(n_components=self.n_clusters, init_params="random", n_init=1, covariance_type="spherical").fit(X[index_positives])
+            GMM = GaussianMixture(n_components=self.n_clusters, init_params="random", n_init=1,
+                                  covariance_type="spherical").fit(X[index_positives])
             S = GMM.predict_proba(X)
 
-        else :
+        else:
             custom_clustering_method_ = copy.deepcopy(self.clustering)
             S_positives = custom_clustering_method_.fit_predict(X[index_positives])
             S_distances = np.zeros((len(X), np.max(S_positives) + 1))
             for cluster in range(np.max(S_positives) + 1):
-                S_distances[:, cluster] = np.sum(np.abs(X - np.mean(X[index_positives][S_positives == cluster], 0)[None, :]), 1)
+                S_distances[:, cluster] = np.sum(
+                    np.abs(X - np.mean(X[index_positives][S_positives == cluster], 0)[None, :]), 1)
             S_distances /= np.sum(S_distances, 1)[:, None]
             S = 1 - S
 
@@ -335,7 +340,7 @@ class UCSL_C(BaseEM, ClassifierMixin):
                 self.coefficients[cluster] = logistic_coefficient
                 self.intercepts[cluster] = logistic_intercept
 
-        else :
+        else:
             for cluster in range(self.n_clusters):
                 cluster_assignment = np.ascontiguousarray(S[:, cluster])
                 self.maximization.fit(X, y_polytope, sample_weight=cluster_assignment)
@@ -376,19 +381,25 @@ class UCSL_C(BaseEM, ClassifierMixin):
         X_proj = X @ self.orthonormal_basis[consensus].T
 
         # get centroids or barycenters
-        centroids = [np.mean(S[index_positives, cluster][:, None] * X_proj[index_positives, :], 0) for cluster in range(self.n_clusters)]
+        centroids = [np.mean(S[index_positives, cluster][:, None] * X_proj[index_positives, :], 0) for cluster in
+                     range(self.n_clusters)]
 
         if self.clustering == 'k_means':
-            self.clustering_method[consensus] = KMeans(n_clusters=self.n_clusters, init=np.array(centroids), n_init=1).fit(X_proj[index_positives])
+            self.clustering_method[consensus] = KMeans(n_clusters=self.n_clusters, init=np.array(centroids),
+                                                       n_init=1).fit(X_proj[index_positives])
             Q_positives = self.clustering_method[consensus].fit_predict(X_proj[index_positives])
             Q_distances = np.zeros((len(X_proj), np.max(Q_positives) + 1))
             for cluster in range(np.max(Q_positives) + 1):
-                Q_distances[:, cluster] = np.sum(np.abs(X_proj - self.clustering_method[consensus].cluster_centers_[cluster]), 1)
+                Q_distances[:, cluster] = np.sum(
+                    np.abs(X_proj - self.clustering_method[consensus].cluster_centers_[cluster]), 1)
             Q_distances = Q_distances / np.sum(Q_distances, 1)[:, None]
             Q = 1 - Q_distances
 
         elif self.clustering == 'gaussian_mixture':
-            self.clustering_method[consensus] = GaussianMixture(n_components=self.n_clusters, covariance_type="spherical", means_init=np.array(centroids)).fit(X_proj[index_positives])
+            self.clustering_method[consensus] = GaussianMixture(n_components=self.n_clusters,
+                                                                covariance_type="spherical",
+                                                                means_init=np.array(centroids)).fit(
+                X_proj[index_positives])
             Q = self.clustering_method[consensus].predict_proba(X_proj)
             self.clustering_method[-1] = copy.deepcopy(self.clustering_method[consensus])
 
@@ -397,7 +408,8 @@ class UCSL_C(BaseEM, ClassifierMixin):
             Q_positives = self.clustering_method[consensus].fit_predict(X_proj[index_positives])
             Q_distances = np.zeros((len(X_proj), np.max(Q_positives) + 1))
             for cluster in range(np.max(Q_positives) + 1):
-                Q_distances[:, cluster] = np.sum(np.abs(X_proj - np.mean(X_proj[index_positives][Q_positives == cluster], 0)[None, :]), 1)
+                Q_distances[:, cluster] = np.sum(
+                    np.abs(X_proj - np.mean(X_proj[index_positives][Q_positives == cluster], 0)[None, :]), 1)
             Q_distances = Q_distances / np.sum(Q_distances, 1)[:, None]
             Q = 1 - Q_distances
 
@@ -435,8 +447,6 @@ class UCSL_C(BaseEM, ClassifierMixin):
         ----------
         X : array-like, shape (n_samples, n_features)
             Training vectors.
-        y : array-like, shape (n_samples,)
-            Original target values.
         y_polytope : array-like, shape (n_samples,)
             Target values.
         S : array-like, shape (n_samples, n_samples)
@@ -455,7 +465,7 @@ class UCSL_C(BaseEM, ClassifierMixin):
             Cluster prediction matrix.
         """
         best_cluster_consistency = 1
-        if consensus == -1 :
+        if consensus == -1:
             save_stabler_coefficients = True
             consensus = self.n_consensus + 1
             best_cluster_consistency = 0
@@ -464,7 +474,8 @@ class UCSL_C(BaseEM, ClassifierMixin):
             # check for degenerate clustering for positive labels (warning) and negatives (might be normal)
             for cluster in range(self.n_clusters):
                 if np.count_nonzero(S[index_positives, cluster]) == 0:
-                    logging.debug( "Cluster dropped, one cluster have no positive points anymore, in iteration : %d" % (iteration - 1))
+                    logging.debug("Cluster dropped, one cluster have no positive points anymore, in iteration : %d" % (
+                                iteration - 1))
                     logging.debug("Re-initialization of the clustering...")
                     S, cluster_index = self.initialize_clustering(X, y_polytope, index_positives)
                 if np.max(S[index_negatives, cluster]) < 0.5:
@@ -495,7 +506,7 @@ class UCSL_C(BaseEM, ClassifierMixin):
             # check the Clustering Stability \w Adjusted Rand Index for stopping criteria
             cluster_consistency = ARI(np.argmax(S[index_positives], 1), np.argmax(S_hold[index_positives], 1))
 
-            if cluster_consistency > best_cluster_consistency :
+            if cluster_consistency > best_cluster_consistency:
                 best_cluster_consistency = cluster_consistency
                 self.coefficients[-1] = copy.deepcopy(self.coefficients)
                 self.intercepts[-1] = copy.deepcopy(self.intercepts)
@@ -512,8 +523,6 @@ class UCSL_C(BaseEM, ClassifierMixin):
         ----------
         X : array-like, shape (n_samples, n_features)
             Training vectors.
-        n_clusters :
-            number of clusters
         Returns
         -------
         S : array-like, shape (n_samples, n_samples)
@@ -524,9 +533,10 @@ class UCSL_C(BaseEM, ClassifierMixin):
             X_proj = X @ self.orthonormal_basis[consensus].T
             if self.clustering in ['k_means', 'gaussian_mixture']:
                 X_clustering_assignments[:, consensus] = self.clustering_method[consensus].predict(X_proj)
-            else :
+            else:
                 X_clustering_assignments[:, consensus] = self.clustering_method[consensus].fit_predict(X_proj)
-        similarity_matrix = compute_similarity_matrix(self.clustering_assignments, clustering_assignments_to_pred=X_clustering_assignments)
+        similarity_matrix = compute_similarity_matrix(self.clustering_assignments,
+                                                      clustering_assignments_to_pred=X_clustering_assignments)
 
         Q = np.zeros((len(X), self.n_clusters))
         y_clusters_train_ = self.cluster_labels_
