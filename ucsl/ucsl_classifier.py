@@ -6,7 +6,6 @@ from sklearn.metrics import adjusted_rand_score as ARI
 from sklearn.mixture import GaussianMixture
 
 from ucsl.base import *
-from ucsl.dpp_utils import *
 from ucsl.utils import *
 
 
@@ -17,31 +16,68 @@ class UCSL_C(BaseEM, ClassifierMixin):
 
     Parameters
     ----------
-    C : float, optional (default=1)
-        SVM tolerance parameter (Maximization step), if too tiny, risk of overfit.
-        If none is given, 1 will be used.
-    initialization : string, optional (default="DPP")
-        Initialization of each consensus run,
-        If not specified, "Determinental Point Process" will be used.
-    clustering : string, optional (default="original")
+    clustering : string or object, optional (default="gaussian_mixture")
         Clustering method for the Expectation step,
-        It must be one of "original", "k_means", "gaussian_mixture".
-        If not specified, ucsl original "Max Margin Distance" will be used.
-    consensus : string, optional (default="spectral_clustering")
-        Consensus method for the Clustering bagging method,
-        If not specified, ucsl original "Spectral Clustering" will be used.
-    negative_weighting : string, optional (default="spectral_clustering")
-        negative_weighting method during the whole algorithm processing,
-        It must be one of "all", "soft_clustering", "hard_clustering".
-        ie : the importance of non-clustered label in the SVM computation
-        If not specified, ucsl original "all" will be used.
+        If not specified, "gaussian_mixture" (spherical by default) will be used.
+        It must be one of "k_means", "gaussian_mixture"
+        It can also be a sklearn-like object with fit, predict and fit_predict methods.
+
+    maximization ; string or object, optional (default="lr")
+        Classification method for the maximization step,
+        If not specified, "lr" (Logistic Regression) will be used.
+        It must be one of "k_means", "gaussian_mixture"
+        It can also be a sklearn-like object with fit and predict methods; coef_ and intercept_ attributes.
+
+    negative_weighting : string, optional (default="soft")
+        negative samples weighting applied during the Maximization step,
+        If not specified, UCSL original "soft" will be used.
+        It must be one of "uniform", "soft", "hard".
+        ie : the importance weight of non-clustered samples in the sub-classifiers estimation
+
+    positive_weighting : string, optional (default="hard")
+        positive samples weighting applied during the Maximization step,
+        If not specified, UCSL original "hard" will be used.
+        It must be one of "uniform", "soft", "hard".
+        ie : the importance weight of clustered samples in the sub-classifiers estimation
+
+    n_clusters : int, optional (default=2)
+        numbers of subtypes we are assuming (equal to K in UCSL original paper)
+        If not specified, the value of 2 will be used.
+        Must be > 1.
+
+    label_to_cluster : int, optional (default=1)
+        which label we are clustering into subgroups
+        If not specified, the value of 1 will be used.
+        ie : label_to_cluster is similar to "positive class" in UCSL original paper
+        Must be 0 or 1.
+
+    n_iterations : int, optional (default=10)
+        numbers of Expectation-Maximization step performed per consensus run
+        If not specified, the value of 10 will be used.
+        Must be > 1.
+
+    n_consensus : int, optional (default=10)
+        numbers of Expectation-Maximization loops performed before ensembling of all the clusterings
+        If not specified, the value of 10 will be used.
+        Must be > 1.
+
+    stability_threshold : float, optional (default=0.9)
+        Adjusted rand index threshold between 2 successive iterations clustering
+        If not specified, the value of 0.9 will be used.
+        Must be between 0 and 1.
+
+    noise_tolerance_threshold : float, optional (default=10)
+        Threshold tolerance in graam-schmidt algorithm
+        Given an orthogonalized vector, if its norm is inferior to 1 / noise_tolerance_threshold,
+        we do not add it to the orthonormalized basis.
+        Must be > 0.
     """
 
-    def __init__(self, stability_threshold=0.85, noise_tolerance_threshold=10,
+    def __init__(self, stability_threshold=0.9, noise_tolerance_threshold=10,
                  n_consensus=10, n_iterations=10,
                  n_clusters=2, label_to_cluster=1,
                  clustering='gaussian_mixture', maximization='logistic',
-                 negative_weighting='soft_clustering', positive_weighting='hard_clustering',
+                 negative_weighting='soft', positive_weighting='hard',
                  training_label_mapping=None):
 
         super().__init__(clustering=clustering, maximization=maximization,
@@ -62,14 +98,14 @@ class UCSL_C(BaseEM, ClassifierMixin):
             self.training_label_mapping = training_label_mapping
 
         # define what are the weightings we want for each label
-        assert (negative_weighting in ['hard_clustering', 'soft_clustering', 'all']), \
-            "negative_weighting must be one of 'hard_clustering', 'soft_clustering'"
-        assert (positive_weighting in ['hard_clustering', 'soft_clustering']), \
-            "positive_weighting must be one of 'hard_clustering', 'soft_clustering'"
+        assert (negative_weighting in ['hard', 'soft', 'uniform']), \
+            "negative_weighting must be one of 'hard', 'soft'"
+        assert (positive_weighting in ['hard', 'soft', 'uniform']), \
+            "positive_weighting must be one of 'hard', 'soft'"
         self.negative_weighting = negative_weighting
         self.positive_weighting = positive_weighting
 
-        # store directions from the Maximization method and store intercepts (only useful for ucsl)
+        # store directions from the Maximization method and store intercepts
         self.coefficients = {cluster_i: [] for cluster_i in range(self.n_clusters)}
         self.intercepts = {cluster_i: [] for cluster_i in range(self.n_clusters)}
 
@@ -117,8 +153,33 @@ class UCSL_C(BaseEM, ClassifierMixin):
         y_pred : array, shape (n_samples,)
             Predictions of the labels of the query points.
         """
-        y_pred = self.predict_proba(X)
-        return np.argmax(y_pred, 1)
+        y_pred_proba_clsf = self.predict_classif_proba(X)
+        y_pred_clsf = np.argmax(y_pred_proba_clsf, 1)
+
+        y_pred_proba_clusters = self.predict_clusters(X)
+        y_pred_clusters = np.argmax(y_pred_proba_clusters, 1)
+        y_pred_clusters[y_pred_clsf == (1-self.label_to_cluster)] = -1
+
+        return y_pred_clsf, y_pred_clusters
+
+    def predict_proba(self, X):
+        """Predict using the ucsl model.
+        Parameters
+        ----------
+        X : array-like, shape (n_samples, n_features)
+            Query points to be evaluate.
+        Returns
+        -------
+        y_pred : array, shape (n_samples,)
+            Predictions of the labels of the query points.
+        """
+        y_pred_proba_clsf = self.predict_classif_proba(X)
+        y_pred_clsf = np.argmax(y_pred_proba_clsf, 1)
+
+        y_pred_proba_clusters = self.predict_clusters(X)
+        y_pred_proba_clusters[y_pred_clsf == (1 - self.label_to_cluster)] = -1
+
+        return y_pred_proba_clsf, y_pred_proba_clusters
 
     def predict_classif_proba(self, X):
         """Predict using the ucsl model.
@@ -131,38 +192,16 @@ class UCSL_C(BaseEM, ClassifierMixin):
         y_pred : array, shape (n_samples, n_labels)
             Predictions of the probabilities of the query points belonging to labels.
         """
-        y_pred = np.zeros((len(X), self.n_labels))
+        y_pred = np.zeros((len(X), 2))
+        distances_to_hyperplanes = self.compute_distances_to_hyperplanes(X)
 
-        if self.maximization in ['max_margin', 'logistic']:
-            hp_distances = self.compute_distances_to_hyperplanes(X)
-            if self.clustering in ['HYDRA']:
-                # merge each label distances and compute the probability \w sigmoid function
-                if self.n_labels == 2:
-                    y_pred[:, 1] = sigmoid(np.max(hp_distances[1], 1) - np.max(hp_distances[0], 1))
-                    y_pred[:, 0] = 1 - y_pred[:, 1]
-                else:
-                    for label in range(self.n_labels):
-                        y_pred[:, label] = np.max(hp_distances[label], 1)
-                    y_pred = py_softmax(y_pred, axis=1)
+        # compute the predictions \w.r.t cluster previously found
+        cluster_predictions = self.predict_clusters(X)
 
-            else:
-                # compute the predictions \w.r.t cluster previously found
-                cluster_predictions = self.predict_clusters(X)
-                if self.n_labels == 2:
-                    y_pred[:, 1] = sum(
-                        [np.rint(cluster_predictions[1])[:, cluster] * hp_distances[1][:, cluster] for cluster in
-                         range(self.n_clusters_per_label[1])])
-                    y_pred[:, 1] -= sum([cluster_predictions[0][:, cluster] * hp_distances[0][:, cluster] for cluster in
-                                         range(self.n_clusters_per_label[0])])
-                    # compute probabilities \w sigmoid
-                    y_pred[:, 1] = sigmoid(y_pred[:, 1] / np.max(y_pred[:, 1]))
-                    y_pred[:, 0] = 1 - y_pred[:, 1]
-                else:
-                    for label in range(self.n_labels):
-                        y_pred[:, label] = sum(
-                            [cluster_predictions[label][:, cluster] * hp_distances[label][:, cluster] for cluster in
-                             range(self.n_clusters_per_label[label])])
-                    y_pred = py_softmax(y_pred, axis=1)
+        y_pred[:, self.label_to_cluster] = sum( [cluster_predictions[:, cluster] * distances_to_hyperplanes[self.label_to_cluster][:, cluster] for cluster in range(self.n_clusters)])
+        # compute probabilities \w sigmoid
+        y_pred[:, self.label_to_cluster] = sigmoid(y_pred[:, self.label_to_cluster] / np.max(y_pred[:, self.label_to_cluster]))
+        y_pred[:, 1-self.label_to_cluster] = 1 - y_pred[:, self.label_to_cluster]
 
         return y_pred
 
@@ -178,14 +217,14 @@ class UCSL_C(BaseEM, ClassifierMixin):
             Predictions of the point/hyperplane margin for each cluster of each label.
         """
         # first compute points distances to hyperplane
-        SVM_distances = np.zeros((len(X), self.n_clusters))
+        distances_to_hyperplanes = np.zeros((len(X), self.n_clusters))
 
         for cluster_i in range(self.n_clusters):
             SVM_coefficient = self.coefficients[cluster_i]
             SVM_intercept = self.intercepts[cluster_i]
-            SVM_distances[:, cluster_i] = X @ SVM_coefficient[0] + SVM_intercept[0]
+            distances_to_hyperplanes[:, cluster_i] = X @ SVM_coefficient[0] + SVM_intercept[0]
 
-        return SVM_distances
+        return distances_to_hyperplanes
 
     def predict_clusters(self, X):
         """Predict clustering for each label in a hierarchical manner.
@@ -198,20 +237,17 @@ class UCSL_C(BaseEM, ClassifierMixin):
         cluster_predictions : dict of arrays, length (n_labels) , shape per key:(n_samples, n_clusters[key])
             Dict containing clustering predictions for each label, the dictionary keys are the labels
         """
-        cluster_predictions = np.zeros((len(X), self.n_clusters))
-
         X_proj = X @ self.orthonormal_basis[-1].T
 
-        Q_distances = np.zeros((len(X_proj), len(self.barycenters)))
-        for cluster in range(len(self.barycenters)):
+        Q_distances = np.zeros((len(X_proj), self.n_clusters))
+        for cluster in range(self.n_clusters):
             if X_proj.shape[1] > 1:
                 Q_distances[:, cluster] = np.sum(np.abs(X_proj - self.barycenters[cluster]), 1)
             else:
                 Q_distances[:, cluster] = (X_proj - self.barycenters[cluster][None, :])[:, 0]
-        Q_distances /= np.sum(Q_distances, 1)[:, None]
-        cluster_predictions = 1 - Q_distances
+        y_pred_proba_clusters = Q_distances / np.sum(Q_distances, 1)[:, None]
 
-        return cluster_predictions
+        return y_pred_proba_clusters
 
     def run(self, X, y, idx_outside_polytope):
         # set label idx_outside_polytope outside of the polytope by setting it to positive labels
