@@ -257,7 +257,7 @@ class UCSL_R(BaseEM, RegressorMixin):
         else:
             for cluster in range(self.n_clusters):
                 cluster_assignment = np.ascontiguousarray(S[:, cluster])
-                self.maximization.fit(X, sample_weight=cluster_assignment)
+                self.maximization.fit(X, y, sample_weight=cluster_assignment)
                 self.coefficients[cluster] = self.maximization.coef_
                 self.intercepts[cluster] = self.maximization.intercept_
 
