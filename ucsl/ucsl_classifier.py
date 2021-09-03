@@ -199,8 +199,7 @@ class UCSL_C(BaseEM, ClassifierMixin):
         cluster_predictions = self.predict_clusters(X)
 
         y_pred[:, self.label_to_cluster] = sum(
-            [cluster_predictions[:, cluster] * distances_to_hyperplanes[self.label_to_cluster][:, cluster] for cluster
-             in range(self.n_clusters)])
+            [cluster_predictions[:, cluster] * distances_to_hyperplanes[:, cluster] for cluster in range(self.n_clusters)])
         # compute probabilities \w sigmoid
         y_pred[:, self.label_to_cluster] = sigmoid(
             y_pred[:, self.label_to_cluster] / np.max(y_pred[:, self.label_to_cluster]))
