@@ -142,32 +142,8 @@ class UCSL_C(BaseEM, ClassifierMixin):
 
         return self
 
-    def predict(self, X):
+    def predict(self, X, y_true=None):
         """Predict classification and clustering using the UCSL model.
-        Parameters
-        ----------
-        X : array-like, shape (n_samples, n_features)
-            Query points to be evaluate.
-        Returns
-        -------
-        y_pred_clsf : array, shape (n_samples,)
-            Predictions of the classification binary task of the query points.
-        y_pred : array, shape (n_samples,)
-            Predictions of the clustering task of the query points.
-            BEWARE : clustering prediction of samples considered "negative"
-            (with classification prediction different than label_to_cluster) are set to -1.
-        """
-        y_pred_proba_clsf = self.predict_classif_proba(X)
-        y_pred_clsf = np.argmax(y_pred_proba_clsf, 1)
-
-        y_pred_proba_clusters = self.predict_clusters(X)
-        y_pred_clusters = np.argmax(y_pred_proba_clusters, 1)
-        y_pred_clusters[y_pred_clsf == (1 - self.label_to_cluster)] = -1
-
-        return y_pred_clsf, y_pred_clusters
-
-    def predict(self, X, y_true):
-        """Predict only clustering given the ground truth labels using the UCSL model.
         Parameters
         ----------
         X : array-like, shape (n_samples, n_features)
@@ -176,20 +152,29 @@ class UCSL_C(BaseEM, ClassifierMixin):
             Ground truth classification labels.
         Returns
         -------
-        y_pred_clsf : array, shape (n_samples,)
-            Predictions of the classification binary task of the query points.
+        y_pred_clsf // y_true : array, shape (n_samples,)
+            Predictions of the classification binary task of the query points if y_true is None.
+            Returns y_true if y_true is not None
         y_pred : array, shape (n_samples,)
             Predictions of the clustering task of the query points.
-            BEWARE : clustering prediction of samples considered "negative"
+            BEWARE : if y_true is not None, clustering prediction of samples considered "negative"
             (with classification ground truth label different than label_to_cluster) are set to -1.
+            BEWARE : if y_true is None, clustering predictions of samples considered "negative"
+            (when classification prediction different than label_to_cluster) are set to -1.
         """
+        y_pred_proba_clsf = self.predict_classif_proba(X)
+        y_pred_clsf = np.argmax(y_pred_proba_clsf, 1)
+
         y_pred_proba_clusters = self.predict_clusters(X)
         y_pred_clusters = np.argmax(y_pred_proba_clusters, 1)
-        y_pred_clusters[y_true == (1 - self.label_to_cluster)] = -1
+        if y_true is None :
+            y_pred_clusters[y_pred_clsf == (1 - self.label_to_cluster)] = -1
+            return y_pred_clsf, y_pred_clusters
+        else :
+            y_pred_clusters[y_true == (1 - self.label_to_cluster)] = -1
+            return y_true, y_pred_clusters
 
-        return y_pred_clusters
-
-    def predict_proba(self, X):
+    def predict_proba(self, X, y_true=None):
         """Predict using the ucsl model.
         Parameters
         ----------
@@ -201,16 +186,21 @@ class UCSL_C(BaseEM, ClassifierMixin):
             Probabailistic predictions of the classification binary task of the query points.
         y_pred : array, shape (n_samples,)
             Probabilistic predictions of the clustering task of the query points.
-            BEWARE : clustering prediction of samples considered "negative"
+            BEWARE : if y_true is not None, clustering prediction of samples considered "negative"
             (with classification ground truth label different than label_to_cluster) are set to -1.
+            BEWARE : if y_true is None, clustering predictions of samples considered "negative"
+            (when classification prediction different than label_to_cluster) are set to -1.
         """
         y_pred_proba_clsf = self.predict_classif_proba(X)
         y_pred_clsf = np.argmax(y_pred_proba_clsf, 1)
 
         y_pred_proba_clusters = self.predict_clusters(X)
-        y_pred_proba_clusters[y_pred_clsf == (1 - self.label_to_cluster)] = -1
-
-        return y_pred_proba_clsf, y_pred_proba_clusters
+        if y_true is None :
+            y_pred_proba_clusters[y_pred_clsf == (1 - self.label_to_cluster)] = -1
+            return y_pred_clsf, y_pred_proba_clusters
+        else :
+            y_pred_proba_clusters[y_true == (1 - self.label_to_cluster)] = -1
+            return y_true, y_pred_proba_clusters
 
     def predict_classif_proba(self, X):
         """Predict using the ucsl model.

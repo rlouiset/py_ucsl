@@ -107,8 +107,10 @@ class UCSL_R(BaseEM, RegressorMixin):
             Query points to be evaluate.
         Returns
         -------
-        y_pred : array, shape (n_samples,)
+        y_pred_regression : array, shape (n_samples,)
             Predictions of the labels of the query points.
+        y_pred_clusters : array, shape (n_samples,)
+            Predictions of the clusters of the query points.
         """
         y_pred_proba_clusters = self.predict_clusters(X)
 
