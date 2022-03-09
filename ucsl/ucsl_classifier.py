@@ -266,7 +266,6 @@ class UCSL_C(BaseEM, ClassifierMixin):
             Q_distances = np.zeros((len(X_proj), self.n_clusters))
             for cluster in range(self.n_clusters):
                 # if X_proj.shape[1] > 1:
-                print(X_proj.shape)
                 print(self.barycenters[cluster][None, :].shape)
                 print((X_proj - self.barycenters[cluster][None, :]).shape)
                 Q_distances[:, cluster] = np.sum((X_proj - self.barycenters[cluster][None, :])**2, 1)
@@ -419,11 +418,7 @@ class UCSL_C(BaseEM, ClassifierMixin):
             KM_barycenters = self.clustering_method[consensus].cluster_centers_
             Q = np.ones((len(X_proj), self.n_clusters)) / self.n_clusters
             for cluster in range(self.n_clusters):
-                # if X_proj.shape[1] > 1:
-                print("Expectation step : ", KM_barycenters[cluster][None, :].shape)
                 S[:, cluster] = np.sum((X_proj - KM_barycenters[cluster][None, :])**2, 1)
-                # else:
-                #     S[:, cluster] = np.abs(X_proj - KM_barycenters[cluster][None, :])
             Q = - Q
             Q = Q + np.sum(Q, axis=1, keepdims=True)
             Q = Q / np.sum(Q, 1)[:, None]
@@ -601,4 +596,4 @@ class UCSL_C(BaseEM, ClassifierMixin):
         # save barycenters and final predictions
         self.cluster_labels_ = cluster_index
         X_proj = X @ self.orthonormal_basis[-1].T
-        self.barycenters = [np.mean(X_proj[index_positives][cluster_index == cluster], 0) for cluster in range(np.max(cluster_index) + 1)]
+        self.barycenters = [np.mean(X_proj[index_positives][cluster_index == cluster], 0) for cluster in self.n_clusters]
