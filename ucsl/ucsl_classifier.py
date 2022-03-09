@@ -267,9 +267,9 @@ class UCSL_C(BaseEM, ClassifierMixin):
             for cluster in range(self.n_clusters):
                 # if X_proj.shape[1] > 1:
                 print(X_proj.shape)
-                print(self.barycenters[cluster].shape)
-                print((X_proj - self.barycenters[cluster]).shape)
-                Q_distances[:, cluster] = np.sum((X_proj - self.barycenters[cluster])**2, 1)
+                print(self.barycenters[cluster][None, :].shape)
+                print((X_proj - self.barycenters[cluster][None, :]).shape)
+                Q_distances[:, cluster] = np.sum((X_proj - self.barycenters[cluster][None, :])**2, 1)
                 # else:
                 #     S[:, cluster] = np.abs(X_proj - KM_barycenters[cluster][None, :])
             Q_distances = - Q_distances
@@ -601,4 +601,4 @@ class UCSL_C(BaseEM, ClassifierMixin):
         # save barycenters and final predictions
         self.cluster_labels_ = cluster_index
         X_proj = X @ self.orthonormal_basis[-1].T
-        self.barycenters = [np.mean(X_proj[index_positives][cluster_index == cluster], 0)[None, :] for cluster in range(np.max(cluster_index) + 1)]
+        self.barycenters = [np.mean(X_proj[index_positives][cluster_index == cluster], 0) for cluster in range(np.max(cluster_index) + 1)]
