@@ -23,16 +23,8 @@ class BaseEM(BaseEstimator, metaclass=ABCMeta):
         self.n_consensus = n_consensus
         self.n_iterations = n_iterations
 
-        """# define what type of initialization, clustering, classification and consensus one wants to use
-        assert (initialization in ['k_means', 'gaussian_mixture', 'DPP', 'precomputed']), \
-            "Initialization must be one of 'k_means', 'gaussian_mixture', 'DPP', 'precomputed'"
-        if initialization == 'precomputed' :
-            assert (custom_initialization_matrixes is not None), \
-                "if initialization is custom you have to pass a initialization_matrixes different from None"
-            self.custom_initialization_matrixes = custom_initialization_matrixes
-        self.initialization = initialization"""
-
-        assert (clustering in ['k_means', 'gaussian_mixture']), "Clustering must be one of 'k_means', 'gaussian_mixture'"
+        assert (clustering in ['k_means', 'full_gaussian_mixture', 'spherical_gaussian_mixture']), \
+            "Clustering must be one of 'k_means', 'full_gaussian_mixture', 'spherical_gaussian_mixture'"
         self.clustering_method_name = clustering
 
         self.maximization = maximization

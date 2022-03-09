@@ -16,10 +16,10 @@ class UCSL_C(BaseEM, ClassifierMixin):
 
     Parameters
     ----------
-    clustering : string or object, optional (default="gaussian_mixture")
+    clustering : string or object, optional (default="spherical_gaussian_mixture")
         Clustering method for the Expectation step,
-        If not specified, "gaussian_mixture" (spherical by default) will be used.
-        It must be one of "gaussian_mixture", "k-means"
+        If not specified, "spherical_gaussian_mixture" (spherical by default) will be used.
+        It must be one of "spherical_gaussian_mixture", "full_gaussian_mixture", "k-means"
 
     maximization ; string or object, optional (default="lr")
         Classification method for the maximization step,
@@ -75,7 +75,7 @@ class UCSL_C(BaseEM, ClassifierMixin):
     def __init__(self, stability_threshold=0.9, noise_tolerance_threshold=10,
                  n_consensus=10, n_iterations=10,
                  n_clusters=2, label_to_cluster=1,
-                 clustering='gaussian_mixture', maximization='logistic',
+                 clustering='spherical_gaussian_mixture', maximization='logistic',
                  negative_weighting='soft', positive_weighting='hard',
                  training_label_mapping=None):
 
@@ -262,14 +262,14 @@ class UCSL_C(BaseEM, ClassifierMixin):
         """
         X_proj = X @ self.orthonormal_basis[-1].T
 
-        if self.clustering_method_name == "k_means" :
+        if self.clustering_method_name == "k_means":
             Q_distances = np.zeros((len(X_proj), self.n_clusters))
             for cluster in range(self.n_clusters):
                 Q_distances[:, cluster] = np.sum((X_proj - self.barycenters[cluster][None, :])**2, 1)
             Q_distances = - Q_distances
             Q_distances = Q_distances + np.sum(Q_distances, axis=1, keepdims=True)
             y_pred_proba_clusters = Q_distances / np.sum(Q_distances, 1)[:, None]
-        elif self.clustering_method_name == "gaussian_mixture" :
+        elif self.clustering_method_name in ['full_gaussian_mixture', 'spherical_gaussian_mixture'] :
             y_pred_proba_clusters = self.clustering_method[-1].predict_proba(X_proj)
         else:
             return NotImplementedError
@@ -338,9 +338,12 @@ class UCSL_C(BaseEM, ClassifierMixin):
             S = S + np.sum(S, axis=1, keepdims=True)
             S = S / np.sum(S, 1)[:, None]
 
-        elif self.clustering_method_name in ["gaussian_mixture"]:
-            GMM = GaussianMixture(n_components=self.n_clusters, init_params="random", n_init=1,
-                                  covariance_type="spherical").fit(X[index_positives])
+        elif self.clustering_method_name == "spherical_gaussian_mixture":
+            GMM = GaussianMixture(n_components=self.n_clusters, init_params="random", n_init=1,covariance_type="spherical").fit(X[index_positives])
+            S = GMM.predict_proba(X)
+
+        elif self.clustering_method_name == "full_gaussian_mixture":
+            GMM = GaussianMixture(n_components=self.n_clusters, init_params="random", n_init=1,covariance_type="full").fit(X[index_positives])
             S = GMM.predict_proba(X)
             
         else :
@@ -418,8 +421,13 @@ class UCSL_C(BaseEM, ClassifierMixin):
             Q = Q + np.sum(Q, axis=1, keepdims=True)
             Q = Q / np.sum(Q, 1)[:, None]
 
-        elif self.clustering_method_name == 'gaussian_mixture':
+        elif self.clustering_method_name == 'spherical_gaussian_mixture':
             self.clustering_method[consensus] = GaussianMixture(n_components=self.n_clusters, covariance_type="spherical", means_init=np.array(centroids)).fit(X_proj[index_positives])
+            Q = self.clustering_method[consensus].predict_proba(X_proj)
+            self.clustering_method[-1] = copy.deepcopy(self.clustering_method[consensus])
+
+        elif self.clustering_method_name == 'full_gaussian_mixture':
+            self.clustering_method[consensus] = GaussianMixture(n_components=self.n_clusters, covariance_type="full", means_init=np.array(centroids)).fit(X_proj[index_positives])
             Q = self.clustering_method[consensus].predict_proba(X_proj)
             self.clustering_method[-1] = copy.deepcopy(self.clustering_method[consensus])
 
@@ -543,7 +551,7 @@ class UCSL_C(BaseEM, ClassifierMixin):
         X_clustering_assignments = np.zeros((len(X), self.n_consensus))
         for consensus in range(self.n_consensus):
             X_proj = X @ self.orthonormal_basis[consensus].T
-            if self.clustering_method_name in ['k_means', 'gaussian_mixture']:
+            if self.clustering_method_name in ['k_means', 'full_gaussian_mixture', 'spherical_gaussian_mixture']:
                 X_clustering_assignments[:, consensus] = self.clustering_method[consensus].predict(X_proj)
             else:
                 return NotImplementedError
