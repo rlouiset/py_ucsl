@@ -331,7 +331,7 @@ class UCSL_C(BaseEM, ClassifierMixin):
 
         if self.clustering_method_name in ["k_means"]:
             KM = KMeans(n_clusters=self.n_clusters, init="random", n_init=1).fit(X[index_positives])
-            KM_barycenters = KM.cluster_centers
+            KM_barycenters = KM.cluster_centers_
             for cluster in range(self.n_clusters):
                 if X.shape[1] > 1:
                     S[:, cluster] = np.sum(np.abs(X - KM_barycenters[cluster]), 1)
@@ -413,7 +413,7 @@ class UCSL_C(BaseEM, ClassifierMixin):
 
         if self.clustering_method_name == 'k_means':
             self.clustering_method[consensus] = KMeans(n_clusters=self.n_clusters, init=np.array(centroids), n_init=1).fit(X_proj[index_positives])
-            KM_barycenters = self.clustering_method[consensus]
+            KM_barycenters = self.clustering_method[consensus].cluster_centers_
             Q = np.ones((len(X), self.n_clusters)) / self.n_clusters
             for cluster in range(self.n_clusters):
                 if X.shape[1] > 1:
@@ -485,7 +485,6 @@ class UCSL_C(BaseEM, ClassifierMixin):
         """
         best_cluster_consistency = 1
         if consensus == -1:
-            save_stabler_coefficients = True
             consensus = self.n_consensus + 1
             best_cluster_consistency = 0
 
