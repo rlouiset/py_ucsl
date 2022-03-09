@@ -221,7 +221,7 @@ class UCSL_R(BaseEM, RegressorMixin):
         S = np.ones((len(y_polytope), self.n_clusters)) / self.n_clusters
 
         if self.clustering_method_name in ["k_means"]:
-            KM = KMeans(n_clusters=self.n_clusters, init="random", n_init=1).fit(X[index_positives])
+            KM = KMeans(n_clusters=self.n_clusters, init="random", n_init=1).fit(X)
             KM_barycenters = KM.cluster_centers_
             for cluster in range(self.n_clusters):
                 if X.shape[1] > 1:
@@ -233,11 +233,11 @@ class UCSL_R(BaseEM, RegressorMixin):
             S = S / np.sum(S, 1)[:, None]
 
         elif self.clustering_method_name == "spherical_gaussian_mixture":
-            GMM = GaussianMixture(n_components=self.n_clusters, init_params="random", n_init=1, covariance_type="spherical").fit(X[index_positives])
+            GMM = GaussianMixture(n_components=self.n_clusters, init_params="random", n_init=1, covariance_type="spherical").fit(X)
             S = GMM.predict_proba(X)
 
         elif self.clustering_method_name == "full_gaussian_mixture":
-            GMM = GaussianMixture(n_components=self.n_clusters, init_params="random", n_init=1, covariance_type="full").fit(X[index_positives])
+            GMM = GaussianMixture(n_components=self.n_clusters, init_params="random", n_init=1, covariance_type="full").fit(X)
             S = GMM.predict_proba(X)
             
         else :
@@ -302,7 +302,7 @@ class UCSL_R(BaseEM, RegressorMixin):
         centroids = [np.mean(S[:, cluster][:, None] * X_proj, 0) for cluster in range(self.n_clusters)]
 
         if self.clustering_method_name == 'k_means':
-            self.clustering_method[consensus] = KMeans(n_clusters=self.n_clusters, init=np.array(centroids), n_init=1).fit(X_proj[index_positives])
+            self.clustering_method[consensus] = KMeans(n_clusters=self.n_clusters, init=np.array(centroids), n_init=1).fit(X_proj)
             KM_barycenters = self.clustering_method[consensus].cluster_centers_
             Q = np.ones((len(X_proj), self.n_clusters)) / self.n_clusters
             for cluster in range(self.n_clusters):
@@ -312,12 +312,12 @@ class UCSL_R(BaseEM, RegressorMixin):
             Q = Q / np.sum(Q, 1)[:, None]
 
         elif self.clustering_method_name == 'spherical_gaussian_mixture':
-            self.clustering_method[consensus] = GaussianMixture(n_components=self.n_clusters, covariance_type="spherical", means_init=np.array(centroids)).fit(X_proj[index_positives])
+            self.clustering_method[consensus] = GaussianMixture(n_components=self.n_clusters, covariance_type="spherical", means_init=np.array(centroids)).fit(X_proj)
             Q = self.clustering_method[consensus].predict_proba(X_proj)
             self.clustering_method[-1] = copy.deepcopy(self.clustering_method[consensus])
 
         elif self.clustering_method_name == 'full_gaussian_mixture':
-            self.clustering_method[consensus] = GaussianMixture(n_components=self.n_clusters, covariance_type="full", means_init=np.array(centroids)).fit(X_proj[index_positives])
+            self.clustering_method[consensus] = GaussianMixture(n_components=self.n_clusters, covariance_type="full", means_init=np.array(centroids)).fit(X_proj)
             Q = self.clustering_method[consensus].predict_proba(X_proj)
             self.clustering_method[-1] = copy.deepcopy(self.clustering_method[consensus])
         else:
