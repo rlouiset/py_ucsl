@@ -266,7 +266,7 @@ class UCSL_C(BaseEM, ClassifierMixin):
             Q_distances = np.zeros((len(X_proj), self.n_clusters))
             for cluster in range(self.n_clusters):
                 # if X_proj.shape[1] > 1:
-                Q_distances[:, cluster] = np.sum((X_proj - KM_barycenters[cluster][None, :])**2, 1)
+                Q_distances[:, cluster] = np.sum((X_proj - self.barycenters[cluster][None, :])**2, 1)
                 # else:
                 #     S[:, cluster] = np.abs(X_proj - KM_barycenters[cluster][None, :])
             Q_distances = - Q_distances
