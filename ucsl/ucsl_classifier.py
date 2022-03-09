@@ -596,4 +596,4 @@ class UCSL_C(BaseEM, ClassifierMixin):
         # save barycenters and final predictions
         self.cluster_labels_ = cluster_index
         X_proj = X @ self.orthonormal_basis[-1].T
-        self.barycenters = [np.mean(X_proj[index_positives][cluster_index == cluster], 0) for cluster in self.n_clusters]
+        self.barycenters = [np.mean(X_proj[index_positives][cluster_index == cluster], 0) for cluster in range(self.n_clusters)]
