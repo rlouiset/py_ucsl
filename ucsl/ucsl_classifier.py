@@ -20,7 +20,7 @@ class UCSL_C(BaseEM, ClassifierMixin):
 
     Parameters
     ----------
-    clustering : string or object, optional (default="spherical_gaussian_mixture")
+    clustering : string, optional (default="spherical_gaussian_mixture")
         Clustering method for the Expectation step,
         If not specified, "spherical_gaussian_mixture" (spherical by default) will be used.
         It must be one of "spherical_gaussian_mixture", "full_gaussian_mixture", "k-means"
@@ -92,9 +92,6 @@ class UCSL_C(BaseEM, ClassifierMixin):
 
         # define which label we want to cluster
         self.label_to_cluster = label_to_cluster
-        
-        # define which clustering method you use and which maximization method you use
-        self.clustering_method_name = clustering
 
         # define the mapping of labels before fitting the algorithm
         # for example, one may want to merge 2 labels together before fitting to check if clustering separate them well
@@ -349,8 +346,7 @@ class UCSL_C(BaseEM, ClassifierMixin):
         elif self.clustering_method_name == "full_gaussian_mixture":
             GMM = GaussianMixture(n_components=self.n_clusters, init_params="random", n_init=1,covariance_type="full").fit(X[index_positives])
             S = GMM.predict_proba(X)
-            
-        else :
+        else:
             return NotImplementedError
 
         cluster_index = np.argmax(S[index_positives], axis=1)
@@ -434,7 +430,6 @@ class UCSL_C(BaseEM, ClassifierMixin):
             self.clustering_method[consensus] = GaussianMixture(n_components=self.n_clusters, covariance_type="full", means_init=np.array(centroids)).fit(X_proj[index_positives])
             Q = self.clustering_method[consensus].predict_proba(X_proj)
             self.clustering_method[-1] = copy.deepcopy(self.clustering_method[consensus])
-
         else:
             return NotImplementedError
 
