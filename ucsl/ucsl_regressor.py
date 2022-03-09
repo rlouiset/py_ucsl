@@ -136,7 +136,7 @@ class UCSL_R(BaseEM, RegressorMixin):
 
         regression_results_per_clusters = self.regress_new_points(X)
 
-        y_pred_regression = sum( [y_pred_proba_clusters[:, cluster] * regression_results_per_clusters[:, cluster] for cluster in range(self.n_clusters)])
+        y_pred_regression = sum([y_pred_proba_clusters[:, cluster] * regression_results_per_clusters[:, cluster] for cluster in range(self.n_clusters)])
 
         return y_pred_regression, y_pred_proba_clusters
 
@@ -310,7 +310,6 @@ class UCSL_R(BaseEM, RegressorMixin):
             Q = - Q
             Q = Q + np.sum(Q, axis=1, keepdims=True)
             Q = Q / np.sum(Q, 1)[:, None]
-
         elif self.clustering_method_name == 'spherical_gaussian_mixture':
             self.clustering_method[consensus] = GaussianMixture(n_components=self.n_clusters, covariance_type="spherical", means_init=np.array(centroids)).fit(X_proj)
             Q = self.clustering_method[consensus].predict_proba(X_proj)
@@ -372,7 +371,6 @@ class UCSL_R(BaseEM, RegressorMixin):
         """
         best_cluster_consistency = 1
         if consensus == -1:
-            save_stabler_coefficients = True
             consensus = self.n_consensus + 1
             best_cluster_consistency = 0
 
@@ -433,8 +431,7 @@ class UCSL_R(BaseEM, RegressorMixin):
                 X_clustering_assignments[:, consensus] = self.clustering_method[consensus].predict(X_proj)
             else:
                 return NotImplementedError
-        similarity_matrix = compute_similarity_matrix(self.clustering_assignments,
-                                                      clustering_assignments_to_pred=X_clustering_assignments)
+        similarity_matrix = compute_similarity_matrix(self.clustering_assignments, clustering_assignments_to_pred=X_clustering_assignments)
 
         Q = np.zeros((len(X), self.n_clusters))
         y_clusters_train_ = self.cluster_labels_
@@ -468,6 +465,4 @@ class UCSL_R(BaseEM, RegressorMixin):
         # save barycenters and final predictions
         self.cluster_labels_ = cluster_index
         X_proj = X @ self.orthonormal_basis[-1].T
-        self.barycenters = [
-            np.mean(X_proj[cluster_index == cluster], 0)[None, :] for cluster in
-            range(np.max(cluster_index) + 1)]
+        self.barycenters = [np.mean(X_proj[cluster_index == cluster], 0) for cluster in range(np.max(cluster_index) + 1)]
