@@ -1,3 +1,7 @@
+from warnings import simplefilter
+from sklearn.exceptions import ConvergenceWarning
+simplefilter("ignore", category=ConvergenceWarning)
+
 import copy
 import logging
 
