@@ -24,7 +24,7 @@ class UCSL_C(BaseEM, ClassifierMixin):
     maximization ; string or object, optional (default="lr")
         Classification method for the maximization step,
         If not specified, "lr" (Logistic Regression) will be used.
-        It must be one of "k_means", "gaussian_mixture"
+        It must be one of "lr", "svc"
         It can also be a sklearn-like object with fit and predict methods; coef_ and intercept_ attributes.
 
     negative_weighting : string, optional (default="soft")
@@ -88,6 +88,9 @@ class UCSL_C(BaseEM, ClassifierMixin):
 
         # define which label we want to cluster
         self.label_to_cluster = label_to_cluster
+        
+        # define which clustering method you use and which maximization method you use
+        self.clustering_method_name = clustering
 
         # define the mapping of labels before fitting the algorithm
         # for example, one may want to merge 2 labels together before fitting to check if clustering separate them well
