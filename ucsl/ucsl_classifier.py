@@ -414,12 +414,12 @@ class UCSL_C(BaseEM, ClassifierMixin):
         if self.clustering_method_name == 'k_means':
             self.clustering_method[consensus] = KMeans(n_clusters=self.n_clusters, init=np.array(centroids), n_init=1).fit(X_proj[index_positives])
             KM_barycenters = self.clustering_method[consensus].cluster_centers_
-            Q = np.ones((len(X), self.n_clusters)) / self.n_clusters
+            Q = np.ones((len(X_proj), self.n_clusters)) / self.n_clusters
             for cluster in range(self.n_clusters):
-                if X.shape[1] > 1:
-                    S[:, cluster] = np.sum(np.abs(X - KM_barycenters[cluster]), 1)
+                if X_proj.shape[1] > 1:
+                    S[:, cluster] = np.abs(X_proj - KM_barycenters[cluster])
                 else:
-                    S[:, cluster] = (X - KM_barycenters[cluster][None, :])[:, 0]
+                    S[:, cluster] = np.abs(X_proj - KM_barycenters[cluster][None, :])
             Q = - Q
             Q = Q + np.sum(Q, axis=1, keepdims=True)
             Q = Q / np.sum(Q, 1)[:, None]
