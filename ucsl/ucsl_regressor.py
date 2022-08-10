@@ -281,6 +281,8 @@ class UCSL_R(BaseEM, RegressorMixin):
             clusters predictions argmax for positive samples.
         """
         # get directions basis
+        print(self.n_clusters)
+        print(self.coefficients[0].shape)
         directions_basis = []
         for cluster in range(self.n_clusters):
             directions_basis.extend(self.coefficients[cluster])
