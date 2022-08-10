@@ -285,7 +285,7 @@ class UCSL_R(BaseEM, RegressorMixin):
         print(self.coefficients[0].shape)
         directions_basis = []
         for cluster in range(self.n_clusters):
-            directions_basis.extend(self.coefficients[cluster])
+            directions_basis.append(self.coefficients[cluster])
         norm_directions = [np.linalg.norm(direction) for direction in directions_basis]
         print(np.array(directions_basis).shape)
         print(norm_directions)
