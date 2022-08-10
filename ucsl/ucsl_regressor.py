@@ -289,6 +289,7 @@ class UCSL_R(BaseEM, RegressorMixin):
 
         # apply graam-schmidt algorithm
         orthonormalized_basis = self.graam_schmidt(directions_basis)
+        print(orthonormalized_basis.shape)
         self.orthonormal_basis[consensus] = orthonormalized_basis
         self.orthonormal_basis[-1] = np.array(orthonormalized_basis).copy()
         X_proj = X @ self.orthonormal_basis[consensus].T
