@@ -287,6 +287,8 @@ class UCSL_R(BaseEM, RegressorMixin):
         for cluster in range(self.n_clusters):
             directions_basis.extend(self.coefficients[cluster])
         norm_directions = [np.linalg.norm(direction) for direction in directions_basis]
+        print(np.array(directions_basis).shape)
+        print(norm_directions)
         directions_basis = np.array(directions_basis) / np.array(norm_directions)[:, None]
 
         # apply graam-schmidt algorithm
