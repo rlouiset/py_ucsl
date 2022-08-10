@@ -157,7 +157,7 @@ class UCSL_R(BaseEM, RegressorMixin):
         for cluster_i in range(self.n_clusters):
             SVM_coefficient = self.coefficients[cluster_i]
             SVM_intercept = self.intercepts[cluster_i]
-            regression_results[:, cluster_i] = X @ SVM_coefficient[0] + SVM_intercept[0]
+            regression_results[:, cluster_i] = X @ SVM_coefficient + SVM_intercept
 
         return regression_results
 
@@ -281,20 +281,14 @@ class UCSL_R(BaseEM, RegressorMixin):
             clusters predictions argmax for positive samples.
         """
         # get directions basis
-        print(self.n_clusters)
-        print(self.coefficients[0].shape)
         directions_basis = []
         for cluster in range(self.n_clusters):
             directions_basis.append(self.coefficients[cluster])
         norm_directions = [np.linalg.norm(direction) for direction in directions_basis]
-        print(np.array(directions_basis).shape)
-        print(norm_directions)
         directions_basis = np.array(directions_basis) / np.array(norm_directions)[:, None]
 
         # apply graam-schmidt algorithm
-        print(directions_basis.shape)
         orthonormalized_basis = self.graam_schmidt(directions_basis)
-        print(orthonormalized_basis.shape)
         self.orthonormal_basis[consensus] = orthonormalized_basis
         self.orthonormal_basis[-1] = np.array(orthonormalized_basis).copy()
         X_proj = X @ self.orthonormal_basis[consensus].T
