@@ -249,7 +249,7 @@ class UCSL_R(BaseEM, RegressorMixin):
                 logistic_coefficient, logistic_intercept = launch_linear(X, y, cluster_assignment)
                 self.coefficients[cluster] = logistic_coefficient
                 self.intercepts[cluster] = logistic_intercept
-        if self.maximization == "support_vector":
+        elif self.maximization == "support_vector":
             for cluster in range(self.n_clusters):
                 cluster_assignment = np.ascontiguousarray(S[:, cluster])
                 logistic_coefficient, logistic_intercept = launch_svr(X, y, cluster_assignment)
