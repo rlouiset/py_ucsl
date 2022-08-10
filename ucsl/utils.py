@@ -200,7 +200,7 @@ def launch_linear(X, y, sample_weight=None):
     """
 
     # fit the different linear regressor
-    linear = LinearRegression(max_iter=200)
+    linear = LinearRegression()
     linear.fit(X, y, sample_weight=sample_weight)
 
     # get logistic coefficient and intercept
