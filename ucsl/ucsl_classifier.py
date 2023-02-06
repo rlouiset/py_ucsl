@@ -15,8 +15,7 @@ from ucsl.utils import *
 
 class UCSL_C(BaseEM, ClassifierMixin):
     """ucsl classifier.
-    Implementation of Mike Tipping"s Relevance Vector Machine for
-    classification using the scikit-learn API.
+    Implementation of Robin Louiset's algorithm UCSL.
 
     Parameters
     ----------
