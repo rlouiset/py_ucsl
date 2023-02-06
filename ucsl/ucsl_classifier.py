@@ -327,11 +327,12 @@ class UCSL_C(BaseEM, ClassifierMixin):
 
         if self.clustering_method_name in ["k_means"]:
             KM = KMeans(n_clusters=self.n_clusters, init="random", n_init=1).fit(X[index_positives])
-            KM_barycenters = KM.cluster_centers_
+            S = one_hot_encode(KM.predict(X), n_classes=self.n_clusters)
+            """KM_barycenters = KM.cluster_centers_
             for cluster in range(self.n_clusters):
                 S[:, cluster] = np.sum((X - KM_barycenters[cluster])**2, 1)
             S = 1 / (S+1e-5)
-            S = S / np.sum(S, 1)[:, None]
+            S = S / np.sum(S, 1)[:, None]"""
 
         elif self.clustering_method_name == "spherical_gaussian_mixture":
             GMM = GaussianMixture(n_components=self.n_clusters, init_params="random", n_init=1,covariance_type="spherical").fit(X[index_positives])
@@ -480,7 +481,10 @@ class UCSL_C(BaseEM, ClassifierMixin):
         best_cluster_consistency = 1
         if consensus == -1:
             consensus = self.n_consensus + 1
+            stability_threshold = 0.9
             best_cluster_consistency = 0
+        else:
+            stability_threshold = self.stability_threshold
 
         for iteration in range(self.n_iterations):
             # check for degenerate clustering for positive labels (warning) and negatives (might be normal)
@@ -511,9 +515,9 @@ class UCSL_C(BaseEM, ClassifierMixin):
             if self.negative_weighting in ['uniform']:
                 S[index_negatives] = 1 / self.n_clusters
             elif self.negative_weighting in ['hard']:
-                S[index_negatives] = np.rint(S[index_negatives])
+                S[index_negatives] = one_hot_encode(np.argmax(S[index_negatives], axis=1), n_classes=self.n_clusters)
             if self.positive_weighting in ['hard']:
-                S[index_positives] = np.rint(S[index_positives])
+                S[index_positives] = one_hot_encode(np.argmax(S[index_positives], axis=1), n_classes=self.n_clusters)
 
             # check the Clustering Stability \w Adjusted Rand Index for stopping criteria
             cluster_consistency = ARI(np.argmax(S[index_positives], 1), np.argmax(S_hold[index_positives], 1))
@@ -524,7 +528,7 @@ class UCSL_C(BaseEM, ClassifierMixin):
                 self.intercepts[-1] = copy.deepcopy(self.intercepts)
                 self.orthonormal_basis[-1] = copy.deepcopy(self.orthonormal_basis[consensus])
                 self.clustering_method[-1] = copy.deepcopy(self.clustering_method[consensus])
-            if cluster_consistency > self.stability_threshold:
+            if cluster_consistency > stability_threshold:
                 break
 
         return cluster_index
@@ -582,9 +586,9 @@ class UCSL_C(BaseEM, ClassifierMixin):
         if self.negative_weighting in ['uniform']:
             S[index_negatives] = 1 / self.n_clusters
         elif self.negative_weighting in ['hard']:
-            S[index_negatives] = np.rint(S[index_negatives])
+            S[index_negatives] = one_hot_encode(np.argmax(S[index_negatives], axis=1), n_classes=self.n_clusters)
         if self.positive_weighting in ['hard']:
-            S[index_positives] = np.rint(S[index_positives])
+            S[index_positives] = one_hot_encode(np.argmax(S[index_positives], axis=1), n_classes=self.n_clusters)
 
         cluster_index = self.run_EM(X, y_polytope, S, consensus_cluster_index, index_positives, index_negatives, -1)
 
