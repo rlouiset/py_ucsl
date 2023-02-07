@@ -75,7 +75,7 @@ class UCSL_C(BaseEM, ClassifierMixin):
         Must be > 0.
     """
 
-    def __init__(self, stability_threshold=0.9, noise_tolerance_threshold=10,
+    def __init__(self, stability_threshold=0.9, noise_tolerance_threshold=10, C=1,
                  n_consensus=10, n_iterations=10,
                  n_clusters=2, label_to_cluster=1,
                  clustering='spherical_gaussian_mixture', maximization='linear',
@@ -85,6 +85,9 @@ class UCSL_C(BaseEM, ClassifierMixin):
         super().__init__(clustering=clustering, maximization=maximization,
                          stability_threshold=stability_threshold, noise_tolerance_threshold=noise_tolerance_threshold,
                          n_consensus=n_consensus, n_iterations=n_iterations)
+        
+        # tolerance parameter
+        self.C = C
 
         # define the number of clusters needed
         self.n_clusters = n_clusters
@@ -352,14 +355,14 @@ class UCSL_C(BaseEM, ClassifierMixin):
         if self.maximization == "support_vector":
             for cluster in range(self.n_clusters):
                 cluster_assignment = np.ascontiguousarray(S[:, cluster])
-                SVM_coefficient, SVM_intercept = launch_svc(X, y_polytope, cluster_assignment)
+                SVM_coefficient, SVM_intercept = launch_svc(X, y_polytope, cluster_assignment, C=self.C)
                 self.coefficients[cluster] = SVM_coefficient
                 self.intercepts[cluster] = SVM_intercept
 
         elif self.maximization == "linear":
             for cluster in range(self.n_clusters):
                 cluster_assignment = np.ascontiguousarray(S[:, cluster])
-                logistic_coefficient, logistic_intercept = launch_logistic(X, y_polytope, cluster_assignment)
+                logistic_coefficient, logistic_intercept = launch_logistic(X, y_polytope, cluster_assignment, C=self.C)
                 self.coefficients[cluster] = logistic_coefficient
                 self.intercepts[cluster] = logistic_intercept
 

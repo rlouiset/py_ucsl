@@ -157,7 +157,7 @@ def launch_svr(X, y, sample_weight=None, kernel='linear', C=1):
     return SVM_coefficient, SVM_intercept
 
 
-def launch_logistic(X, y, sample_weight=None):
+def launch_logistic(X, y, sample_weight=None, C=1):
     """Fit the logistic regressions according to the given training data.
     Parameters
     ----------
@@ -174,7 +174,7 @@ def launch_logistic(X, y, sample_weight=None):
     """
 
     # fit the different logistic classifier
-    logistic = LogisticRegression(max_iter=200)
+    logistic = LogisticRegression(max_iter=200, C=C)
     logistic.fit(X, y, sample_weight=sample_weight)
 
     # get logistic coefficient and intercept
@@ -200,7 +200,7 @@ def launch_linear(X, y, sample_weight=None):
     """
 
     # fit the different linear regressor
-    linear = LinearRegression()
+    linear = LinearRegression(C=C)
     linear.fit(X, y, sample_weight=sample_weight)
 
     # get logistic coefficient and intercept
