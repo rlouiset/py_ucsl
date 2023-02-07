@@ -484,7 +484,7 @@ class UCSL_C(BaseEM, ClassifierMixin):
         best_cluster_consistency = 1
         if consensus == -1:
             consensus = self.n_consensus + 1
-            stability_threshold = 0.9
+            stability_threshold = self.stability_threshold
             best_cluster_consistency = 0
         else:
             stability_threshold = self.stability_threshold
